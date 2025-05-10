@@ -1,75 +1,6 @@
-# Skuul school management system
-
-<p align="center">
-    <!-- <a href="https://packagist.org/packages/yungifez/skuul">
-        <img src="https://poser.pugx.org/yungifez/skuul/d/total.svg" alt="Total Composer Downloads">
-    </a> -->
-    <a href="https://packagist.org/packages/yungifez/skuul">
-        <img src="https://poser.pugx.org/yungifez/skuul/v/stable.svg" alt="Latest Stable Version">
-    </a>
-    <a href="https://packagist.org/packages/yungifez/skuul">
-        <img src="https://poser.pugx.org/yungifez/skuul/license.svg" alt="License">
-    </a>
-</p>
-
 >In search of good school management systems written in laravel, I tried so many although most were quite remarkably good they lacked some essential features that I would have loved in a school management system.This made me passionate in building my own school management system. Although it has been difficult, it's actually forming up into a quite useable project.
 
-![schooldash-dahboard-page](https://user-images.githubusercontent.com/63137056/216740379-18cb9f1d-5e80-4bc8-8b99-07d08ea98da4.png)
 
-
-# CONGRATS V2 OF SKUUL IS OUT
-
-
-Skuul is awesome, but it had a few shortcomings when it came to some areas like UI speed and application slugishness as it grows. Version 2 fixes these issues and also improves on accessibility. 
-
-V2 is way faster and doesn't slow down condiderably as the app grows. Also upgrading should be relatively easy. Requirements remain the same with one exception, we now require node for asset bundling. No worries if you don't have node, there is a solution to that
-
-### Skuul is a multi school management system that aims to make school administration and activities a breeze by using the power of the internet and increased connectinity
-
-## Requirements
-* Php 8.1 and above
-* Composer 
-* Since this project is running laravel 9, we suggest checking out the official requirements [here](https://laravel.com/docs/9.x/upgrade#updating-dependencies)
-* Npm
-
-## Installation
-To skip steps 4 down ( after composer install ), you can run the below command and it would guide you through the process automatically
-```shell
-php artisan skuul:init
- ```
-* Clone the repository by running the following command in your comamand line below (Or you can dowload zip file from github)
-```shell
-git clone https://github.com/yungifez/skuul ./skuul
- ```
-* Head to the project's directory
-```shell
-cd skuul
- ```
-* Install composer dependancies
-```shell
-composer install
-```
-* Copy .env.example file into .env file and configure based on your environment
-```shell
-cp .env.example .env
-```
-* Install node dependencies
-```shell
-npm install
-```
-* Build NPM assets
-```shell
-  npm run build
-```
-
-Note if you do not have node, you can do this in your local environment and using an ftp program upload the publi/build folder and manifest.json folder to your server
-* Generate encryption key
-```shell
-php artisan key:generate
-```
-* Migrate the database
-```shell
-php artisan migrate
 ```
 * Seed database 
     
@@ -103,6 +34,7 @@ Typically, you can update most of the time following these steps
 - php artisan optimize:clear
 - php artisan migrate (Make sure to backup database)
 - php artisan db:seed --class RunInProductionSeeder
+
 ## Setup
 * Log in to the application with the following credentials
     * Email: super@admin.com
