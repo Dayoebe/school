@@ -40,6 +40,13 @@ Route::get('/admission', [PageController::class, 'admission'])->name('admission'
 Route::get('/gallery', [PageController::class, 'gallery'])->name('gallery');
 
 
+
+Route::get('/result', function () {
+    return view('pages.result.index');
+})->name('result');
+
+
+
 use App\Livewire\Results\UploadResultComponent;
 
 Route::middleware(['auth', 'role:super-admin|admin|teacher'])->group(function () {

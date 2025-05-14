@@ -276,8 +276,8 @@ class Menu extends Component
                 'type'  => 'menu-item',
                 'icon'  => 'fas fa-upload',
                 'text'  => 'Upload Results',
-                'route' => 'teacher.upload-result', // 👈 this must match your route name
-                'can'   => 'upload result', // Optional: You can add a permission check
+                'route' => 'result',
+                'can'   => 'upload result', // Optional: permission check
             ],
             
 
