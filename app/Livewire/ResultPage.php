@@ -4,10 +4,9 @@ namespace App\Livewire;
 
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\Subject;
-use App\Models\Section;
-use App\Models\User;
-use App\Models\StudentRecord;
+use App\Models\{
+    StudentRecord, Subject, AcademicYear, Semester, Result, Section, User
+};
 
 class ResultPage extends Component
 {
@@ -16,30 +15,30 @@ class ResultPage extends Component
     public $selectedClass;
     public $selectedSection;
     public $studentSearch = '';
-    public $selectedStudentId;
-    public $showStudents = false;
     public $perPage = 10;
-    public $page = 'index'; // index | upload | view
+    public $showStudents = false;
+
+    public $mode = 'index'; // index | upload | view
+    public $currentStudentId;
+
+    public $subjects = [];
+    public $results = [];
+
+    public $studentRecord;
+    public $academicYearId;
+    public $semesterId;
 
     protected $paginationTheme = 'tailwind';
 
-    // Reset and show on selection
-    public function updatedSelectedClass()
+    public function updated($property)
     {
-        $this->resetPage();
-        $this->showStudents = true;
-    }
+        if (in_array($property, ['selectedClass', 'selectedSection', 'studentSearch'])) {
+            $this->resetPage();
+        }
 
-    public function updatedSelectedSection()
-    {
-        $this->resetPage();
-        $this->showStudents = true;
-    }
-
-    public function updatedStudentSearch()
-    {
-        $this->resetPage();
-        $this->showStudents = false; // Only show search dropdown, not table
+        if ($property === 'studentSearch') {
+            $this->showStudents = false;
+        }
     }
 
     public function showFilteredStudents()
@@ -50,29 +49,27 @@ class ResultPage extends Component
     public function getFilteredStudentsProperty()
     {
         if (!$this->selectedClass && !$this->selectedSection && !$this->studentSearch) {
-            return collect(); // Empty by default
+            return collect();
         }
 
-        $query = StudentRecord::query()->with('user')->where('is_graduated', false);
+        $query = StudentRecord::query()
+            ->with('user')
+            ->where('is_graduated', false);
 
         if ($this->selectedClass) {
             $query->where('my_class_id', $this->selectedClass);
         }
 
         if ($this->selectedSection) {
-            $query->whereHas('section', fn($q) =>
+            $query->whereHas('section', fn ($q) =>
                 $q->where('name', $this->selectedSection)
             );
         }
 
         if ($this->studentSearch) {
-            $query->whereHas('user', fn($q) =>
+            $query->whereHas('user', fn ($q) =>
                 $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($this->studentSearch) . '%'])
             );
-
-            return $query
-                ->orderBy(User::select('name')->whereColumn('users.id', 'student_records.user_id'))
-                ->get();
         }
 
         return $query
@@ -84,33 +81,87 @@ class ResultPage extends Component
 
     public function goToUpload($studentId)
     {
-        $this->selectedStudentId = $studentId;
-        $this->page = 'upload';
+        $this->mode = 'upload';
+        $this->currentStudentId = $studentId;
+
+        $this->studentRecord = StudentRecord::where('student_id', $studentId)->firstOrFail();
+        $this->subjects = Subject::where('class_id', $this->studentRecord->class_id)->get();
+        $this->academicYearId = AcademicYear::latest()->first()?->id;
+        $this->semesterId = Semester::latest()->first()?->id;
+
+        foreach ($this->subjects as $subject) {
+            $existing = Result::where([
+                'student_record_id' => $this->studentRecord->id,
+                'subject_id' => $subject->id,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ])->first();
+
+            $this->results[$subject->id] = [
+                'test_score' => $existing?->test_score,
+                'exam_score' => $existing?->exam_score,
+                'comment' => $existing?->teacher_comment ?? '',
+            ];
+        }
     }
 
     public function goToView($studentId)
     {
-        $this->selectedStudentId = $studentId;
-        $this->page = 'view';
+        $this->mode = 'view';
+        $this->currentStudentId = $studentId;
+
+        // TODO: Load result view content here
     }
 
     public function goBack()
     {
-        $this->page = 'index';
-        $this->selectedStudentId = null;
+        $this->mode = 'index';
+        $this->currentStudentId = null;
+        $this->results = [];
     }
 
-    public function save()
+    public function saveResults()
     {
-        session()->flash('message', 'Results uploaded successfully.');
-    }
+        foreach ($this->results as $subjectId => $entry) {
+            $total = ($entry['test_score'] ?? 0) + ($entry['exam_score'] ?? 0);
 
+            Result::updateOrCreate([
+                'student_record_id' => $this->studentRecord->id,
+                'subject_id' => $subjectId,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ], [
+                'test_score' => $entry['test_score'],
+                'exam_score' => $entry['exam_score'],
+                'total_score' => $total,
+                'teacher_comment' => $entry['comment'],
+                'approved' => false,
+            ]);
+        }
+
+        $this->dispatch('notify', 'Results uploaded successfully.');
+        $this->goBack();
+    }
     public function render()
     {
-        return view('livewire.result-page', [
+        $view = match ($this->mode) {
+            'upload' => 'pages.result.upload-content',
+            'view' => 'pages.result.view-content',
+            default => 'pages.result.index-content',
+        };
+    
+        return view($view, [
+            'filteredStudents' => $this->filteredStudents,
             'subjects' => Subject::all(),
             'sections' => Section::all()->unique('name'),
-            'filteredStudents' => $this->filteredStudents,
+        ])->with([
+            'breadcrumbs' => [
+                ['href' => route('dashboard'), 'text' => 'Dashboard'],
+                ['href' => route('result'), 'text' => 'Results', 'active' => true],
+            ],
+            'title' => 'Results',
+            'page_heading' => 'Manage Student Results',
         ]);
     }
+    
 }

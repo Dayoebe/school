@@ -1,9 +1,9 @@
-<div> {{-- 👈 Wrap everything in one root div --}}
-    @if($page === 'index')
+<div>
+    @if($mode === 'index')
         @include('pages.result.index-content')
-    @elseif($page === 'upload')
+    @elseif($mode === 'upload')
         @include('pages.result.upload-content')
-    @elseif($page === 'view')
+    @elseif($mode === 'view')
         @include('pages.result.view-content')
     @endif
 </div>

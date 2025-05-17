@@ -5,7 +5,8 @@
         {{-- Select Class --}}
         <div>
             <label class="block font-semibold text-gray-700 mb-1">Select Class</label>
-            <select wire:model="selectedClass" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select wire:model="selectedClass"
+                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">-- Select Class --</option>
                 @foreach (\App\Models\MyClass::all() as $class)
                     <option value="{{ $class->id }}">{{ $class->name }}</option>
@@ -16,7 +17,8 @@
         {{-- Select Section --}}
         <div>
             <label class="block font-semibold text-gray-700 mb-1">Select Section</label>
-            <select wire:model="selectedSection" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select wire:model="selectedSection"
+                class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">-- Select Section --</option>
                 @foreach ($sections as $section)
                     <option value="{{ $section->name }}">{{ $section->name }}</option>
@@ -46,17 +48,18 @@
         </div>
     </div>
 
+
     {{-- Show Students Button --}}
     <div class="flex justify-end">
         <button wire:click="showFilteredStudents"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 transition"
-            @if (!$selectedClass || !$selectedSection || !$studentSearch) disabled @endif>
+            class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded shadow disabled:opacity-50 transition">
+            {{-- @if (!$selectedClass || !$selectedSection || !$studentSearch) disabled @endif> --}}
             Show Students
         </button>
     </div>
 
     {{-- Pagination --}}
-    @if($showStudents && !$studentSearch)
+    @if ($showStudents && !$studentSearch)
         <div class="flex justify-between items-center">
             <div>
                 <label class="text-sm text-gray-600">Students per page:</label>
@@ -70,7 +73,7 @@
     @endif
 
     {{-- Student Table --}}
-    @if($showStudents && $filteredStudents->count() > 0 && !$studentSearch)
+    @if ($showStudents && $filteredStudents->count() > 0)
         <div class="overflow-x-auto mt-4">
             <table class="min-w-full border rounded-lg shadow-sm bg-white">
                 <thead class="bg-gray-100 text-left">
@@ -98,7 +101,8 @@
                 {{ $filteredStudents->links() }}
             </div>
         </div>
-    @elseif ($showStudents && !$studentSearch && $filteredStudents->isEmpty())
+    @elseif ($showStudents && $filteredStudents->isEmpty())
         <div class="text-center text-gray-500 mt-6 font-semibold">No students found based on your selection.</div>
     @endif
+
 </div>
