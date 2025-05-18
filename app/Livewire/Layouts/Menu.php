@@ -230,6 +230,27 @@ class Menu extends Component
                 ],
             ],
             [
+                'type'  => 'menu-item',
+                'icon'  => 'fas fa-upload',
+                'text'  => 'Results',
+                'route' => 'result',
+                'can'   => 'upload result', // Optional: permission check
+                'submenu' => [
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'Upload Results',
+                        'route' => 'result',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'View Result',
+                        'route' => 'result',
+                        'can'   => 'upload result',
+                    ],
+                ],
+            ],
+            [
                 'type'    => 'menu-item',
                 'text'    => 'Academic years',
                 'icon'    => 'fas fa-calendar',
@@ -272,13 +293,7 @@ class Menu extends Component
             ],
 
 
-            [
-                'type'  => 'menu-item',
-                'icon'  => 'fas fa-upload',
-                'text'  => 'Upload Results',
-                'route' => 'result',
-                'can'   => 'upload result', // Optional: permission check
-            ],
+          
             
 
 
