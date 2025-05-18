@@ -13,7 +13,7 @@ class Result extends Model
         'student_record_id',
         'subject_id',
         'academic_year_id',
-        'term_id',
+        'semester_id',
         'test_score',
         'exam_score',
         'total_score',
@@ -37,8 +37,16 @@ class Result extends Model
         return $this->belongsTo(AcademicYear::class);
     }
 
-    public function term()
+    public function semester()
     {
         return $this->belongsTo(Semester::class);
     }
+    public function validate()
+{
+    if (!$this->studentRecord || !$this->academicYearId || !$this->semesterId) {
+        session()->flash('error', 'Invalid student record, academic year, or semester.');
+        return false;
+    }
+    return true;
+}
 }

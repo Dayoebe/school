@@ -36,6 +36,10 @@ class Subject extends Model
         return $this->belongsToMany(User::class, 'subject_user');
     }
 
+    public function result()
+    {
+        return $this->belongsTo(Result::class);
+    }
     /**
      * Get the subjects timetable records.
      */

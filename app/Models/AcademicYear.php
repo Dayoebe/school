@@ -47,6 +47,10 @@ class AcademicYear extends Model
         return $this->hasManyThrough(Exam::class, Semester::class, 'academic_year_id', 'semester_id', 'id', 'id');
     }
 
+    public function result()
+    {
+        return $this->belongsTo(Result::class);
+    }
     /**
      * The studentRecords that belong to the AcademicYear.
      */

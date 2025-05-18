@@ -81,6 +81,10 @@ class StudentRecord extends Model
         return $this->belongsToMany(AcademicYear::class)->as('studentAcademicYearBasedRecords')->using(AcademicYearStudentRecord::class)->withPivot('my_class_id', 'section_id');
     }
 
+    public function result()
+    {
+        return $this->belongsTo(Result::class);
+    }
     /**
      * Get current academic year.
      *
