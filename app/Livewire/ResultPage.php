@@ -138,13 +138,9 @@ Semester: <strong>$semester</strong>";
         }
 
         if ($this->selectedSection) {
-            $query->whereHas(
-                'section',
-                fn($q) =>
-                $q->where('name', $this->selectedSection)
-            );
+            $query->where('section_id', $this->selectedSection);
         }
-
+        
         if ($this->studentSearch) {
             $query->whereHas(
                 'user',

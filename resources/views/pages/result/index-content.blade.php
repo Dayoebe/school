@@ -84,7 +84,7 @@
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Select Section --</option>
                     @foreach ($sections as $section)
-                        <option value="{{ $section->name }}">{{ $section->name }}</option>
+                    <option value="{{ $section->id }}">{{ $section->name }}</option>
                     @endforeach
                 </select>
             </div>
