@@ -1,103 +1,136 @@
->In search of good school management systems written in laravel, I tried so many although most were quite remarkably good they lacked some essential features that I would have loved in a school management system.This made me passionate in building my own school management system. Although it has been difficult, it's actually forming up into a quite useable project.
+# Elites Web Application
+
+Welcome to the **Elites Web Application**! This project is designed to provide a seamless and efficient web experience for users. Below, you'll find all the necessary information to get started with the application.
+
+---
+
+## 🚀 Features
+
+- **User-Friendly Interface**: Intuitive and responsive design.
+- **High Performance**: Optimized for speed and scalability.
+- **Secure**: Implements best practices for data security.
+- **Customizable**: Easily adaptable to meet your needs.
 
 
-```
-* Seed database 
-    
-    You can seed the database in 2 ways
-    - For production ie in your live server
-        ```shell
-        php artisan db:seed --class RunInProductionSeeder
-        ```
-    - For testing or development purposes
-        ```shell
-        php artisan db:seed
-        ```
-* Seed database to populate countries (takes approximately 10 minutes)
-```shell
-php artisan db:seed --class=WorldSeeder
-```
-* Set application logo by adding it in the public img folder and edit the .env logo path appropriately
-* Store favicon in path public/favicons/, the file should be called favicon.ico
-* For development or testing purposes, you can use the laravel built in server by running 
-```shell
-php artisan serve
-```
-If you are running on production, visit your domain to verify it is working 
+## 🏫 Features
 
-After running the above commands, you should be able to access the application at http::/localhost or your designated domain name depending on configuration.
-
-## Updating
-Typically, you can update most of the time following these steps
-- clone the new version
-- composer update
-- php artisan optimize:clear
-- php artisan migrate (Make sure to backup database)
-- php artisan db:seed --class RunInProductionSeeder
-
-## Setup
-* Log in to the application with the following credentials
-    * Email: super@admin.com
-    * Password: password
-
-* You would be prompted to change your password, change your passsword in the profile page to continue
-
-    
-* if you are on production 
-    - When you log in, you would be redirected to a page with error message at the top right corner that says "Please set your school of operation first". At the menu, click on create schools
-    - On the page to create schools, provide a name, address and initial for your school and click on create school
-    - Click on view schools, select the current school and click on the button set scvhool
-    - You can now head over to the dashboard
-    - You can begin to add classes, students, teachers etc. Some operations would not work specifically all links under the academics section
-    - Head over to academic years, create a new academic year and a new term then set the academic year and term 
-* if you are on dev or testing, data is preset to test and use the application.
-
-## Usage
-* Add class groups to the school
-* Add classes to class groups
-* Add sections to classes
-* Add students to sections (You must have created a class and a section before you can add students)
-* Add teachers to school
-* Add subjects to school
-
-## Features
 ### Super Admin
-By default super admin can manage all activities in each school, some super admin exclusive features are
-* Ability to create, edit and delete schools
-" Ability to set school of operation
+The Super Admin has full control over all activities across schools. Exclusive features include:
+- Ability to create, edit, and delete schools.
+- Ability to set the school of operation.
 
 ### Admin
-* Ability to manage own school settings
-* Ability to create, edit, view and delete class groups in assigned school
-* Ability to create, edit, view and delete classes 
-* Ability to create, edit, view and delete sections
-* Ability to create, edit, view and delete classes
-* Ability to create, edit, view and delete subjects
-* Ability to create, edit, view and delete academic years
-* Ability to set Academic years
-* Ability to admit students, view student profiles, edit student profile, print student profile and delete student
-* Ability to create teachers, edit teacher profile and delete teacher
-* Ability to create, edit, manage, view and delete timetables
-* Ability to create, edit, view and delete sylabii
-* Ability to create, edit, view and delete term
-* Ability to set own school academic year and term
+Admins can manage their assigned school's settings and perform the following tasks:
+- Create, edit, view, and delete class groups.
+- Create, edit, view, and delete classes.
+- Create, edit, view, and delete sections.
+- Create, edit, view, and delete subjects.
+- Create, edit, view, and delete academic years.
+- Create, edit, view, and delete Results.
+- Set academic years.
+- Admit students, view student profiles, edit student profiles, print student profiles, and delete students.
+- Create, edit, and delete teacher profiles.
+- Create, edit, manage, view, and delete timetables.
+- Create, edit, view, and delete syllabi.
+- Create, edit, view, and delete terms.
+- Set the academic year and term for their school.
 
 ### Teachers
-* Ability to create, edit, view and delete sylabii
-* Ability to create, edit, manage, view and delete timetables
+Teachers have the following capabilities:
+- Create, edit, view, and delete syllabi.
+- Create, edit, manage, view, and delete timetables.
+- Create, edit, view, and delete Results.
 
-This project was highly inspired by 4jean/lavSMS
+---
 
-Do you like the current state of this project?, you can support me or hire me for work
+## 💡 Inspiration
+This project was inspired by [4jean/lavSMS](https://github.com/4jean/lavSMS).
 
-Todo
-- Create demo site (for now, go to wirelesscs.com might be a mess but worth it. Log in to super admin account with password helloworld)
-- Create logo
-- Need help creating demo video
-- Write docs using a tool like larecipe
-- Write issue and contribution template file
-etc
+---
 
+## 📋 Todo
+Here are some planned improvements for the project:
+- Create a demo site (for now, visit [wirelesscs.com](http://wirelesscs.com). Note: It might be a work in progress. Log in to the Super Admin account with the password `helloworld`).
+- Design a mobile app for this project
 
+---
 
+## ❤️ Support
+Do you like the current state of this project? You can support me or hire me for work!
 
+---
+
+## 🛠️ Installation
+
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/dayo/school.git
+    ```
+2. Navigate to the project directory:
+    ```bash
+    cd elites
+    ```
+3. Start the server (using XAMPP or any preferred method):
+    ```bash
+    sudo /opt/lampp/lampp start
+    ```
+4. Open your browser and visit:
+    ```
+    http://localhost/elites
+    ```
+
+---
+
+## 📂 Project Structure
+
+```
+elites/
+├── index.php
+├── assets/
+│   ├── css/
+│   ├── js/
+│   └── images/
+├── includes/
+├── config/
+└── README.md
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please follow these steps:
+
+1. Fork the repository.
+2. Create a new branch:
+    ```bash
+    git checkout -b feature-name
+    ```
+3. Commit your changes:
+    ```bash
+    git commit -m "Add feature-name"
+    ```
+4. Push to the branch:
+    ```bash
+    git push origin feature-name
+    ```
+5. Open a pull request.
+
+---
+
+## 📜 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## 📧 Contact
+
+For any inquiries or feedback, feel free to reach out:
+
+- **Email**: oyetoke.ebenezer@gmail.com
+- **GitHub**: [Dayoebe](https://github.com/Dayoebe)
+
+---
+
+Thank you for using **Elites Web Application**! 🎉
