@@ -19,6 +19,7 @@ return new class extends Migration {
             $table->decimal('exam_score', 5, 2)->default(0);   // max 60
             $table->decimal('total_score', 5, 2)->default(0); // computed in application logic
             $table->string('grade', 2)->nullable();
+            $table->integer('class_position')->nullable();
             $table->string('teacher_comment')->nullable();
             $table->boolean('approved')->default(false);
 
