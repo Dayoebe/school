@@ -47,13 +47,6 @@ Route::get('/result', function () {
 
 
 
-use App\Livewire\Results\UploadResultComponent;
-
-Route::middleware(['auth', 'role:super-admin|admin|teacher'])->group(function () {
-    Route::get('/teacher/upload-result', UploadResultComponent::class)->name('teacher.upload-result');
-});
-
-
 
 Route::middleware(['guest'])->group(function () {
     Route::get('/register', ['App\Http\Controllers\RegistrationController', 'registerView'])->name('register');
