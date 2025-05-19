@@ -20,17 +20,17 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
     {
         Validator::make($input, [
             'name'        => ['required', 'string', 'max:255'],
-            'email'       => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'email'       => ['nullable', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
             'photo'       => ['nullable', 'mimes:jpg,jpeg,png', 'max:3000'],
-            'birthday'    => ['required', 'date', 'before:today'],
-            'address'     => ['required', 'string', 'max:500'],
-            'blood_group' => ['required', 'string', 'max:255'],
+            'birthday'    => ['nullable', 'date', 'before:today'],
+            'address'     => ['nullable', 'string', 'max:500'],
+            'blood_group' => ['nullable', 'string', 'max:255'],
             'religion'    => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'state'       => ['nullable', 'string', 'max:255'],
-            'city'        => ['required', 'string', 'max:255'],
-            'gender'      => ['required', 'string', 'max:255'],
-            'phone'       => ['nullable', 'string', 'max:255'],
+            'city'        => ['nullable', 'string', 'max:255'],
+            'gender'      => ['nullable', 'string', 'max:255'],
+            'phone'       => ['required', 'string', 'max:255'],
         ])->validate();
 
         if (isset($input['photo'])) {

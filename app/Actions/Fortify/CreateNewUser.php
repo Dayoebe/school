@@ -23,20 +23,20 @@ class CreateNewUser implements CreatesNewUsers
     {
         Validator::make($input, [
             'name'     => ['required', 'string', 'max:511'],
-            'email'    => ['required', 'string', 'email', 'max:511', 'unique:users'],
+            'email'    => ['nullable', 'string', 'email', 'max:511', 'unique:users'],
             'photo'    => ['nullable', 'mimes:jpg,jpeg,png', 'max:3000'],
             'password' => $this->passwordRules(),
             // 'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['required', 'accepted'] : '',
             'school_id'   => ['required', 'exists:schools,id'],
-            'birthday'    => ['required', 'date', 'before:today'],
-            'address'     => ['required', 'string', 'max:500'],
-            'blood_group' => ['required', 'string', 'max:255'],
+            'birthday'    => ['nullable', 'date', 'before:today'],
+            'address'     => ['nullable', 'string', 'max:500'],
+            'blood_group' => ['nullable', 'string', 'max:255'],
             'religion'    => ['nullable', 'string', 'max:255'],
             'nationality' => ['nullable', 'string', 'max:255'],
             'state'       => ['nullable', 'string', 'max:255'],
-            'city'        => ['required', 'string', 'max:255'],
-            'gender'      => ['required', 'string', 'max:255'],
-            'phone'       => ['nullable', 'string', 'max:255'],
+            'city'        => ['nullable', 'string', 'max:255'],
+            'gender'      => ['nullable', 'string', 'max:255'],
+            'phone'       => ['required', 'string', 'max:255'],
         ])->validate();
 
         $user = User::create([
