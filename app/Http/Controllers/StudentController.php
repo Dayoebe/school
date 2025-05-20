@@ -124,6 +124,26 @@ class StudentController extends Controller
         $data = $request->except('_token', '_method');
         $this->student->updateStudent($student, $data);
 
+        // The $student parameter already contains the user instance
+        $student = User::findOrFail($student->id);
+
+        $request->validate([
+            // Your existing validation...
+            'admission_number' => 'nullable|string|max:255',
+            'admission_date' => 'nullable|date',
+        ]);
+    
+    
+        // Update student record (make sure relationship is loaded)
+        if ($student->studentRecord) {
+            $student->studentRecord->update([
+                'admission_number' => $request->admission_number,
+                'admission_date' => $request->admission_date,
+                'my_class_id' => $request->my_class_id,
+                'section_id' => $request->section_id,
+            ]);
+        }
+
         return back()->with('success', 'Student Updated Successfully');
     }
 
@@ -141,4 +161,8 @@ class StudentController extends Controller
 
         return back()->with('success', 'Student Deleted Successfully');
     }
+
+
+
+
 }
