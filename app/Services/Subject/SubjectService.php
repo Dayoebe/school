@@ -37,7 +37,9 @@ class SubjectService
      */
     public function getSubjectById(int $id)
     {
-        return Subject::find($id);
+        $subject = Subject::findOrFail($id);
+
+        return $subject;
     }
 
     /**
@@ -49,14 +51,16 @@ class SubjectService
      */
     public function createSubject($data)
     {
-        $subject = Subject::firstOrCreate(['name' => $data['name']], [
+        $subject = Subject::firstOrCreate([
+            'name'        => $data['name'],
+            'my_class_id' => $data['my_class_id'],
+        ], [
             'short_name'  => $data['short_name'],
             'school_id'   => auth()->user()->school_id,
-            'my_class_id' => $data['my_class_id'],
         ]);
 
         if (!$subject->wasRecentlyCreated) {
-            throw new ResourceNotEmptyException('Subject already exists or something went wrong');
+            throw new ResourceNotEmptyException('Subject already exists for this class.');
         }
 
         if (isset($data['teachers'])) {
@@ -70,6 +74,7 @@ class SubjectService
             $subject->teachers()->sync($teachers);
         }
     }
+
 
     /**
      * Update subject.

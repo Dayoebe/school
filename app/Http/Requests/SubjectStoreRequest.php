@@ -3,21 +3,30 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SubjectStoreRequest extends FormRequest
 {
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array
-     */
-    public function rules()
+    public function rules(): array
     {
         return [
-            'name'        => 'required|max:255',
-            'short_name'  => 'required|max:255',
-            'my_class_id' => 'exists:my_classes,id',
-            'teachers.*'  => 'exists:users,id',
+            'name' => [
+                'required',
+                'string',
+                Rule::unique('subjects')->where(function ($query) {
+                    return $query->where('my_class_id', $this->input('my_class_id'));
+                }),
+            ],
+            'short_name'  => 'required|string|max:255',
+            'my_class_id' => 'required|exists:my_classes,id',
+            'teachers.*'  => 'nullable|exists:users,id',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.unique' => 'This subject already exists for the selected class.',
         ];
     }
 }
