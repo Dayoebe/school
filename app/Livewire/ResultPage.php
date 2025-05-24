@@ -2,10 +2,10 @@
 
 namespace App\Livewire;
 
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 
 use Livewire\Component;
@@ -259,17 +259,22 @@ Semester: <strong>$semester</strong>";
         $this->currentStudentId = null;
         $this->results = [];
     }
-
     public function calculateGrade($total)
     {
-        if ($total >= 70) return 'A';
-        if ($total >= 60) return 'B';
-        if ($total >= 50) return 'C';
-        if ($total >= 45) return 'D';
-        if ($total >= 40) return 'E';
-        return 'F';
+        return match (true) {
+            $total >= 75 => 'A1',
+            $total >= 70 => 'B2',
+            $total >= 65 => 'B3',
+            $total >= 60 => 'C4',
+            $total >= 55 => 'C5',
+            $total >= 50 => 'C6',
+            $total >= 45 => 'D7',
+            $total >= 40 => 'E8',
+            default => 'F9',
+        };
     }
-    public function updatedResults($value, $key)
+    
+        public function updatedResults($value, $key)
     {
         [$subjectId, $field] = explode('.', $key);
 
@@ -280,7 +285,7 @@ Semester: <strong>$semester</strong>";
         try {
             $this->validateOnly("results.$key");
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return; // Don't proceed if invalid
+        } catch (ValidationException $e) {
         }
 
         [$subjectId, $field] = explode('.', $key);
@@ -292,24 +297,19 @@ Semester: <strong>$semester</strong>";
         $total = (int) $test + (int) $exam;
         $grade = $this->calculateGrade($total);
 
-        $grade = match (true) {
-            $total >= 70 => 'A',
-            $total >= 60 => 'B',
-            $total >= 50 => 'C',
-            $total >= 45 => 'D',
-            $total >= 40 => 'E',
-            default => 'F',
-        };
-
         $comment = match ($grade) {
-            'A' => 'Excellent performance.',
-            'B' => 'Very good work.',
-            'C' => 'Good effort, keep pushing.',
-            'D' => 'Fair. Needs improvement.',
-            'E' => 'Weak. Serious improvement needed.',
-            'F' => 'Poor. Immediate attention required.',
+            'A1' => 'Outstanding! Keep up the brilliance ✨',
+            'B2' => 'Excellent work! You’re almost at the top 💪',
+            'B3' => 'Very good! Stay consistent 🔥',
+            'C4' => 'Good effort, room for improvement 👍',
+            'C5' => 'You did well. Keep aiming higher 🌱',
+            'C6' => 'Satisfactory. Try to do better next time 📈',
+            'D7' => 'Passable, but improvement is needed ⏳',
+            'E8' => 'Weak performance. More effort required ⚠️',
+            'F9' => 'Failing grade. Needs urgent attention 🚨',
             default => '',
         };
+        
 
         $this->results[$subjectId]['grade'] = $grade;
         $this->results[$subjectId]['comment'] = $comment;

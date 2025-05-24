@@ -1,8 +1,9 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\MyClassController;
-use App\Http\Controllers\SchoolController; 
+use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\ClassGroupController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\AccountApplicationController;
@@ -45,8 +46,13 @@ Route::get('/result', function () {
     return view('pages.result.index');
 })->name('result');
 
+Route::get('/results/print/{student}', [\App\Http\Controllers\ResultController::class, 'print'])->name('result.print');
 
 
+use App\Http\Controllers\ResultController;
+
+Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])
+    ->name('result.print');
 
 Route::middleware(['guest'])->group(function () {
     Route::get('/register', ['App\Http\Controllers\RegistrationController', 'registerView'])->name('register');
@@ -201,10 +207,6 @@ Route::middleware('auth:sanctum', 'verified', 'App\Http\Middleware\PreventLockAc
         //notice routes
         Route::resource('notices', NoticeController::class);
     });
-
-
-
-        
 });
 
 

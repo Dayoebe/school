@@ -30,11 +30,6 @@ class User extends Authenticatable implements MustVerifyEmail
     use HasRoles;
     use InSchool;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var string[]
-     */
     protected $fillable = [
         'name',
         'email',
@@ -51,11 +46,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'school_id',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
@@ -63,30 +53,18 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_secret',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'birthday'          => 'datetime:Y-m-d',
     ];
 
-    /**
-     * The accessors to append to the model's array form.
-     *
-     * @var array
-     */
     protected $appends = [
         'profile_photo_url',
     ];
 
     protected static function booted()
     {
-        static::addGlobalScope('orderByName', function (Builder $builder) {
-            $builder->orderBy('name');
-        });
+        static::addGlobalScope('orderByName', fn(Builder $builder) => $builder->orderBy('name'));
     }
 
     public function scopeStudents($query)
@@ -94,32 +72,14 @@ class User extends Authenticatable implements MustVerifyEmail
         return $query->role('student');
     }
 
-    /**
-     * Active applicants.
-     *
-     * @param Builder $query
-     *
-     * @return void
-     */
     public function scopeApplicants($query)
     {
-        return $query->whereHas('accountApplication', function (Builder $query) {
-            $query->otherCurrentStatus('rejected');
-        })->role('applicant');
+        return $query->whereHas('accountApplication', fn(Builder $query) => $query->otherCurrentStatus('rejected'))->role('applicant');
     }
 
-    /**
-     * Active applicants.
-     *
-     * @param Builder $query
-     *
-     * @return void
-     */
     public function scopeRejectedApplicants($query)
     {
-        return $query->role('applicant')->whereHas('accountApplication', function (Builder $query) {
-            $query->currentStatus('rejected');
-        });
+        return $query->role('applicant')->whereHas('accountApplication', fn(Builder $query) => $query->currentStatus('rejected'));
     }
 
     public function scopeActiveStudents($query)
@@ -127,125 +87,77 @@ class User extends Authenticatable implements MustVerifyEmail
         return $query->whereRelation('studentRecord', 'is_graduated', 0);
     }
 
-    /**
-     * Get the school that owns the User.
-     */
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
     }
 
-    /**
-     * Get the studentRecord associated with the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function studentRecord()
+    public function studentRecord(): HasOne
     {
         return $this->hasOne(StudentRecord::class);
     }
 
-    /**
-     * Get the studentRecord of graduation associated with the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function graduatedStudentRecord()
+    public function graduatedStudentRecord(): HasOne
     {
         return $this->hasOne(StudentRecord::class)->withoutGlobalScopes()->where('is_Graduated', true);
     }
 
-    /**
-     * Get the studentRecord of graduation associated with the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function allStudentRecords()
+    public function allStudentRecords(): HasOne
     {
         return $this->hasOne(StudentRecord::class)->withoutGlobalScopes();
     }
 
-    /**
-     * The parents that belong to the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
-    public function parents()
+    public function parents(): BelongsToMany
     {
         return $this->belongsToMany(ParentRecord::class);
     }
 
-    /**
-     * Get the teacherRecord associated with the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function teacherRecord()
+    public function teacherRecord(): HasOne
     {
         return $this->hasOne(TeacherRecord::class);
     }
 
-    /**
-     * Get the parent records associated with the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasOne
-     */
-    public function parentRecord()
+    public function parentRecord(): HasOne
     {
         return $this->hasOne(ParentRecord::class);
     }
 
-    /**
-     * Get the AccountApplication associated with the User.
-     */
     public function accountApplication(): HasOne
     {
         return $this->hasOne(AccountApplication::class);
     }
 
-    /**
-     * Get all of the feeInvoices for the User.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\HasMany
-     */
     public function feeInvoices(): HasMany
     {
         return $this->hasMany(FeeInvoice::class);
     }
 
-    //get first name
     public function firstName()
     {
         return explode(' ', $this->name)[0];
     }
 
-    //get first name
     public function getFirstNameAttribute()
     {
         return $this->firstName();
     }
 
-    //get last name
     public function lastName()
     {
         return explode(' ', $this->name)[1];
     }
 
-    //get last name
     public function getLastNameAttribute()
     {
         return $this->lastName();
     }
 
-    //get other names
     public function otherNames()
     {
         $names = array_diff_key(explode(' ', $this->name), array_flip([0, 1]));
-
         return implode(' ', $names);
     }
 
-    //get other names
     public function getOtherNamesAttribute()
     {
         return $this->otherNames();
@@ -253,29 +165,39 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function defaultProfilePhotoUrl()
     {
-        $name = trim(collect(explode(' ', $this->name))->map(function ($segment) {
-            return mb_substr($segment, 0, 1);
-        })->join(' '));
-
-        $email = trim($this->email);
-        $email = strtolower($email);
-        $email = md5($email);
-
-        return 'https://www.gravatar.com/avatar/'.$email.'?d=https%3A%2F%2Fui-avatars.com%2Fapi%2F/'.urlencode($name).'/300/EBF4FF/7F9CF5';
+        $name = trim(collect(explode(' ', $this->name))->map(fn($segment) => mb_substr($segment, 0, 1))->join(' '));
+        $email = md5(strtolower(trim($this->email)));
+        return 'https://www.gravatar.com/avatar/' . $email . '?d=https%3A%2F%2Fui-avatars.com%2Fapi%2F/' . urlencode($name) . '/300/EBF4FF/7F9CF5';
     }
-
-    //accessor for birthday
 
     public function getBirthdayAttribute($value)
     {
         return Carbon::parse($value)->format('Y-m-d');
     }
 
-    /**
-     * The subjects that belong to the User.
-     */
     public function subjects(): BelongsToMany
     {
         return $this->belongsToMany(Subject::class);
+    }
+    public function registeredSubjects()
+    {
+        return $this->belongsToMany(Subject::class, 'student_subject')
+            ->withTimestamps()
+            ->withPivot('my_class_id', 'section_id');
+    }
+
+
+    public function assignedSubjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Subject::class, 'subject_user');
+    }
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->hasRole('teacher');
     }
 }

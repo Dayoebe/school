@@ -13,7 +13,10 @@ class Subject extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'name', 'short_name', 'school_id', 'my_class_id',
+        'name',
+        'short_name',
+        'school_id',
+        'my_class_id',
     ];
 
     /**
@@ -46,5 +49,11 @@ class Subject extends Model
     public function timetableRecord(): MorphOne
     {
         return $this->morphOne(TimetableRecord::class, 'timetable_time_slot_weekdayable');
+    }
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'student_subject')
+            ->withTimestamps()
+            ->withPivot('my_class_id', 'section_id');
     }
 }

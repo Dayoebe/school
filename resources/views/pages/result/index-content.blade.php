@@ -61,7 +61,6 @@
     </div>
 
     {{-- Filters and Student List --}}
-
     <div class="p-6 bg-white rounded-xl shadow-lg space-y-6">
         {{-- Filters --}}
         <div class="grid md:grid-cols-3 gap-6">
@@ -84,7 +83,7 @@
                     class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Select Section --</option>
                     @foreach ($sections as $section)
-                    <option value="{{ $section->id }}">{{ $section->name }}</option>
+                        <option value="{{ $section->id }}">{{ $section->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -148,7 +147,7 @@
                     <tbody>
                         @foreach ($filteredStudents as $student)
                             <tr class="hover:bg-gray-50 transition">
-                                <td class="p-3 border-b">{{ $student->user->name ?? 'N/A' }}</td>
+                                <td class="p-3 border-b hover:bg-blue-200 ">{{ $student->user->name ?? 'N/A' }}</td>
                                 <td class="p-3 border-b space-x-4">
                                     <button wire:click="goToUpload({{ $student->id }})"
                                         class="text-blue-600 font-medium hover:underline">Upload</button>
@@ -169,31 +168,45 @@
         @endif
     </div>
 
-    <div 
-    x-data="{ show: false, message: '' }"
-    x-show="show"
-    x-transition:enter="transition ease-out duration-500 transform"
-    x-transition:enter-start="opacity-0 translate-y-4 scale-90"
-    x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-    x-transition:leave="transition ease-in duration-500 transform"
-    x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-    x-transition:leave-end="opacity-0 translate-y-4 scale-90"
-    x-init="
-        window.addEventListener('show-overview-alert', event => {
+    <div x-data="{ show: false, message: '' }" x-show="show" x-transition:enter="transition ease-out duration-500 transform"
+        x-transition:enter-start="opacity-0 translate-y-4 scale-90"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-500 transform"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 translate-y-4 scale-90" x-init="window.addEventListener('show-overview-alert', event => {
             const emojis = ['🎉', '📘', '🕵️‍♂️', '🧠', '📚', '🔥', '🚀'];
             const randomEmoji = emojis[Math.floor(Math.random() * emojis.length)];
             message = `${randomEmoji} ` + event.detail.message;
             show = true;
             setTimeout(() => show = false, 4000);
-        });
-    "
-    class="fixed top-5 right-5 max-w-xs w-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-400 text-white px-5 py-4 rounded-xl shadow-2xl ring-2 ring-white ring-opacity-40 z-50 font-semibold text-sm sm:text-base"
->
-    <div class="flex items-center space-x-3">
-        <div class="animate-bounce text-xl">🔔</div>
-        <span x-html="message"></span>
+        });"
+        class="fixed top-5 right-5 max-w-xs w-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-400 text-white px-5 py-4 rounded-xl shadow-2xl ring-2 ring-white ring-opacity-40 z-50 font-semibold text-sm sm:text-base">
+        <div class="flex items-center space-x-3">
+            <div class="animate-bounce text-xl">🔔</div>
+            <span x-html="message"></span>
+        </div>
     </div>
 </div>
+{{--     
 
-
-</div>
+    @if (auth()->user()->isAdmin())
+    <div>
+        <label>Subject</label>
+        <select wire:model="selectedSubject">
+            <option value="">All Subjects</option>
+            @foreach ($subjects as $subject)
+                <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+            @endforeach
+        </select>
+    </div>
+@else
+    <div>
+        <label>Your Subject</label>
+        <select wire:model="selectedSubject">
+            <option value="">Select Subject</option>
+            @foreach ($subjects as $subject)
+                <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+            @endforeach
+        </select>
+    </div>
+@endif --}}

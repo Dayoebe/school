@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Result;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class StudentRecord extends Model
@@ -14,84 +15,91 @@ class StudentRecord extends Model
 
     protected $fillable = ['admission_number', 'admission_date', 'my_class_id', 'section_id', 'user_id'];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'admission_date' => 'datetime:Y-m-d',
     ];
 
-    /**
-     * The "booted" method of the model.
-     *
-     * @return void
-     */
     protected static function booted()
     {
-        //gets only active users
         static::addGlobalScope('notGraduated', function (Builder $builder) {
             $builder->where('is_graduated', 0);
         });
-    }
 
-    //accessor for admission_date
+        static::created(function ($studentRecord) {
+            $studentRecord->assignSubjectsAutomatically();
+        });
+
+        static::updated(function ($studentRecord) {
+            $studentRecord->assignSubjectsAutomatically();
+        });
+    }
 
     public function getAdmissionDateAttribute($value)
     {
         return Carbon::parse($value)->format('Y-m-d');
     }
 
-    /**
-     * Get the MyClass that owns the Section.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
     public function myClass()
     {
         return $this->belongsTo(MyClass::class);
     }
 
-    /**
-     * Get the section that owns the StudentRecord.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
     public function section()
     {
         return $this->belongsTo(Section::class);
     }
 
-    /**
-     * Get the user that owns the StudentRecord.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * The academicYears that belong to the StudentRecord.
-     */
     public function academicYears(): BelongsToMany
     {
-        return $this->belongsToMany(AcademicYear::class)->as('studentAcademicYearBasedRecords')->using(AcademicYearStudentRecord::class)->withPivot('my_class_id', 'section_id');
+        return $this->belongsToMany(AcademicYear::class)
+            ->as('studentAcademicYearBasedRecords')
+            ->using(AcademicYearStudentRecord::class)
+            ->withPivot('my_class_id', 'section_id');
     }
 
     public function result()
     {
         return $this->belongsTo(Result::class);
     }
-    /**
-     * Get current academic year.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
+
     public function currentAcademicYear()
     {
         return $this->academicYears()->wherePivot('academic_year_id', $this->user->school->academicYear->id);
     }
+    public function studentSubjects()
+    {
+        return $this->belongsToMany(
+            Subject::class,      // related model
+            'student_subject',   // pivot table
+            'user_id',        // foreign key on pivot table referencing StudentRecord (or User)
+            'subject_id'         // foreign key on pivot table referencing Subject
+        );
+    }
+
+    public function assignSubjectsAutomatically()
+    {
+        $subjects = Subject::where('my_class_id', $this->my_class_id)
+            // ->where('section_id', $this->section_id) // remove this line
+            ->pluck('id');
+
+        $syncData = [];
+        foreach ($subjects as $subjectId) {
+            $syncData[$subjectId] = [
+                'my_class_id' => $this->my_class_id,
+                'section_id' => $this->section_id,
+            ];
+        }
+
+        $this->studentSubjects()->syncWithoutDetaching($syncData);
+    }
+    public function results()
+{
+    return $this->hasMany(Result::class);
+}
+
 }

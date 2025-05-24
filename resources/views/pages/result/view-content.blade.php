@@ -93,7 +93,7 @@
                         <p class="text-xl text-blue-600 font-bold">{{ $grandTotal }}</p>
                     </div>
                 </div>
-                
+
 
                 <tr>
                     <th class="p-2 border">Class Position</th>
@@ -109,6 +109,15 @@
                     </td>
                 </tr>
 
+                <a href="{{ route('result.print', [
+                    'student' => $studentRecord->id,
+                    'academicYearId' => $academicYearId,
+                    'semesterId' => $semesterId,
+                ]) }}"
+                    target="_blank"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    🖨️ Print Result
+                </a>
 
                 <div class="mt-6 text-right">
                     <button type="button" wire:click="$set('mode', 'index')"

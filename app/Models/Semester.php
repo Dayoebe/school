@@ -46,4 +46,5 @@ class Semester extends Model
     {
         return $this->hasManyThrough(ExamSlot::class, Exam::class, 'semester_id');
     }
+    
 }

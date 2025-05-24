@@ -94,7 +94,7 @@
 
                                     {{-- Total with Grade --}}
                                     <td class="px-4 py-2 border text-center">
-                                        <span
+                                        {{-- <span
                                             class="font-semibold px-2 py-1 rounded
                                             {{ [
                                                 'A' => 'bg-green-100 text-green-800',
@@ -103,7 +103,40 @@
                                                 'D' => 'bg-orange-100 text-orange-800',
                                                 'E' => 'bg-red-100 text-red-700',
                                             ][$grade] ?? 'bg-gray-200 text-gray-800' }}">
-                                            {{ $total }} <span class="text-xs">({{ $grade }})</span>
+                                            {{ $total }} --}}
+
+                                            {{-- <span class="text-xs">({{ $grade }})</span> --}}
+                                            @php
+                                                $gradeStyles = [
+                                                    'A1' => 'bg-green-100 text-green-800',
+                                                    'B2' => 'bg-emerald-100 text-emerald-800',
+                                                    'B3' => 'bg-lime-100 text-lime-800',
+                                                    'C4' => 'bg-yellow-100 text-yellow-800',
+                                                    'C5' => 'bg-amber-100 text-amber-800',
+                                                    'C6' => 'bg-orange-100 text-orange-800',
+                                                    'D7' => 'bg-rose-100 text-rose-800',
+                                                    'E8' => 'bg-red-200 text-red-800',
+                                                    'F9' => 'bg-red-600 text-white',
+                                                ];
+                                                $gradeEmoji = [
+                                                    'A1' => '🌟',
+                                                    'B2' => '🎯',
+                                                    'B3' => '🔥',
+                                                    'C4' => '👍',
+                                                    'C5' => '🧠',
+                                                    'C6' => '📘',
+                                                    'D7' => '📉',
+                                                    'E8' => '⚠️',
+                                                    'F9' => '💀',
+                                                ];
+                                            @endphp
+
+                                            <span
+                                                class="font-semibold px-2 py-1 rounded {{ $gradeStyles[$grade] ?? 'bg-gray-200 text-gray-800' }}">
+                                                {{ $total }} <span class="text-xs">({{ $grade }})
+                                                    {{ $gradeEmoji[$grade] ?? '' }}</span>
+                                            </span>
+
                                         </span>
                                     </td>
                                 </tr>
