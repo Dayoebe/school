@@ -72,8 +72,28 @@
                             </tr>
                         @endforeach
                     </tbody>
+                    <tfoot>
+                        <tr class="bg-gray-100">
+                            <th class="p-2 border">Grand Total</th>
+                            <td class="p-2 border">{{ $grandTotalTest }}</td>
+                            <td class="p-2 border">{{ $grandTotalExam }}</td>
+                            <td class="p-2 border">{{ $grandTotal }}</td>
+                            <td class="p-2 border">
+                                {{ $principalComment ?? 'No comment available' }}
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
 
+                <p><strong>Percentage:</strong> {{ $percentage }}%</p>
+
+                <div class="mt-4 flex justify-end">
+                    <div class="text-right">
+                        <h3 class="text-lg font-semibold text-gray-700">Total score:</h3>
+                        <p class="text-xl text-blue-600 font-bold">{{ $grandTotal }}</p>
+                    </div>
+                </div>
+                
 
                 <tr>
                     <th class="p-2 border">Class Position</th>

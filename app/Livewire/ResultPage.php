@@ -17,7 +17,8 @@ use App\Models\{
     Semester,
     Result,
     Section,
-    User
+    User,
+    Student
 };
 
 class ResultPage extends Component
@@ -35,11 +36,17 @@ class ResultPage extends Component
 
     public $subjects = [];
     public $results = [];
-
+    public $selectedSubject = '';
     public $studentRecord;
     public $academicYearId;
     public $semesterId;
     public $positions = [];
+    public $grandTotal = 0;
+    public $grandTotalTest = 0;
+    public $grandTotalExam = 0;
+    public $totalPossibleMarks = 0;
+    public $percentage = 0;
+    public $principalComment = 'Keep up the good work!';
 
     protected $paginationTheme = 'tailwind';
 
@@ -59,6 +66,11 @@ class ResultPage extends Component
 
     public function mount($studentId = null)
     {
+        if (auth()->user()->isAdmin()) {
+            $this->subjects = Subject::all();
+        } else {
+            $this->subjects = auth()->user()->assignedSubjects;
+        }
         $this->setDefaultAcademicYearAndSemester();
         if ($studentId) {
             $this->studentRecord = StudentRecord::findOrFail($studentId);
@@ -123,38 +135,57 @@ Semester: <strong>$semester</strong>";
         $this->showStudents = true;
     }
 
-    public function getFilteredStudentsProperty()
+    public function getSubjectsProperty()
     {
-        if (!$this->selectedClass && !$this->selectedSection && !$this->studentSearch) {
+        if (!$this->selectedClass || !$this->selectedSection) {
             return collect();
         }
 
+        return Subject::where('my_class_id', $this->selectedClass)
+            ->where('section_id', $this->selectedSection)
+            ->get();
+    }
+    public function getFilteredStudentsProperty()
+    {
+        if (!$this->selectedClass && !$this->selectedSection && !$this->studentSearch && !$this->selectedSubject) {
+            return collect(); // Prevent loading all students
+        }
+
         $query = StudentRecord::query()
-            ->with('user')
+            ->with('user') // eager load user relationship
             ->where('is_graduated', false);
 
+        // Filter by class
         if ($this->selectedClass) {
             $query->where('my_class_id', $this->selectedClass);
         }
 
+        // Filter by section
         if ($this->selectedSection) {
             $query->where('section_id', $this->selectedSection);
         }
-        
+
+        // Filter by student name
         if ($this->studentSearch) {
-            $query->whereHas(
-                'user',
-                fn($q) =>
-                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($this->studentSearch) . '%'])
-            );
+            $query->whereHas('user', function ($q) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($this->studentSearch) . '%']);
+            });
+        }
+
+        // Filter by subject (if selected)
+        if ($this->selectedSubject) {
+            $query->whereHas('studentSubjects', function ($q) {
+                $q->where('subject_id', $this->selectedSubject);
+            });
         }
 
         return $query
             ->join('users', 'student_records.user_id', '=', 'users.id')
             ->orderBy('users.name')
-            ->select('student_records.*')
+            ->select('student_records.*') // Important: preserve original fields
             ->paginate($this->perPage);
     }
+
 
     public function goToUpload($studentId)
     {
@@ -190,6 +221,9 @@ Semester: <strong>$semester</strong>";
 
         $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
 
+        $this->grandTotalTest = 0;
+        $this->grandTotalExam = 0;
+
         foreach ($this->subjects as $subject) {
             $existing = Result::where([
                 'student_record_id' => $this->studentRecord->id,
@@ -207,7 +241,14 @@ Semester: <strong>$semester</strong>";
                 'total_score' => $test + $exam,
                 'comment' => $existing?->teacher_comment ?? '',
             ];
+
+            $this->grandTotalTest += $test;
+            $this->grandTotalExam += $exam;
+            $this->grandTotal += $test + $exam;
         }
+
+        $this->totalPossibleMarks = count($this->subjects) * 100;
+        $this->percentage = $this->totalPossibleMarks > 0 ? round(($this->grandTotal / $this->totalPossibleMarks) * 100, 2) : 0;
 
         $this->mode = 'view';
     }
@@ -217,6 +258,16 @@ Semester: <strong>$semester</strong>";
         $this->mode = 'index';
         $this->currentStudentId = null;
         $this->results = [];
+    }
+
+    public function calculateGrade($total)
+    {
+        if ($total >= 70) return 'A';
+        if ($total >= 60) return 'B';
+        if ($total >= 50) return 'C';
+        if ($total >= 45) return 'D';
+        if ($total >= 40) return 'E';
+        return 'F';
     }
     public function updatedResults($value, $key)
     {
@@ -314,15 +365,7 @@ Semester: <strong>$semester</strong>";
             session()->flash('error', 'An error occurred while saving results.');
         }
     }
-    public function calculateGrade($total)
-    {
-        if ($total >= 70) return 'A';
-        if ($total >= 60) return 'B';
-        if ($total >= 50) return 'C';
-        if ($total >= 45) return 'D';
-        if ($total >= 40) return 'E';
-        return 'F';
-    }
+   
     public function render()
     {
         $view = match ($this->mode) {
@@ -343,5 +386,23 @@ Semester: <strong>$semester</strong>";
             'title' => 'Results',
             'page_heading' => 'Manage Student Results',
         ]);
+    }
+    public function updatedSelectedSection()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStudentSearch()
+    {
+        $this->resetPage();
+    }
+    public function updatedSelectedSubject()
+    {
+        $this->resetPage();
+        $this->showStudents = true;
+    }
+    public function updatedSelectedClass()
+    {
+        $this->selectedSubject = null;
     }
 }
