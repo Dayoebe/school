@@ -8,7 +8,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <link rel="shortcut icon" href="{{asset(config('app.favicon'))}}" type="image/x-icon">
         <title>
-            @yield('title', config('app.name', 'Skuul'))
+            @yield('title', config('app.name', 'Elites International College'))
         </title>
         @vite('resources/css/app.css')
         <livewire:styles />
