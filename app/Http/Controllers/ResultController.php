@@ -7,27 +7,25 @@ use App\Models\AcademicYear;
 use App\Models\Semester;
 use App\Models\Subject;
 use App\Models\StudentRecord;
+use App\Models\TermReport;
 use App\Models\Result;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ResultController extends Controller
 {
-
     public function print(Request $request, $studentId)
     {
         $academicYearId = $request->academicYearId ?? $request->input('academicYearId');
         $semesterId = $request->semesterId ?? $request->input('semesterId');
 
-        $studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
-            ->findOrFail($studentId);
+        $studentRecord = StudentRecord::with(['user', 'myClass', 'section'])->findOrFail($studentId);
 
-        // Fetch all results for this student, academic year and semester
         $rawResults = Result::where([
             'student_record_id' => $studentId,
             'academic_year_id' => $academicYearId,
             'semester_id' => $semesterId,
         ])->get();
 
-        // Prepare results with grades and comments
         $results = $rawResults->keyBy('subject_id')->map(function ($result) {
             $test = (int) $result->test_score;
             $exam = (int) $result->exam_score;
@@ -66,29 +64,25 @@ class ResultController extends Controller
             ];
         });
 
-        // Subjects only from the results
-        $subjects = Subject::whereIn('id', array_keys($results->toArray()))->get();
+        $subjects = Subject::whereIn('id', array_keys($results->toArray()))
+            ->orderBy('name')
+            ->get();
 
         $totalSubjects = $subjects->count();
-        $maxTotalScore = $totalSubjects * 100; // 100 per subject
+        $maxTotalScore = $totalSubjects * 100;
 
-
-        // Totals and percentage
         $grandTotal = $rawResults->sum('total_score');
         $grandTotalTest = $rawResults->sum('test_score');
         $grandTotalExam = $rawResults->sum('exam_score');
         $percentage = $results->count() ? round($grandTotal / $results->count(), 2) : 0;
         $principalComment = 'Keep up the good work';
 
-        // Academic year and semester name
-        $academicYearName = AcademicYear::find($academicYearId)->name ?? 'Unknown Academic Year';
+        $academicYearName = optional(AcademicYear::find($academicYearId))->name ?? 'Unknown Academic Year';
         $semesterName = Semester::find($semesterId)->name ?? 'Unknown Semester';
 
-        // Class Position
         $totalStudents = StudentRecord::where('my_class_id', $studentRecord->myClass->id)->count();
         $classPosition = $this->calculatePosition($studentRecord, $academicYearId, $semesterId);
 
-        // Calculate subject pass/fail
         $totalScore = 0;
         $subjectsPassed = 0;
 
@@ -100,6 +94,18 @@ class ResultController extends Controller
                 $subjectsPassed++;
             }
         }
+
+        $termReport = TermReport::firstOrCreate([
+            'student_record_id' => $studentRecord->id,
+            'academic_year_id' => $academicYearId,
+            'semester_id' => $semesterId,
+        ]);
+        $termReport->update([
+            'principal_comment' => $principalComment,
+            'total_score' => $grandTotal,
+            'percentage' => $percentage,
+            'position' => $classPosition,
+        ]);
 
         return view('pages.result.print', compact(
             'studentRecord',
@@ -118,8 +124,9 @@ class ResultController extends Controller
             'semesterId',
             'academicYearName',
             'semesterName',
-            'maxTotalScore', // ✅ New
-            'totalSubjects'  // ✅ Optional if needed in the view
+            'termReport',
+            'maxTotalScore',
+            'totalSubjects'
         ));
     }
 
@@ -146,5 +153,21 @@ class ResultController extends Controller
         }
 
         return null;
+    }
+    
+    
+    public function generatePdf($studentId)
+    {
+        // Get all the data as you do in your print method
+        $data = $this->prepareReportData($studentId);
+        
+        // Generate PDF
+        $pdf = PDF::loadView('pages.result.official-report', $data);
+        
+        // Set paper options
+        $pdf->setPaper('A4', 'portrait');
+        
+        // Return as download
+        return $pdf->download("report-{$data['studentRecord']->user->name}-{$data['semesterName']}.pdf");
     }
 }
