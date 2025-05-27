@@ -21,8 +21,7 @@
                 <div class="bg-green-100 text-green-700 px-4 py-2 rounded-md">{{ session('success') }}</div>
             @endif
 
-
-            @if (isset($positions[$studentRecord->student_id]))
+            @if (isset($positions[$studentRecord->id]))
                 <div><span class="font-semibold">Position:</span>
                     {{ $positions[$studentRecord->student_id]['position'] }}</div>
             @endif
@@ -52,13 +51,33 @@
                                     $exam = $data['exam_score'];
                                     $total = (int) $test + (int) $exam;
                                     $grade = $data['grade'] ?? '';
+                                    $gradeStyles = [
+                                        'A1' => 'bg-green-100 text-green-800',
+                                        'B2' => 'bg-emerald-100 text-emerald-800',
+                                        'B3' => 'bg-lime-100 text-lime-800',
+                                        'C4' => 'bg-yellow-100 text-yellow-800',
+                                        'C5' => 'bg-amber-100 text-amber-800',
+                                        'C6' => 'bg-orange-100 text-orange-800',
+                                        'D7' => 'bg-rose-100 text-rose-800',
+                                        'E8' => 'bg-red-200 text-red-800',
+                                        'F9' => 'bg-red-600 text-white',
+                                    ];
+                                    $gradeEmoji = [
+                                        'A1' => '🌟',
+                                        'B2' => '🎯',
+                                        'B3' => '🔥',
+                                        'C4' => '👍',
+                                        'C5' => '🧠',
+                                        'C6' => '📘',
+                                        'D7' => '📉',
+                                        'E8' => '⚠️',
+                                        'F9' => '💀',
+                                    ];
                                 @endphp
                                 <tr>
                                     <td class="px-4 py-2 border font-medium text-gray-800">
                                         {{ $subject->name }}
                                     </td>
-
-                                    {{-- Test Score --}}
                                     <td class="px-4 py-2 border text-center">
                                         <div class="relative">
                                             <input type="number"
@@ -70,9 +89,6 @@
                                             @endif
                                         </div>
                                     </td>
-
-
-                                    {{-- Exam Score --}}
                                     <td class="px-4 py-2 border text-center">
                                         <div class="relative">
                                             <input type="number"
@@ -84,65 +100,35 @@
                                             @endif
                                         </div>
                                     </td>
-
-
-                                    {{-- Comment --}}
                                     <td class="px-4 py-2 border">
                                         <input type="text" wire:model.live="results.{{ $subject->id }}.comment"
                                             class="w-full border rounded px-2 py-1">
                                     </td>
-
-                                    {{-- Total with Grade --}}
                                     <td class="px-4 py-2 border text-center">
-                                        {{-- <span
-                                            class="font-semibold px-2 py-1 rounded
-                                            {{ [
-                                                'A' => 'bg-green-100 text-green-800',
-                                                'B' => 'bg-blue-100 text-blue-800',
-                                                'C' => 'bg-yellow-100 text-yellow-800',
-                                                'D' => 'bg-orange-100 text-orange-800',
-                                                'E' => 'bg-red-100 text-red-700',
-                                            ][$grade] ?? 'bg-gray-200 text-gray-800' }}">
-                                            {{ $total }} --}}
-
-                                            {{-- <span class="text-xs">({{ $grade }})</span> --}}
-                                            @php
-                                                $gradeStyles = [
-                                                    'A1' => 'bg-green-100 text-green-800',
-                                                    'B2' => 'bg-emerald-100 text-emerald-800',
-                                                    'B3' => 'bg-lime-100 text-lime-800',
-                                                    'C4' => 'bg-yellow-100 text-yellow-800',
-                                                    'C5' => 'bg-amber-100 text-amber-800',
-                                                    'C6' => 'bg-orange-100 text-orange-800',
-                                                    'D7' => 'bg-rose-100 text-rose-800',
-                                                    'E8' => 'bg-red-200 text-red-800',
-                                                    'F9' => 'bg-red-600 text-white',
-                                                ];
-                                                $gradeEmoji = [
-                                                    'A1' => '🌟',
-                                                    'B2' => '🎯',
-                                                    'B3' => '🔥',
-                                                    'C4' => '👍',
-                                                    'C5' => '🧠',
-                                                    'C6' => '📘',
-                                                    'D7' => '📉',
-                                                    'E8' => '⚠️',
-                                                    'F9' => '💀',
-                                                ];
-                                            @endphp
-
-                                            <span
-                                                class="font-semibold px-2 py-1 rounded {{ $gradeStyles[$grade] ?? 'bg-gray-200 text-gray-800' }}">
-                                                {{ $total }} <span class="text-xs">({{ $grade }})
-                                                    {{ $gradeEmoji[$grade] ?? '' }}</span>
-                                            </span>
-
+                                        <span
+                                            class="font-semibold px-2 py-1 rounded {{ $gradeStyles[$grade] ?? 'bg-gray-200 text-gray-800' }}">
+                                            {{ $total }} <span class="text-xs">({{ $grade }})
+                                                {{ $gradeEmoji[$grade] ?? '' }}</span>
                                         </span>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
+
+
+                    <div class="mt-6 space-y-4">
+                        <div class="mb-4">
+                            <label for="teacher_comment" class="block font-semibold">Overall Teacher's Comment</label>
+                            <textarea id="teacher_comment" wire:model.lazy="overallTeacherComment" class="w-full border p-2 rounded"></textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="principal_comment" class="block font-semibold">Principal's Comment</label>
+                            <textarea id="principal_comment" wire:model.lazy="principalComment" class="w-full border p-2 rounded"></textarea>
+                        </div>
+
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between pt-4">

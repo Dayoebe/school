@@ -18,7 +18,8 @@ use App\Models\{
     Result,
     Section,
     User,
-    Student
+    Student,
+    TermReport // Ensure TermReport is imported from the correct namespace
 };
 
 class ResultPage extends Component
@@ -47,6 +48,7 @@ class ResultPage extends Component
     public $totalPossibleMarks = 0;
     public $percentage = 0;
     public $principalComment = 'Keep up the good work!';
+    public $overallTeacherComment = 'Impressive';
 
     protected $paginationTheme = 'tailwind';
 
@@ -95,6 +97,16 @@ class ResultPage extends Component
                     'exam_score' => $existing?->exam_score ?? '',
                     'comment' => $existing?->teacher_comment ?? '',
                 ];
+            }
+            // Load previously saved TermReport if it exists
+            $termReport = TermReport::where('student_record_id', $this->studentRecord->id)
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('semester_id', $this->semesterId)
+                ->first();
+
+            if ($termReport) {
+                $this->overallTeacherComment = $termReport->class_teacher_comment ?? '';
+                $this->principalComment = $termReport->principal_comment ?? '';
             }
         }
     }
@@ -247,6 +259,17 @@ Semester: <strong>$semester</strong>";
             $this->grandTotal += $test + $exam;
         }
 
+        $termReport = TermReport::where([
+            'student_record_id' => $this->studentRecord->id,
+            'academic_year_id' => $this->academicYearId,
+            'semester_id' => $this->semesterId,
+        ])->first();
+
+        if ($termReport) {
+            $this->overallTeacherComment = $termReport->class_teacher_comment;
+            $this->principalComment = $termReport->principal_comment;
+        }
+
         $this->totalPossibleMarks = count($this->subjects) * 100;
         $this->percentage = $this->totalPossibleMarks > 0 ? round(($this->grandTotal / $this->totalPossibleMarks) * 100, 2) : 0;
 
@@ -273,8 +296,8 @@ Semester: <strong>$semester</strong>";
             default => 'F9',
         };
     }
-    
-        public function updatedResults($value, $key)
+
+    public function updatedResults($value, $key)
     {
         [$subjectId, $field] = explode('.', $key);
 
@@ -309,7 +332,7 @@ Semester: <strong>$semester</strong>";
             'F9' => 'Failing grade. Needs urgent attention 🚨',
             default => '',
         };
-        
+
 
         $this->results[$subjectId]['grade'] = $grade;
         $this->results[$subjectId]['comment'] = $comment;
@@ -338,8 +361,8 @@ Semester: <strong>$semester</strong>";
         try {
             DB::transaction(function () {
                 foreach ($this->results as $subjectId => $data) {
-                    $test = (float) ($data['test_score'] ?? 0);
-                    $exam = (float) ($data['exam_score'] ?? 0);
+                    $test = (int) ($data['test_score'] ?? 0);
+                    $exam = (int) ($data['exam_score'] ?? 0);
                     $total = $test + $exam;
 
                     Result::updateOrCreate(
@@ -355,17 +378,32 @@ Semester: <strong>$semester</strong>";
                             'total_score' => $total,
                             'teacher_comment' => $data['comment'] ?? null,
                             'approved' => false,
+                            'resumption_date' => now()->addMonth(), // exactly 1 month from today
                         ]
                     );
                 }
             });
+
+
+            TermReport::updateOrCreate(
+                [
+                    'student_record_id' => $this->studentRecord->id,
+                    'academic_year_id' => $this->academicYearId,
+                    'semester_id' => $this->semesterId,
+                ],
+                [
+                    'class_teacher_comment' => $this->overallTeacherComment,
+                    'principal_comment' => $this->principalComment,
+                ]
+            );
 
             session()->flash('success', 'Results saved successfully!');
         } catch (\Exception $e) {
             session()->flash('error', 'An error occurred while saving results.');
         }
     }
-   
+
+
     public function render()
     {
         $view = match ($this->mode) {
