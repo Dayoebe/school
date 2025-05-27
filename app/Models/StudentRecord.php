@@ -98,8 +98,19 @@ class StudentRecord extends Model
         $this->studentSubjects()->syncWithoutDetaching($syncData);
     }
     public function results()
-{
-    return $this->hasMany(Result::class);
-}
+    {
+        return $this->hasMany(Result::class);
+    }
+    public function termReports()
+    {
+        return $this->hasMany(TermReport::class);
+    }
 
+    public function termReportFor($academicYearId, $semesterId)
+    {
+        return $this->termReports()
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester_id', $semesterId)
+            ->first();
+    }
 }
