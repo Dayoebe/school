@@ -114,7 +114,7 @@
         <div class="grid grid-cols-3 gap-4 mb-1 text-sm break-inside-avoid">
             <!-- First column - Student info part 1 -->
             <div class="space-y-1">
-                <div><span class="font-bold uppercase">Name:</span> {{strtoupper( $studentRecord->user->name) }}</div>
+                <div><span class="font-bold uppercase">Name:</span> {{ strtoupper($studentRecord->user->name) }}</div>
                 <div><span class="font-bold">Class:</span> {{ $studentRecord->myClass->name }}</div>
                 <div><span class="font-bold">Gender:</span> {{ ucfirst($studentRecord->user->gender) }}</div>
                 <div><span class="font-bold">Attendance:</span> P:{{ $studentRecord->present }}
@@ -148,30 +148,40 @@
 
         <!-- Results Table -->
         <div class="overflow-x-auto mb-2 text-sm break-inside-avoid">
-            <table class="w-full border border-gray-300 rounded-lg shadow-sm">
+            <table class="w-full border border-gray-300 text-xs">
                 <thead class="bg-blue-900 text-white">
                     <tr>
-                        <th class="border p-2 text-left">Subject</th>
-                        <th class="border p-2 w-12">Test</th>
-                        <th class="border p-2 w-12">Exam</th>
-                        <th class="border p-2 w-12">Total</th>
-                        <th class="border p-2 w-12">Grade</th>
-                        <th class="border p-2 text-left">Remark</th>
+                        <th class="border p-1 text-left">Subject</th>
+                        <th class="border p-1">Test</th>
+                        <th class="border p-1">Exam</th>
+                        <th class="border p-1">Total</th>
+                        <th class="border p-1">Grade</th>
+                        <th class="border p-1">Highest Score</th>
+                        <th class="border p-1">Lowest Score</th>
+                        <th class="border p-1 text-left">Remark</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($subjects as $subject)
+                    @foreach ($subjects->sortBy('name') as $subject)
                         @php
                             $result = $results[$subject->id] ?? null;
+                            $stats = $subjectStats[$subject->id] ?? null;
                             $gradeClass = $result ? 'grade-' . substr($result['grade'], 0, 1) : '';
+                            
+                            $isHighest = $result && $stats && $result['total_score'] == $stats['highest'];
+                            $isLowest = $result && $stats && $result['total_score'] == $stats['lowest'];
                         @endphp
                         <tr class="{{ $gradeClass }}">
-                            <td class="border p-2">{{ $subject->name }}</td>
-                            <td class="border p-2 text-center">{{ $result['test_score'] ?? '-' }}</td>
-                            <td class="border p-2 text-center">{{ $result['exam_score'] ?? '-' }}</td>
-                            <td class="border p-2 text-center">{{ $result['total_score'] ?? '-' }}</td>
-                            <td class="border p-2 text-center">{{ $result['grade'] ?? '-' }}</td>
-                            <td class="border p-2">{{ $result['comment'] ?? '-' }}</td>
+                            <td class="border p-1">{{ $subject->name }}</td>
+                            <td class="border p-1 text-center">{{ $result['test_score'] ?? '-' }}</td>
+                            <td class="border p-1 text-center">{{ $result['exam_score'] ?? '-' }}</td>
+                            <td class="border p-1 text-center {{ $isHighest ? 'font-bold text-green-600' : '' }} {{ $isLowest ? 'font-bold text-red-600' : '' }}">
+                                {{ $result['total_score'] ?? '-' }}
+                            </td>
+                            <td class="border p-1 text-center">{{ $result['grade'] ?? '-' }}</td>
+                            <td class="border p-1 text-center bg-green-50">{{ $stats['highest'] ?? '-' }}</td>
+                            <td class="border p-1 text-center bg-red-50">{{ $stats['lowest'] ?? '-' }}</td>
+                            <td class="border p-1">{{ $result['comment'] ?? '-' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -229,8 +239,8 @@
                     </p>
                     <p><span class="font-semibold">Result:</span>
                         <span
-                            class="font-bold {{ $totalScore < $maxTotalScore / 3 ? 'text-red-600' : 'text-green-600' }}">
-                            {{ $totalScore < $maxTotalScore / 3 ? 'FAILED' : 'PASSED' }}
+                            class="font-bold {{ $totalScore < $maxTotalScore * 0.4 ? 'text-red-600' : 'text-green-600' }}">
+                            {{ $totalScore < $maxTotalScore * 0.4 ? 'FAILED' : 'PASSED' }}
                         </span>
                     </p>
                 </div>

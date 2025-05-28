@@ -10,6 +10,7 @@ use App\Models\StudentRecord;
 use App\Models\TermReport;
 use App\Models\Result;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
 
 class ResultController extends Controller
 {
@@ -25,6 +26,28 @@ class ResultController extends Controller
             'academic_year_id' => $academicYearId,
             'semester_id' => $semesterId,
         ])->get();
+
+
+        // Get all results for this class/term to calculate min/max
+        $classResults = Result::where([
+            'academic_year_id' => $academicYearId,
+            'semester_id' => $semesterId
+        ])
+            ->whereIn(
+                'student_record_id',
+                StudentRecord::where('my_class_id', $studentRecord->my_class_id)->pluck('id')
+            )
+            ->get()
+            ->groupBy('subject_id');
+
+
+        $subjectStats = [];
+        foreach ($classResults as $subjectId => $results) {
+            $subjectStats[$subjectId] = [
+                'highest' => (int)$results->max('total_score'),
+                'lowest' => (int)$results->min('total_score')
+            ];
+        }
 
         $results = $rawResults->keyBy('subject_id')->map(function ($result) {
             $test = (int) $result->test_score;
@@ -44,15 +67,15 @@ class ResultController extends Controller
             };
 
             $comment = match ($grade) {
-                'A1' => 'Outstanding! Keep up the brilliance ✨',
-                'B2' => 'Excellent work! You’re almost at the top 💪',
-                'B3' => 'Very good! Stay consistent 🔥',
-                'C4' => 'Good effort, room for improvement 👍',
-                'C5' => 'You did well. Keep aiming higher 🌱',
-                'C6' => 'Satisfactory. Try to do better next time 📈',
-                'D7' => 'Passable, but improvement is needed ⏳',
-                'E8' => 'Weak performance. More effort required ⚠️',
-                default => 'Failing grade. Needs urgent attention 🚨',
+                'A1' => 'Distinction ✨',
+                'B2' => 'Very good 💪',
+                'B3' => 'Good 🔥',
+                'C4' => 'Credit 👍',
+                'C5' => 'Credit 🌱',
+                'C6' => 'Credit 📈',
+                'D7' => 'Pass ⏳',
+                'E8' => 'Pass ⚠️',
+                default => 'Fail 🚨',
             };
 
             return [
@@ -116,6 +139,7 @@ class ResultController extends Controller
             'grandTotalExam',
             'subjectsPassed',
             'totalScore',
+            'subjectStats',
             'percentage',
             'principalComment',
             'totalStudents',
@@ -154,19 +178,19 @@ class ResultController extends Controller
 
         return null;
     }
-    
-    
+
+
     public function generatePdf($studentId)
     {
         // Get all the data as you do in your print method
         $data = $this->prepareReportData($studentId);
-        
+
         // Generate PDF
         $pdf = PDF::loadView('pages.result.official-report', $data);
-        
+
         // Set paper options
         $pdf->setPaper('A4', 'portrait');
-        
+
         // Return as download
         return $pdf->download("report-{$data['studentRecord']->user->name}-{$data['semesterName']}.pdf");
     }

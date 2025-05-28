@@ -353,17 +353,17 @@ Semester: <strong>$semester</strong>";
     public function saveResults()
     {
         $this->validate([
-            'results.*.test_score' => 'required|numeric|min:0|max:40',
-            'results.*.exam_score' => 'required|numeric|min:0|max:60',
-            'results.*.comment' => 'nullable|string|max:255',
+            'results.*.test_score' => 'nullable|numeric|min:0|max:40',
+                'results.*.exam_score' => 'nullable|numeric|min:0|max:60',
+                'results.*.comment' => 'nullable|string|max:255',
         ]);
 
         try {
             DB::transaction(function () {
                 foreach ($this->results as $subjectId => $data) {
-                    $test = (int) ($data['test_score'] ?? 0);
-                    $exam = (int) ($data['exam_score'] ?? 0);
-                    $total = $test + $exam;
+                    $test = isset($data['test_score']) ? (int)$data['test_score'] : null;
+                    $exam = isset($data['exam_score']) ? (int)$data['exam_score'] : null;
+                    $total = ($test ?? 0) + ($exam ?? 0);
 
                     Result::updateOrCreate(
                         [
