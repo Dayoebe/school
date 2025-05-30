@@ -2,12 +2,7 @@
 
 namespace App\Livewire;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection;
-use Illuminate\Validation\ValidationException;
-
-
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\{
@@ -17,9 +12,7 @@ use App\Models\{
     Semester,
     Result,
     Section,
-    User,
-    Student,
-    TermReport // Ensure TermReport is imported from the correct namespace
+    TermReport
 };
 
 class ResultPage extends Component
@@ -31,10 +24,8 @@ class ResultPage extends Component
     public $studentSearch = '';
     public $perPage = 10;
     public $showStudents = false;
-
-    public $mode = 'index'; // index | upload | view
+    public $mode = 'index';
     public $currentStudentId;
-
     public $subjects = [];
     public $results = [];
     public $selectedSubject = '';
@@ -47,39 +38,34 @@ class ResultPage extends Component
     public $grandTotalExam = 0;
     public $totalPossibleMarks = 0;
     public $percentage = 0;
+    public $bulkEditMode = false;
+public $selectedSubjectForBulkEdit = null;
+public $bulkResults = [];
+public $bulkStudents = [];
     public $principalComment = 'Keep up the good work!';
     public $overallTeacherComment = 'Impressive';
-
     protected $paginationTheme = 'tailwind';
 
     public function rules()
     {
         $rules = [];
-
         foreach ($this->subjects as $subject) {
             $id = $subject->id;
             $rules["results.$id.test_score"] = 'nullable|numeric|min:0|max:40';
             $rules["results.$id.exam_score"] = 'nullable|numeric|min:0|max:60';
             $rules["results.$id.comment"] = 'nullable|string|max:255';
         }
-
         return $rules;
     }
 
     public function mount($studentId = null)
     {
-        if (auth()->user()->isAdmin()) {
-            $this->subjects = Subject::all();
-        } else {
-            $this->subjects = auth()->user()->assignedSubjects;
-        }
+        $this->subjects = auth()->user()->isAdmin() ? Subject::all() : auth()->user()->assignedSubjects;
         $this->setDefaultAcademicYearAndSemester();
+
         if ($studentId) {
             $this->studentRecord = StudentRecord::findOrFail($studentId);
-
             $this->results = $this->initializeResults();
-
-            $this->studentRecord = StudentRecord::findOrFail($studentId);
             $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
             $this->academicYearId = AcademicYear::latest()->first()?->id;
             $this->semesterId = Semester::latest()->first()?->id;
@@ -98,7 +84,7 @@ class ResultPage extends Component
                     'comment' => $existing?->teacher_comment ?? '',
                 ];
             }
-            // Load previously saved TermReport if it exists
+
             $termReport = TermReport::where('student_record_id', $this->studentRecord->id)
                 ->where('academic_year_id', $this->academicYearId)
                 ->where('semester_id', $this->semesterId)
@@ -110,6 +96,45 @@ class ResultPage extends Component
             }
         }
     }
+
+    public function getFilteredStudentsProperty()
+    {
+        $query = StudentRecord::query()->with('user')->where('is_graduated', false);
+
+        if ($this->selectedClass) {
+            $query->where('my_class_id', $this->selectedClass);
+        }
+
+        if ($this->selectedSection) {
+            $query->where('section_id', $this->selectedSection);
+        }
+
+        if ($this->studentSearch) {
+            $query->whereHas('user', function ($q) {
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($this->studentSearch) . '%']);
+            });
+        }
+
+        if ($this->selectedSubject) {
+            $query->whereHas('studentSubjects', function ($q) {
+                $q->where('subject_id', $this->selectedSubject);
+            });
+        }
+
+        return $query
+            ->join('users', 'student_records.user_id', '=', 'users.id')
+            ->orderBy('users.name')
+            ->select('student_records.*')
+            ->paginate($this->perPage);
+    }
+
+    public function updatedSelectedSubject()
+    {
+        if ($this->selectedSubject) {
+            $this->showStudents = true;
+        }
+    }
+
     public function updated($property)
     {
         if (in_array($property, ['selectedClass', 'selectedSection', 'studentSearch'])) {
@@ -120,28 +145,28 @@ class ResultPage extends Component
             $this->showStudents = false;
         }
     }
+
     public function setDefaultAcademicYearAndSemester()
     {
         $this->academicYearId = AcademicYear::orderByDesc('start_year')->first()?->id;
         $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)->first()?->id;
     }
+
     public function goToAcademicOverview()
     {
         $year = AcademicYear::find($this->academicYearId)?->name ?? 'Unknown Year';
         $semester = Semester::find($this->semesterId)?->name ?? 'Unknown Term';
 
-        $message = "You selected:<br>
-Academic Year: <strong>$year</strong><br>
-Semester: <strong>$semester</strong>";
+        $message = "You selected:<br>Academic Year: <strong>$year</strong><br>Semester: <strong>$semester</strong>";
 
         $this->dispatch('show-overview-alert', message: $message);
     }
-
 
     public function updatedAcademicYearId()
     {
         $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)->first()?->id;
     }
+
     public function showFilteredStudents()
     {
         $this->showStudents = true;
@@ -149,65 +174,32 @@ Semester: <strong>$semester</strong>";
 
     public function getSubjectsProperty()
     {
-        if (!$this->selectedClass || !$this->selectedSection) {
+        if (!$this->selectedClass) {
             return collect();
         }
 
         return Subject::where('my_class_id', $this->selectedClass)
-            ->where('section_id', $this->selectedSection)
+            ->when($this->selectedSection, function ($query) {
+                return $query->where('section_id', $this->selectedSection);
+            })
             ->get();
     }
-    public function getFilteredStudentsProperty()
+
+    public function updatedSelectedClass()
     {
-        if (!$this->selectedClass && !$this->selectedSection && !$this->studentSearch && !$this->selectedSubject) {
-            return collect(); // Prevent loading all students
-        }
-
-        $query = StudentRecord::query()
-            ->with('user') // eager load user relationship
-            ->where('is_graduated', false);
-
-        // Filter by class
-        if ($this->selectedClass) {
-            $query->where('my_class_id', $this->selectedClass);
-        }
-
-        // Filter by section
-        if ($this->selectedSection) {
-            $query->where('section_id', $this->selectedSection);
-        }
-
-        // Filter by student name
-        if ($this->studentSearch) {
-            $query->whereHas('user', function ($q) {
-                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($this->studentSearch) . '%']);
-            });
-        }
-
-        // Filter by subject (if selected)
-        if ($this->selectedSubject) {
-            $query->whereHas('studentSubjects', function ($q) {
-                $q->where('subject_id', $this->selectedSubject);
-            });
-        }
-
-        return $query
-            ->join('users', 'student_records.user_id', '=', 'users.id')
-            ->orderBy('users.name')
-            ->select('student_records.*') // Important: preserve original fields
-            ->paginate($this->perPage);
+        $this->reset(['selectedSubject', 'showStudents']);
+        $this->subjects = $this->getSubjectsProperty();
     }
-
 
     public function goToUpload($studentId)
     {
         $this->mode = 'upload';
         $this->currentStudentId = $studentId;
-
         $this->studentRecord = StudentRecord::findOrFail($studentId);
 
-
-        $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
+        $this->subjects = $this->selectedSubject
+            ? Subject::where('id', $this->selectedSubject)->where('my_class_id', $this->studentRecord->my_class_id)->get()
+            : Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
 
         foreach ($this->subjects as $subject) {
             $existing = Result::where([
@@ -228,9 +220,7 @@ Semester: <strong>$semester</strong>";
     public function goToView($studentId)
     {
         $this->currentStudentId = $studentId;
-
         $this->studentRecord = StudentRecord::findOrFail($studentId);
-
         $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
 
         $this->grandTotalTest = 0;
@@ -282,6 +272,7 @@ Semester: <strong>$semester</strong>";
         $this->currentStudentId = null;
         $this->results = [];
     }
+
     public function calculateGrade($total)
     {
         return match (true) {
@@ -300,24 +291,17 @@ Semester: <strong>$semester</strong>";
     public function updatedResults($value, $key)
     {
         [$subjectId, $field] = explode('.', $key);
-
-        // Force integer values
         $this->results[$subjectId][$field] = (int) $value;
-
 
         try {
             $this->validateOnly("results.$key");
         } catch (\Illuminate\Validation\ValidationException $e) {
-        } catch (ValidationException $e) {
         }
-
-        [$subjectId, $field] = explode('.', $key);
-        $subjectId = (int) $subjectId;
 
         $entry = $this->results[$subjectId];
         $test = (int) ($entry['test_score'] ?? 0);
         $exam = (int) ($entry['exam_score'] ?? 0);
-        $total = (int) $test + (int) $exam;
+        $total = $test + $exam;
         $grade = $this->calculateGrade($total);
 
         $comment = match ($grade) {
@@ -332,7 +316,6 @@ Semester: <strong>$semester</strong>";
             'F9' => 'Failing grade. Needs urgent attention 🚨',
             default => '',
         };
-
 
         $this->results[$subjectId]['grade'] = $grade;
         $this->results[$subjectId]['comment'] = $comment;
@@ -350,20 +333,31 @@ Semester: <strong>$semester</strong>";
             'approved' => false,
         ]);
     }
+
     public function saveResults()
     {
         $this->validate([
             'results.*.test_score' => 'nullable|numeric|min:0|max:40',
-                'results.*.exam_score' => 'nullable|numeric|min:0|max:60',
-                'results.*.comment' => 'nullable|string|max:255',
+            'results.*.exam_score' => 'nullable|numeric|min:0|max:60',
+            'results.*.comment' => 'nullable|string|max:255',
         ]);
+
+        if (empty($this->results)) {
+            session()->flash('error', 'No results to save.');
+            return;
+        }
 
         try {
             DB::transaction(function () {
                 foreach ($this->results as $subjectId => $data) {
-                    $test = isset($data['test_score']) ? (int)$data['test_score'] : null;
-                    $exam = isset($data['exam_score']) ? (int)$data['exam_score'] : null;
+                    $test = isset($data['test_score']) ? (int) $data['test_score'] : null;
+                    $exam = isset($data['exam_score']) ? (int) $data['exam_score'] : null;
                     $total = ($test ?? 0) + ($exam ?? 0);
+                    $comment = $data['comment'] ?? null;
+
+                    if ($test === null && $exam === null) {
+                        continue;
+                    }
 
                     Result::updateOrCreate(
                         [
@@ -376,32 +370,104 @@ Semester: <strong>$semester</strong>";
                             'test_score' => $test,
                             'exam_score' => $exam,
                             'total_score' => $total,
-                            'teacher_comment' => $data['comment'] ?? null,
+                            'teacher_comment' => $comment,
                             'approved' => false,
-                            'resumption_date' => now()->addMonth(), // exactly 1 month from today
+                            'resumption_date' => now()->addMonth(),
                         ]
                     );
                 }
+
+                TermReport::updateOrCreate(
+                    [
+                        'student_record_id' => $this->studentRecord->id,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ],
+                    [
+                        'class_teacher_comment' => $this->overallTeacherComment,
+                        'principal_comment' => $this->principalComment,
+                    ]
+                );
             });
-
-
-            TermReport::updateOrCreate(
-                [
-                    'student_record_id' => $this->studentRecord->id,
-                    'academic_year_id' => $this->academicYearId,
-                    'semester_id' => $this->semesterId,
-                ],
-                [
-                    'class_teacher_comment' => $this->overallTeacherComment,
-                    'principal_comment' => $this->principalComment,
-                ]
-            );
 
             session()->flash('success', 'Results saved successfully!');
         } catch (\Exception $e) {
-            session()->flash('error', 'An error occurred while saving results.');
+            session()->flash('error', 'Failed to save results. Error: ' . $e->getMessage());
         }
     }
+
+
+
+
+
+
+
+
+
+
+    public function openBulkEdit($subjectId)
+    {
+        $this->selectedSubjectForBulkEdit = $subjectId;
+        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', fn($q) => $q->where('subject_id', $subjectId))
+            ->with(['user', 'results' => fn($q) => $q->where('subject_id', $subjectId)
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('semester_id', $this->semesterId)
+            ])
+            ->get();
+    
+        foreach ($this->bulkStudents as $student) {
+            $existing = $student->results->first();
+            $this->bulkResults[$student->id] = [
+                'test_score' => $existing?->test_score,
+                'exam_score' => $existing?->exam_score,
+                'comment' => $existing?->teacher_comment ?? '',
+            ];
+        }
+    
+        $this->bulkEditMode = true;
+    }
+    
+    public function saveBulkResults()
+    {
+        $this->validate([
+            'bulkResults.*.test_score' => 'nullable|numeric|min:0|max:40',
+            'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
+            'bulkResults.*.comment' => 'nullable|string|max:255',
+        ]);
+    
+        foreach ($this->bulkResults as $studentId => $data) {
+            if (!is_null($data['test_score']) || !is_null($data['exam_score'])) {
+                Result::updateOrCreate(
+                    [
+                        'student_record_id' => $studentId,
+                        'subject_id' => $this->selectedSubjectForBulkEdit,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ],
+                    [
+                        'test_score' => $data['test_score'],
+                        'exam_score' => $data['exam_score'],
+                        'teacher_comment' => $data['comment'],
+                        'total_score' => ($data['test_score'] ?? 0) + ($data['exam_score'] ?? 0),
+                    ]
+                );
+            }
+        }
+    
+        session()->flash('success', 'Bulk results saved successfully!');
+        $this->bulkEditMode = false;
+    }
+
+
+
+
+
+
+
+
+
+
+
 
 
     public function render()
@@ -414,7 +480,7 @@ Semester: <strong>$semester</strong>";
 
         return view($view, [
             'filteredStudents' => $this->filteredStudents,
-            'subjects' => $this->subjects,  // use loaded subjects
+            'subjects' => $this->subjects,
             'sections' => Section::all()->unique('name'),
         ])->with([
             'breadcrumbs' => [
@@ -425,6 +491,13 @@ Semester: <strong>$semester</strong>";
             'page_heading' => 'Manage Student Results',
         ]);
     }
+
+    public function clearFilters()
+    {
+        $this->reset(['selectedClass', 'selectedSection', 'studentSearch', 'selectedSubject']);
+        $this->showStudents = false;
+    }
+
     public function updatedSelectedSection()
     {
         $this->resetPage();
@@ -433,14 +506,5 @@ Semester: <strong>$semester</strong>";
     public function updatedStudentSearch()
     {
         $this->resetPage();
-    }
-    public function updatedSelectedSubject()
-    {
-        $this->resetPage();
-        $this->showStudents = true;
-    }
-    public function updatedSelectedClass()
-    {
-        $this->selectedSubject = null;
     }
 }
