@@ -9,8 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Subject extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -19,21 +18,11 @@ class Subject extends Model
         'my_class_id',
     ];
 
-    /**
-     * Get the class that owns the Subject.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
-     */
     public function myClass()
     {
         return $this->belongsTo(MyClass::class);
     }
 
-    /**
-     * The teachers that belong to the Subject.
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
-     */
     public function teachers()
     {
         return $this->belongsToMany(User::class, 'subject_user');
@@ -43,13 +32,12 @@ class Subject extends Model
     {
         return $this->belongsTo(Result::class);
     }
-    /**
-     * Get the subjects timetable records.
-     */
+
     public function timetableRecord(): MorphOne
     {
         return $this->morphOne(TimetableRecord::class, 'timetable_time_slot_weekdayable');
     }
+
     public function students()
     {
         return $this->belongsToMany(User::class, 'student_subject')
