@@ -105,7 +105,7 @@
                 <p class="text-sm uppercase tracking-wide text-gray-700">To Create a Brighter Future</p>
                 <p class="text-xs text-gray-600">Email: elitesinternationalcollege@gmail.com | Tel: 08066025508</p>
                 <p class="font-semibold text-sm mt-1 uppercase text-blue-900">
-                    {{ strtoupper($studentRecord->myClass->name) }} - {{ strtoupper($semesterName) }} TERM REPORT
+                    {{ strtoupper($studentRecord->myClass->name) }} - {{ strtoupper($semesterName) }}  {{ $academicYearName }} ACADEMIC REPORT
                 </p>
             </div>
         </div>
