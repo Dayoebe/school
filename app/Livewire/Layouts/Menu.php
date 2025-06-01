@@ -232,9 +232,9 @@ class Menu extends Component
             [
                 'type'  => 'menu-item',
                 'icon'  => 'fas fa-upload',
-                'text'  => 'Results',
+                'text'  => 'Results Management',
                 'route' => 'result',
-                'can'   => 'upload result', // Optional: permission check
+                'can'   => 'upload result', 
                 'submenu' => [
                     [
                         'type'  => 'menu-item',
@@ -246,6 +246,18 @@ class Menu extends Component
                         'type'  => 'menu-item',
                         'text'  => 'View Result',
                         'route' => 'result',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'Print Class Result',
+                        'route' => 'result.class',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'View Annual result',
+                        'route' => 'result.annual',
                         'can'   => 'upload result',
                     ],
                 ],
