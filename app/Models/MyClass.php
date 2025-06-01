@@ -50,7 +50,15 @@ class MyClass extends Model
     {
         return $this->hasMany(StudentRecord::class);
     }
+    public function result()
+    {
+        return $this->belongsTo(Result::class);
+    }
 
+    public function subject()
+{
+    return $this->belongsTo(Subject::class);
+}    
     /**
      * The subjects that belong to the MyClass.
      */
