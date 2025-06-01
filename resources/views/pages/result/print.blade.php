@@ -15,7 +15,6 @@
             body {
                 margin: 0;
                 padding: 0.5cm;
-                /* font-size: 12px; */
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
@@ -53,10 +52,7 @@
             background-color: #fffaf0 !important;
         }
 
-        .grade-D {
-            background-color: #fff5f5 !important;
-        }
-
+        .grade-D,
         .grade-E {
             background-color: #fff5f5 !important;
         }
@@ -68,65 +64,49 @@
 </head>
 
 <body class="bg-white text-gray-900 font-sans relative">
-    <!-- Print Button -->
     <div class="no-print fixed top-4 right-4 z-50">
-        <button onclick="window.print()"
-            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-lg flex items-center gap-2">
+        <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-lg flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                    d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z"
-                    clip-rule="evenodd" />
+                <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
             </svg>
             Print Report
         </button>
     </div>
 
-    <!-- Main Content Container -->
     <div class="print-container mx-auto p-4 print-border">
-        <!-- Watermark -->
         <div class="absolute inset-0 flex items-center justify-center opacity-10 -z-10">
             <img src="{{ asset('img/logo.png') }}" alt="Watermark" class="h-auto w-auto rotate-0">
         </div>
 
-        <!-- Official Stamp -->
         <div class="absolute bottom-4 right-4 opacity-80 -z-10">
-            <div
-                class="border-2 border-red-500 rounded-full h-20 w-20 flex items-center justify-center text-red-500 font-bold text-xs text-center p-2">
+            <div class="border-2 border-red-500 rounded-full h-20 w-20 flex items-center justify-center text-red-500 font-bold text-xs text-center p-2">
                 ELITES <br>INTERNATIONAL <br> COLLEGE
             </div>
         </div>
 
-        <!-- Header -->
         <div class="flex items-center border-b border-blue-900 pb-2 mb-2 break-inside-avoid">
-            <img src="{{ asset('img/logo.png') }}" alt="School Logo" class="h-20 w-20 object-contain  ml-10">
+            <img src="{{ asset('img/logo.png') }}" alt="School Logo" class="h-20 w-20 object-contain ml-10">
             <div class="text-center flex-1">
-                <h1 class="text-3xl font-bold text-blue-900 uppercase leading-tight">ELITES INTERNATIONAL COLLEGE, AWKA
-                </h1>
+                <h1 class="text-3xl font-bold text-blue-900 uppercase leading-tight">ELITES INTERNATIONAL COLLEGE, AWKA</h1>
                 <p class="text-sm uppercase tracking-wide text-gray-700">To Create a Brighter Future</p>
                 <p class="text-xs text-gray-600">Email: elitesinternationalcollege@gmail.com | Tel: 08066025508</p>
                 <p class="font-semibold text-sm mt-1 uppercase text-blue-900">
-                    {{ strtoupper($studentRecord->myClass->name) }} - {{ strtoupper($semesterName) }}  {{ $academicYearName }} ACADEMIC REPORT
+                    {{ strtoupper($studentRecord->myClass->name) }} - {{ strtoupper($semesterName) }} {{ $academicYearName }} ACADEMIC REPORT
                 </p>
             </div>
         </div>
 
-        <!-- Student Info -->
         <div class="grid grid-cols-3 gap-4 mb-1 text-sm break-inside-avoid">
-            <!-- First column - Student info part 1 -->
             <div class="space-y-1">
                 <div><span class="font-bold uppercase">Name:</span> {{ strtoupper($studentRecord->user->name) }}</div>
                 <div><span class="font-bold">Class:</span> {{ $studentRecord->myClass->name }}</div>
                 <div><span class="font-bold">Gender:</span> {{ ucfirst($studentRecord->user->gender) }}</div>
-                <div><span class="font-bold">Attendance:</span> P:{{ $studentRecord->present }}
-                    A:{{ $studentRecord->absent }}</div>
+                <div><span class="font-bold">Attendance:</span> Present:__{{ $studentRecord->present }} Absent:__{{ $studentRecord->absent }}</div>
                 <div><span class="font-bold">Number of students in class:</span> {{ $totalStudents }}</div>
             </div>
 
-            <!-- Second column - Student info part 2 -->
             <div class="space-y-1">
-                <!-- Try both versions to see which one works -->
-                <div><span class="font-bold">Admission No:</span>
-                    {{ $studentRecord->admission_number ?? ($studentRecord->admission_no ?? 'N/A') }}</div>
+                <div><span class="font-bold">Admission No:</span> {{ $studentRecord->admission_number ?? ($studentRecord->admission_no ?? 'N/A') }}</div>
                 <div><span class="font-bold">Academic Year:</span> {{ $academicYearName }}</div>
                 <div><span class="font-bold">Term:</span> {{ $semesterName }}</div>
                 <div><span class="font-bold">Date of Birth:</span>
@@ -139,14 +119,11 @@
                 <div><span class="font-bold">Class Position:</span> {{ $classPosition }}</div>
             </div>
 
-            <!-- Third column - Student photo -->
             <div class="flex justify-center items-start">
-                <img src="{{ $studentRecord->user->profile_photo_url }}" alt="Student Photo"
-                    class="h-24 w-20 object-cover border border-white rounded-md shadow-sm">
+                <img src="{{ $studentRecord->user->profile_photo_url }}" alt="Student Photo" class="h-24 w-20 object-cover border border-white rounded-md shadow-sm">
             </div>
         </div>
 
-        <!-- Results Table -->
         <div class="overflow-x-auto mb-2 text-sm break-inside-avoid">
             <table class="w-full border border-gray-300 text-xs">
                 <thead class="bg-blue-900 text-white">
@@ -167,7 +144,6 @@
                             $result = $results[$subject->id] ?? null;
                             $stats = $subjectStats[$subject->id] ?? null;
                             $gradeClass = $result ? 'grade-' . substr($result['grade'], 0, 1) : '';
-                            
                             $isHighest = $result && $stats && $result['total_score'] == $stats['highest'];
                             $isLowest = $result && $stats && $result['total_score'] == $stats['lowest'];
                         @endphp
@@ -188,9 +164,7 @@
             </table>
         </div>
 
-        <!-- Domains Assessment -->
         <div class="grid grid-cols-3 gap-4 mb-2 text-xs break-inside-avoid">
-            <!-- Psychomotor -->
             <div class="border border-gray-300 p-3 rounded-lg shadow-sm">
                 <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-2 mb-2">PSYCHOMOTOR</h3>
                 <ul class="space-y-1">
@@ -201,7 +175,6 @@
                 </ul>
             </div>
 
-            <!-- Affective -->
             <div class="border border-gray-300 p-3 rounded-lg shadow-sm">
                 <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-2 mb-2">AFFECTIVE</h3>
                 <ul class="space-y-1">
@@ -212,7 +185,6 @@
                 </ul>
             </div>
 
-            <!-- Co-curricular -->
             <div class="border border-gray-300 p-3 rounded-lg shadow-sm">
                 <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-2 mb-2">CO-CURRICULAR</h3>
                 <ul class="space-y-1">
@@ -224,29 +196,22 @@
             </div>
         </div>
 
-        <!-- Performance Summary -->
         <div class="grid grid-cols-2 gap-4 mb-2 text-xs break-inside-avoid">
-            <!-- Academic Summary -->
             <div class="border border-gray-300 p-4 rounded-lg shadow-sm">
                 <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-2 mb-2">ACADEMIC SUMMARY</h3>
                 <div class="space-y-2">
-                    <p><span class="font-semibold">Subjects:</span> {{ count($subjects) }} (Passed:
-                        {{ $subjectsPassed }})</p>
+                    <p><span class="font-semibold">Subjects:</span> {{ count($subjects) }} (Passed: {{ $subjectsPassed }})</p>
                     <p><span class="font-semibold">Total Score:</span> {{ $totalScore }}/{{ $maxTotalScore }}</p>
-                    <p><span class="font-semibold">Percentage:</span>
-                        {{ round(($totalScore / $maxTotalScore) * 100, 2) }}%</p>
-                    <p><span class="font-semibold">Position:</span> {{ $classPosition }} out of {{ $totalStudents }}
-                    </p>
+                    <p><span class="font-semibold">Percentage:</span> {{ round(($totalScore / $maxTotalScore) * 100, 2) }}%</p>
+                    <p><span class="font-semibold">Position:</span> {{ $classPosition }} out of {{ $totalStudents }}</p>
                     <p><span class="font-semibold">Result:</span>
-                        <span
-                            class="font-bold {{ $totalScore < $maxTotalScore * 0.4 ? 'text-red-600' : 'text-green-600' }}">
+                        <span class="font-bold {{ $totalScore < $maxTotalScore * 0.4 ? 'text-red-600' : 'text-green-600' }}">
                             {{ $totalScore < $maxTotalScore * 0.4 ? 'FAILED' : 'PASSED' }}
                         </span>
                     </p>
                 </div>
             </div>
 
-            <!-- Grading Key -->
             <div class="border border-gray-300 p-4 rounded-lg shadow-sm">
                 <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-2 mb-2">GRADING KEY</h3>
                 <div class="grid grid-cols-2 gap-2">
@@ -263,28 +228,20 @@
             </div>
         </div>
 
-        <!-- Comments Section -->
         <div class="grid grid-cols-2 gap-4 mb-2 text-xs bg-gray-50 break-inside-avoid">
-            <!-- Teacher's Comment -->
             <div class="border border-gray-300 p-4 rounded-lg shadow-sm">
-                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-3 uppercase">Teacher's Comment
-                </h3>
+                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-3 uppercase">Teacher's Comment</h3>
                 <p class="text-gray-900">{{ $termReport->class_teacher_comment ?? 'No comment available' }}</p>
             </div>
 
-            <!-- Principal's Comment -->
             <div class="border border-gray-300 p-4 rounded-lg shadow-sm">
-                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-3 uppercase">Principal's Comment
-                </h3>
+                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-3 uppercase">Principal's Comment</h3>
                 <p class="text-gray-900">{{ $termReport->principal_comment ?? 'No comment available' }}</p>
             </div>
 
-            <!-- General Announcement -->
             <div class="border border-gray-300 p-2 px-4 rounded-lg shadow-sm col-span-2">
-                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-3 uppercase">Important Information
-                </h3>
-                <p class="text-gray-900">
-                    {{ $termReport->general_announcement ?? 'No announcement provided. (School fees)' }}</p>
+                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-2 mb-3 uppercase">Important Information</h3>
+                <p class="text-gray-900">{{ $termReport->general_announcement ?? 'No announcement provided.' }}</p>
                 <p><span class="font-semibold text-gray-700">Resumption Date:</span>
                     <span class="text-gray-900">
                         @if ($termReport->resumption_date)
@@ -297,7 +254,6 @@
             </div>
         </div>
 
-        <!-- Signature Area -->
         <div class="grid grid-cols-2 gap-4 mt-6 text-xs break-inside-avoid">
             <div class="text-center">
                 <div class="border-b border-black w-32 mx-auto mb-2"></div>
@@ -309,29 +265,10 @@
             </div>
         </div>
 
-        <!-- Footer -->
         <div class="text-center text-2xs text-gray-400 mt-4">
             <p>Official document - Generated on {{ now()->format('d/m/Y H:i') }}</p>
         </div>
     </div>
-
-    <script>
-        // Optimize for printing
-        function optimizeForPrint() {
-            // Reduce font sizes further if needed
-            if (window.matchMedia('print').matches) {
-                document.body.style.fontSize = '11px';
-            }
-        }
-
-        // Run optimization when print dialog opens
-        window.onbeforeprint = optimizeForPrint;
-
-        // Restore when print completes
-        window.onafterprint = function() {
-            document.body.style.fontSize = '';
-        };
-    </script>
 </body>
 
 </html>
