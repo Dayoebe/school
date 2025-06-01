@@ -33,6 +33,13 @@ class StudentRecord extends Model
             $studentRecord->assignSubjectsAutomatically();
         });
     }
+    
+public function scopeOrderByName($query)
+{
+    return $query->join('users', 'student_records.user_id', '=', 'users.id')
+                ->orderBy('users.name')
+                ->select('student_records.*');
+}
 
     public function getAdmissionDateAttribute($value)
     {
@@ -67,6 +74,10 @@ class StudentRecord extends Model
         return $this->belongsTo(Result::class);
     }
 
+    public function subject()
+{
+    return $this->belongsTo(Subject::class);
+}    
     public function currentAcademicYear()
     {
         return $this->academicYears()->wherePivot('academic_year_id', $this->user->school->academicYear->id);
