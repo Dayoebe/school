@@ -430,15 +430,23 @@ class ResultController extends Controller
         }
 
         // Get all students in the class with user eager loaded (fixes N+1)
-        $students = StudentRecord::with(['user', 'results' => function ($q) use ($request, $semesters) {
-            $q->where('academic_year_id', $request->academicYearId)
-                ->whereIn('semester_id', $semesters->pluck('id'));
-        }])
-            ->where('my_class_id', $request->classId)
-            ->join('users', 'users.id', '=', 'student_records.user_id')
-            ->orderBy('users.name')
-            ->select('student_records.*')
-            ->get();
+
+// Update the students query to include subject eager loading
+$students = StudentRecord::with([
+    'user', 
+    'results' => function ($q) use ($request, $semesters) {
+        $q->where('academic_year_id', $request->academicYearId)
+          ->whereIn('semester_id', $semesters->pluck('id'))
+          ->with('subject'); // Add this to eager load subjects
+    }
+])
+->where('my_class_id', $request->classId)
+->join('users', 'users.id', '=', 'student_records.user_id')
+->orderBy('users.name')
+->select('student_records.*')
+->get();
+
+    
 
         // Get all subjects for this class
         $subjects = Subject::where('my_class_id', $class->id)
@@ -569,4 +577,114 @@ class ResultController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    // use Barryvdh\DomPDF\Facade\Pdf;
+
+    public function exportAnnualResultPdf(Request $request)
+    {
+        // Validate required parameters
+        $request->validate([
+            'classId' => 'required|exists:my_classes,id',
+            'academicYearId' => 'required|exists:academic_years,id'
+        ]);
+    
+        // Get the data (reuse the annualResult method logic)
+        $data = $this->annualResult($request)->getData();
+        
+        // Generate PDF
+        $pdf = Pdf::loadView('pages.result.annual-result-pdf', [
+            'data' => $data,
+            'title' => "Annual Results - {$data['class']->name} ({$data['academicYear']->name})"
+        ])->setPaper('a4', 'portrait');
+        
+        return $pdf->download("annual-results-{$data['class']->name}-{$data['academicYear']->name}.pdf");
+    }
+
+
+
+    public function showStudentAnnualResult($studentId, $academicYearId)
+{
+    // Get the student record
+    $studentRecord = StudentRecord::with(['user', 'myClass'])
+        ->where('user_id', $studentId)
+        ->firstOrFail();
+
+    // Get academic year
+    $academicYear = AcademicYear::findOrFail($academicYearId);
+
+    // Get all semesters for this academic year
+    $semesters = Semester::where('academic_year_id', $academicYear->id)->get();
+
+    // Get all subjects for the student's class
+    $subjects = Subject::where('my_class_id', $studentRecord->my_class_id)
+        ->orderBy('name')
+        ->get();
+
+    // Get all results for this student across all semesters
+    $results = Result::with('subject')
+        ->where('user_id', $studentId)
+        ->where('academic_year_id', $academicYear->id)
+        ->whereIn('semester_id', $semesters->pluck('id'))
+        ->get()
+        ->groupBy('subject_id');
+
+    // Calculate annual totals and averages
+    $annualResults = [];
+    $grandTotal = 0;
+    $maxPossibleTotal = $subjects->count() * 100 * $semesters->count();
+
+    foreach ($subjects as $subject) {
+        $subjectResults = $results->get($subject->id, collect());
+        $subjectTotal = $subjectResults->sum('total_score');
+        $subjectAverage = $semesters->count() > 0 ? $subjectTotal / $semesters->count() : 0;
+        
+        $annualResults[$subject->id] = [
+            'subject' => $subject,
+            'total' => $subjectTotal,
+            'average' => $subjectAverage,
+            'results' => $subjectResults
+        ];
+
+        $grandTotal += $subjectTotal;
+    }
+
+    // Calculate overall average percentage
+    $averagePercentage = $maxPossibleTotal > 0 ? round(($grandTotal / $maxPossibleTotal) * 100, 2) : 0;
+
+    // Get class position (you'll need to implement this based on your logic)
+    $classPosition = $this->calculateStudentPosition($studentId, $academicYear->id, $studentRecord->my_class_id);
+
+    return view('pages.result.student-annual-result', [
+        'studentRecord' => $studentRecord,
+        'academicYear' => $academicYear,
+        'semesters' => $semesters,
+        'subjects' => $subjects,
+        'annualResults' => $annualResults,
+        'grandTotal' => $grandTotal,
+        'averagePercentage' => $averagePercentage,
+        'classPosition' => $classPosition,
+        'totalStudents' => StudentRecord::where('my_class_id', $studentRecord->my_class_id)->count()
+    ]);
+}
+
+private function calculateStudentPosition($studentId, $academicYearId, $classId)
+{
+    // Implement your position calculation logic here
+    // This is a placeholder - replace with your actual logic
+    $students = StudentRecord::where('my_class_id', $classId)->pluck('user_id');
+    
+    $rankings = Result::whereIn('user_id', $students)
+        ->where('academic_year_id', $academicYearId)
+        ->selectRaw('user_id, SUM(total_score) as total')
+        ->groupBy('user_id')
+        ->orderByDesc('total')
+        ->get()
+        ->pluck('user_id')
+        ->toArray();
+    
+    $position = array_search($studentId, $rankings) + 1;
+    $totalStudents = count($rankings);
+    
+    return $position . '/' . $totalStudents;
+}
 }
