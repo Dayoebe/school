@@ -47,11 +47,14 @@
 
             <!-- Selection Form -->
             <form method="GET" action="{{ route('result.annual') }}" class="mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+               
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-white shadow-xl rounded-2xl">
+                    <!-- Class Selection -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                        <select name="classId" required class="w-full input-field">
-                            <option value="">Select Class</option>
+                        <label class="block text-sm font-semibold text-blue-700 mb-2">Select Class</label>
+                        <select name="classId" required
+                            class="w-full px-4 py-2 border border-blue-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-blue-50 text-gray-800">
+                            <option value="">-- Choose a Class --</option>
                             @foreach ($classes as $classOption)
                                 <option value="{{ $classOption->id }}" @selected($classOption->id == ($class->id ?? null))>
                                     {{ $classOption->name }}
@@ -59,11 +62,13 @@
                             @endforeach
                         </select>
                     </div>
-
+                
+                    <!-- Academic Year Selection -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
-                        <select name="academicYearId" required class="w-full input-field">
-                            <option value="">Select Year</option>
+                        <label class="block text-sm font-semibold text-green-700 mb-2">Academic Year</label>
+                        <select name="academicYearId" required
+                            class="w-full px-4 py-2 border border-green-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none bg-green-50 text-gray-800">
+                            <option value="">-- Choose Year --</option>
                             @foreach ($academicYears as $year)
                                 <option value="{{ $year->id }}" @selected($year->id == ($academicYear->id ?? null))>
                                     {{ $year->name }}
@@ -71,13 +76,17 @@
                             @endforeach
                         </select>
                     </div>
-
+                
+                    <!-- Submit Button -->
                     <div class="flex items-end">
-                        <button type="submit" class="w-full btn-primary">
-                            <i class="fas fa-search mr-2"></i> Show Results
+                        <button type="submit"
+                            class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold rounded-xl shadow-md hover:from-indigo-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <i class="fas fa-search"></i> Show Results
                         </button>
                     </div>
                 </div>
+                
+                
             </form>
 
             @if ($class && $academicYear)
@@ -189,6 +198,7 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
                             <template x-for="report in filteredReports" :key="report.student.id">
+                                @foreach($annualReports as $report)
                                 <tr class="hover:bg-gray-50 print:hover:bg-white">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900"
                                         x-text="report.rank"></td>
@@ -226,16 +236,24 @@
                                         <span x-text="report.average_percentage + '%'"></span>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 print-hidden">
-                                        <a :href="'/students/' + report.student.user_id"
-                                            class="text-blue-600 hover:text-blue-900 mr-3" title="View Profile">
-                                            <i class="fas fa-user"></i>
+                                        <a href="{{ route('students.show', $report['student']->user_id) }}"
+                                           class="text-blue-600 hover:text-blue-900 mr-3" 
+                                           title="View Profile">
+                                           <i class="fas fa-user"></i>
                                         </a>
-                                        <a :href="'/result/student/' + report.student.user_id + '/{{ $academicYear->id }}'"
-                                            class="text-purple-600 hover:text-purple-900" title="View Full Results">
-                                            <i class="fas fa-poll"></i>
+                                        
+                                        <a href="{{ route('result.student.annual', [
+                                            'studentId' => $report['student']->user_id,
+                                            'academicYearId' => $academicYear->id,
+                                        ]) }}"
+                                           class="text-purple-600 hover:text-purple-900"
+                                           title="View Full Results">
+                                           <i class="fas fa-poll"></i>
                                         </a>
+                         
                                     </td>
                                 </tr>
+                                @endforeach
                             </template>
                         </tbody>
                     </table>
