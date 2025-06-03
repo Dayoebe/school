@@ -28,9 +28,10 @@ class Subject extends Model
         return $this->belongsToMany(User::class, 'subject_user');
     }
 
-    public function result()
+    // FIX: Change this relationship
+    public function results()
     {
-        return $this->belongsTo(Result::class);
+        return $this->hasMany(Result::class);
     }
 
     public function timetableRecord(): MorphOne

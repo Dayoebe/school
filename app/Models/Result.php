@@ -42,42 +42,38 @@ class Result extends Model
         return $this->belongsTo(Semester::class);
     }
     public function validate()
-{
-    if (!$this->studentRecord || !$this->academicYearId || !$this->semesterId) {
-        session()->flash('error', 'Invalid student record, academic year, or semester.');
-        return false;
+    {
+        if (!$this->studentRecord || !$this->academicYearId || !$this->semesterId) {
+            session()->flash('error', 'Invalid student record, academic year, or semester.');
+            return false;
+        }
+        return true;
     }
-    return true;
-}
-public static function calculateClassPositions($academicYearId, $semesterId, $classId)
-{
-    // Fetch all results for the given class, academic year, and semester
-    $results = self::whereHas('studentRecord', function ($query) use ($classId) {
-        $query->where('my_class_id', $classId);
-    })
-    ->where('academic_year_id', $academicYearId)
-    ->where('semester_id', $semesterId)
-    ->get();
+    public static function calculateClassPositions($academicYearId, $semesterId, $classId)
+    {
+        $results = self::whereHas('studentRecord', function ($query) use ($classId) {
+            $query->where('my_class_id', $classId);
+        })
+        ->where('academic_year_id', $academicYearId)
+        ->where('semester_id', $semesterId)
+        ->get();
 
-    // Group results by student
-    $studentTotals = $results->groupBy('student_record_id')->map(function ($studentResults) {
-        return $studentResults->sum('total_score');
-    });
+        $studentTotals = $results->groupBy('student_record_id')->map(function ($studentResults) {
+            return $studentResults->sum('total_score');
+        });
 
-    // Sort students by total score in descending order and assign positions
-    $rankedStudents = $studentTotals->sortDesc()->values();
+        $rankedStudents = $studentTotals->sortDesc()->values();
 
-    $positions = [];
-    $rankedStudents->each(function ($totalScore, $index) use (&$positions, $studentTotals) {
-        $studentId = $studentTotals->search($totalScore);
-        $positions[$studentId] = $index + 1; // Position starts from 1
-    });
+        $positions = [];
+        $rankedStudents->each(function ($totalScore, $index) use (&$positions, $studentTotals) {
+            $studentId = $studentTotals->search($totalScore);
+            $positions[$studentId] = $index + 1;
+        });
 
-    // Update the positions in the database
-    foreach ($results as $result) {
-        $result->update(['subject_position' => $positions[$result->student_record_id]]);
+        foreach ($results as $result) {
+            $result->update(['subject_position' => $positions[$result->student_record_id]]);
+        }
+
+        return $positions;
     }
-
-    return $positions;
-}
 }

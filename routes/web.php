@@ -53,6 +53,30 @@ use App\Http\Controllers\ResultController;
 
 Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])
     ->name('result.print');
+    
+    
+// In web.php
+
+Route::get('/results/class', [ResultController::class, 'classResult'])->name('result.class');
+Route::get('/results/class/print', [ResultController::class, 'printClassResult'])->name('result.class.print');
+Route::get('/results/class/export', [ResultController::class, 'exportClassResult'])->name('result.class.export');
+
+Route::get('/results/annual', [ResultController::class, 'annualResult'])->name('result.annual');
+Route::get('/results/annual/export', [ResultController::class, 'exportAnnualResult'])->name('result.annual.export');
+Route::get('/results/annual/export/pdf', [ResultController::class, 'exportAnnualResultPdf'])
+    ->name('result.annual.export.pdf');
+
+    
+    
+    Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])
+    ->name('result.student.annual');
+    
+    
+
+    
+
+// Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentResult'])->name('result.student');
+
 
 Route::middleware(['guest'])->group(function () {
     Route::get('/register', ['App\Http\Controllers\RegistrationController', 'registerView'])->name('register');
