@@ -59,6 +59,8 @@ Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultContr
 
 Route::get('/results/class', [ResultController::class, 'classResult'])->name('result.class');
 Route::get('/results/class/print', [ResultController::class, 'printClassResult'])->name('result.class.print');
+Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])->name('result.print');
+
 Route::get('/results/class/export', [ResultController::class, 'exportClassResult'])->name('result.class.export');
 
 Route::get('/results/annual', [ResultController::class, 'annualResult'])->name('result.annual');
