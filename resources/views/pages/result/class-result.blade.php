@@ -108,6 +108,16 @@
                     </a>
                 </div>
 
+                @if(isset($studentReports) && count($studentReports) > 0)
+                    <div class="bg-yellow-50 p-4 rounded-lg mb-6">
+                        <p class="text-yellow-600">
+                            <i class="fas fa-info-circle mr-2"></i>
+                            Click on a student's name to view detailed results.
+                        </p>
+                    </div>
+                
+
+
                 <!-- Performance Summary -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
                     <h2 class="text-xl font-bold text-blue-800 mb-4">Class Performance Summary</h2>
@@ -310,6 +320,7 @@
     </div>
     </div>
 
+
    <!-- Performance Chart -->
 @if (!empty($studentReports) && count($studentReports) > 0)
 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
@@ -393,6 +404,7 @@
             </div>
         </div>
     @endforeach
+    @endif
     {{-- @else --}}
     <div class="bg-blue-50 p-4 rounded-lg text-center">
         <p class="text-blue-600"><i class="fas fa-info-circle mr-2"></i> Please select filters to view results</p>
