@@ -98,7 +98,7 @@
                 <p class="text-gray-600 mb-4">📞 +234 803 731 5741</p>
 
                 <p class="text-gray-700 mb-2"><strong>Email:</strong></p>
-                <p class="text-gray-600 mb-6">📧 info@elitescollege.com</p>
+                <p class="text-gray-600 mb-6">📧 info@elitesinternationalcollege.com</p>
 
                 <a href="{{ route('contact') }}"
                     class="inline-block bg-blue-900 text-white font-medium px-6 py-3 rounded-md hover:bg-blue-800 transition">
