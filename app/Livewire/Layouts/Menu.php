@@ -210,6 +210,45 @@ class Menu extends Component
                 ],
             ],
             [
+                'type'  => 'menu-item',
+                'icon'  => 'fas fa-upload',
+                'text'  => 'Results Management',
+                'route' => 'result',
+                'can'   => 'upload result', 
+                'submenu' => [
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'Upload Results',
+                        'route' => 'result',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'View Individual Result',
+                        'route' => 'result',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'Annual Class Result',
+                        'route' => 'result.annual',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'Old Annual Class Result',
+                        'route' => 'result.class',
+                        'can'   => 'upload result',
+                    ],
+                    [
+                        'type'  => 'menu-item',
+                        'text'  => 'View Annual result',
+                        'route' => 'result.annual',
+                        'can'   => 'upload result',
+                    ],
+                ],
+            ],
+            [
                 'type'    => 'menu-item',
                 'text'    => 'Admins',
                 'icon'    => 'fas fa-user',
@@ -226,39 +265,6 @@ class Menu extends Component
                         'text'  => 'Create admin',
                         'route' => 'admins.create',
                         'can'   => 'create admin',
-                    ],
-                ],
-            ],
-            [
-                'type'  => 'menu-item',
-                'icon'  => 'fas fa-upload',
-                'text'  => 'Results Management',
-                'route' => 'result',
-                'can'   => 'upload result', 
-                'submenu' => [
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'Upload Results',
-                        'route' => 'result',
-                        'can'   => 'upload result',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Result',
-                        'route' => 'result',
-                        'can'   => 'upload result',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'Print Class Result',
-                        'route' => 'result.class',
-                        'can'   => 'upload result',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Annual result',
-                        'route' => 'result.annual',
-                        'can'   => 'upload result',
                     ],
                 ],
             ],
@@ -521,14 +527,6 @@ class Menu extends Component
                         'can'   => 'create grade system',
                     ],
                 ],
-            ],
-            [
-                'type'  => 'menu-item',
-                'text'  => 'View Logs',
-                'route' => 'log-viewer.index',
-                'icon'  => 'fa fa-sticky-note',
-                //this menu item checks with roles for now so this prevents other non super users from viewing menu item
-                'can' => 'view logs',
             ],
         ];
     }
