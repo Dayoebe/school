@@ -82,7 +82,7 @@
                 Umubele, Awka, Anambra State<br>
                 📞 <a href="tel:+2348066025508" class="hover:text-white">+234 806 602 5508</a><br>
                 📞 <a href="tel:+2348037315741" class="hover:text-white">+234 803 731 5741</a><br>
-                📧 <a href="mailto:info@elitescollege.com" class="hover:text-white">info@elitescollege.com</a>
+                📧 <a href="mailto:info@elitesinternationalcollege.com" class="hover:text-white">info@elitesinternationalcollege.com</a>
             </address>
         </div>
 
@@ -148,7 +148,7 @@
         </div>
         <div
             class="text-center py-4 text-xs bg-blue-950 text-gray-400  px-6 lg:px-20  grid sm:grid-cols-2 gap-8  border-blue-800">
-            <p>{{ date('F d Y H:i:s. (T)') }} - Wireless Terminal.</p>
+            <p>{{ date('F d Y H:i (T)') }} - Wireless Terminal.</p>
         </div>
     </div>
 </footer>
