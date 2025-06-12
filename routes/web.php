@@ -53,8 +53,8 @@ use App\Http\Controllers\ResultController;
 
 Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])
     ->name('result.print');
-    
-    
+
+
 // In web.php
 
 Route::get('/results/class', [ResultController::class, 'classResult'])->name('result.class');
@@ -68,14 +68,21 @@ Route::get('/results/annual/export', [ResultController::class, 'exportAnnualResu
 Route::get('/results/annual/export/pdf', [ResultController::class, 'exportAnnualResultPdf'])
     ->name('result.annual.export.pdf');
 
-    
-    
-    Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])
-    ->name('result.student.annual');
-    
-    
 
-    
+
+Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])
+    ->name('result.student.annual');
+
+
+
+
+
+
+
+
+
+Route::get('/results/annual', [ResultController::class, 'annualClassResult'])->name('result.annual');
+
 
 // Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentResult'])->name('result.student');
 
