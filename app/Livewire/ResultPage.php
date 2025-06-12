@@ -401,25 +401,25 @@ public $bulkStudents = [];
 
 
 
-
-
-
-
     public function openBulkEdit($subjectId)
     {
         $this->selectedSubjectForBulkEdit = $subjectId;
-        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', fn($q) => $q->where('subject_id', $subjectId))
-            ->with(['user', 'results' => fn($q) => $q->where('subject_id', $subjectId)
-                ->where('academic_year_id', $this->academicYearId)
-                ->where('semester_id', $this->semesterId)
-            ])
-            ->get();
+        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function($q) use ($subjectId) {
+            $q->where('subject_id', $subjectId);
+        })
+        ->with(['user', 'results' => function($q) use ($subjectId) {
+            $q->where('subject_id', $subjectId)
+              ->where('academic_year_id', $this->academicYearId)
+              ->where('semester_id', $this->semesterId);
+        }])
+        ->get();
     
+        $this->bulkResults = [];
         foreach ($this->bulkStudents as $student) {
             $existing = $student->results->first();
             $this->bulkResults[$student->id] = [
-                'test_score' => $existing?->test_score,
-                'exam_score' => $existing?->exam_score,
+                'test_score' => $existing?->test_score ?? null,
+                'exam_score' => $existing?->exam_score ?? null,
                 'comment' => $existing?->teacher_comment ?? '',
             ];
         }
