@@ -3,49 +3,47 @@
 namespace App\Livewire;
 
 use App\Services\MyClass\MyClassService;
-use Illuminate\Support\Facades\App;
 use Livewire\Component;
 
 class CreateStudentRecordFields extends Component
 {
     public $myClasses;
-
     public $myClass;
-
     public $sections = [];
-
     public $section;
-
-    protected $myClassService;
-
-
 
     public $initialMyClassId;
     public $initialSectionId;
     public $admissionNumber;
     public $admissionDate;
-    
+
+    protected MyClassService $myClassService;
+
     protected $rules = [
-        'myClass' => 'string|nullable',
-        'section' => 'string|nullable',
+        'myClass' => 'required|string', // Class is required
+        'section' => 'nullable|string', // Section is optional
+        'admissionDate' => 'nullable|date', // Admission date is optional
     ];
 
-    public function mount(MyClassService $myClassService, $initialMyClassId = null, $initialSectionId = null)
+    // Use Livewire's boot() instead of __construct()
+    public function boot(MyClassService $myClassService)
     {
         $this->myClassService = $myClassService;
-        $this->myClasses = $myClassService->getAllClasses();
+    }
 
+    public function mount($initialMyClassId = null, $initialSectionId = null)
+    {
+        $this->myClasses = $this->myClassService->getAllClasses();
         $this->initialMyClassId = $initialMyClassId;
         $this->initialSectionId = $initialSectionId;
 
-        // Handle edit or create
         if ($this->initialMyClassId) {
             $this->myClass = $this->initialMyClassId;
-            $this->sections = collect($myClassService->getClassById($this->myClass)->sections);
+            $this->sections = collect($this->myClassService->getClassById($this->myClass)->sections);
             $this->section = $this->initialSectionId;
         } elseif ($this->myClasses->isNotEmpty()) {
             $this->myClass = $this->myClasses[0]['id'];
-            $this->sections = collect($myClassService->getClassById($this->myClass)->sections);
+            $this->sections = collect($this->myClassService->getClassById($this->myClass)->sections);
         }
     }
 
