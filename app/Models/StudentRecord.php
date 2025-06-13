@@ -34,12 +34,12 @@ class StudentRecord extends Model
         });
     }
     
-public function scopeOrderByName($query)
-{
-    return $query->join('users', 'student_records.user_id', '=', 'users.id')
-                ->orderBy('users.name')
-                ->select('student_records.*');
-}
+    public function scopeOrderByName($query)
+    {
+        return $query->join('users', 'student_records.user_id', '=', 'users.id')
+                    ->orderBy('users.name')
+                    ->select('student_records.*');
+    }
 
     public function getAdmissionDateAttribute($value)
     {
@@ -75,27 +75,28 @@ public function scopeOrderByName($query)
     }
 
     public function subject()
-{
-    return $this->belongsTo(Subject::class);
-}    
+    {
+        return $this->belongsTo(Subject::class);
+    }
+
     public function currentAcademicYear()
     {
         return $this->academicYears()->wherePivot('academic_year_id', $this->user->school->academicYear->id);
     }
+
     public function studentSubjects()
     {
         return $this->belongsToMany(
-            Subject::class,      // related model
-            'student_subject',   // pivot table
-            'user_id',        // foreign key on pivot table referencing StudentRecord (or User)
-            'subject_id'         // foreign key on pivot table referencing Subject
+            Subject::class,
+            'student_subject',
+            'user_id',
+            'subject_id'
         );
     }
 
     public function assignSubjectsAutomatically()
     {
         $subjects = Subject::where('my_class_id', $this->my_class_id)
-            // ->where('section_id', $this->section_id) // remove this line
             ->pluck('id');
 
         $syncData = [];
@@ -108,10 +109,12 @@ public function scopeOrderByName($query)
 
         $this->studentSubjects()->syncWithoutDetaching($syncData);
     }
+
     public function results()
     {
         return $this->hasMany(Result::class);
     }
+
     public function termReports()
     {
         return $this->hasMany(TermReport::class);
