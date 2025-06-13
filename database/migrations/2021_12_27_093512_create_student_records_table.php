@@ -11,7 +11,7 @@ return new class() extends Migration {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->string('admission_number')->nullable();
-            $table->date('admission_date');
+            $table->date('admission_date')->nullable();
             $table->foreignId('my_class_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('section_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->boolean('is_graduated')->default(false);
