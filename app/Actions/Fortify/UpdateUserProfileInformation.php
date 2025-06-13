@@ -30,7 +30,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             'state'       => ['nullable', 'string', 'max:255'],
             'city'        => ['nullable', 'string', 'max:255'],
             'gender'      => ['nullable', 'string', 'max:255'],
-            'phone'       => ['required', 'string', 'max:255'],
+            'phone'       => ['nullable', 'string', 'max:255'],
         ])->validate();
 
         if (isset($input['photo'])) {
