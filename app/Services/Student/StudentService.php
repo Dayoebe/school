@@ -118,34 +118,39 @@ class StudentService
      * @return void
      */
     public function createStudentRecord(User $student, $record)
-    {
-        $record['admission_number'] || $record['admission_number'] = $this->generateAdmissionNumber();
+{
+    $record['admission_number'] || $record['admission_number'] = $this->generateAdmissionNumber();
+    
+    // Skip section validation if section_id is null
+    if ($record['section_id']) {
         $section = $this->sectionService->getSectionById($record['section_id']);
         if (!$this->myClassService->getClassById($record['my_class_id'])->sections->contains($section)) {
             throw new InvalidValueException('Section is not in class');
         }
+    }
 
-        if (auth()->user()->school->academic_year_id == null) {
-            throw new EmptyRecordsException('Academic Year not set');
-        }
+    if (auth()->user()->school->academic_year_id == null) {
+        throw new EmptyRecordsException('Academic Year not set');
+    }
 
-        $student->studentRecord()->firstOrCreate([
-            'user_id' => $student->id,
-        ], [
-            'my_class_id'      => $record['my_class_id'],
-            'section_id'       => $record['section_id'],
-            'admission_number' => $record['admission_number'],
-            'admission_date'   => $record['admission_date'],
-        ]);
+    $student->studentRecord()->firstOrCreate([
+        'user_id' => $student->id,
+    ], [
+        'my_class_id'      => $record['my_class_id'],
+        'section_id'       => $record['section_id'] ?? null, // Ensure null if not provided
+        'admission_number' => $record['admission_number'],
+        'admission_date'   => $record['admission_date'],
+    ]);
 
-        //create record history
+    // Create record history (only if section_id is provided)
+    if ($record['section_id']) {
         $currentAcademicYear = $student->school->academicYear;
         $student->studentRecord->load('academicYears')->academicYears()->sync([$currentAcademicYear->id => [
             'my_class_id' => $record['my_class_id'],
             'section_id'  => $record['section_id'],
         ]]);
     }
-
+}
     /**
      * Update student.
      *
@@ -352,3 +357,4 @@ class StudentService
         ]);
     }
 }
+
