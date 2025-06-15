@@ -2,7 +2,7 @@
     'breadcrumbs' => [
         ['href' => route('dashboard'), 'text' => 'Dashboard'],
         ['href' => route('result'), 'text' => 'Results'],
-        ['href' => route('result.annual-class'), 'text' => 'Annual Class Results', 'active' => true]
+        ['href' => route('result.annual'), 'text' => 'Annual Class Results', 'active' => true]
     ],
 ])
 
@@ -10,32 +10,18 @@
 @section('page_heading', __('Annual Class Results Summary'))
 
 @section('content')
-<div class="container mx-auto px-4 py-6" x-data="annualClassResults">
+<div class="container mx-auto px-4 py-6" x-data="annualClassResults()">
     <!-- Filter Section -->
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6 animate__animated animate__fadeIn">
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
             <h2 class="text-xl font-bold text-blue-800">Select Class and Academic Year</h2>
             
             @if(isset($class) && isset($academicYear))
             <div class="flex flex-wrap gap-2">
-                <div class="relative" x-data="{ open: false }" @click.away="open = false">
-                    <button @click="open = !open"
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
-                        <span>Export</span>
-                        <i class="fas fa-chevron-down ml-2 text-sm"></i>
-                    </button>
-                    <div x-show="open" x-transition
-                        class="absolute z-10 right-0 mt-1 bg-white shadow-lg rounded-md w-48">
-                        <a href="{{ route('result.annual-class.export', ['classId' => $class->id, 'academicYearId' => $academicYear->id]) }}"
-                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                            <i class="fas fa-file-csv mr-2"></i> Export CSV
-                        </a>
-                        <a href="{{ route('result.annual-class.export.pdf', ['classId' => $class->id, 'academicYearId' => $academicYear->id]) }}"
-                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                            <i class="fas fa-file-pdf mr-2"></i> Export PDF
-                        </a>
-                    </div>
-                </div>
+                <a href="{{ route('result.annual.export', ['classId' => $class->id, 'academicYearId' => $academicYear->id]) }}"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded inline-flex items-center">
+                    <i class="fas fa-file-csv mr-2"></i> Export CSV
+                </a>
                 <button @click="window.print()"
                     class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
                     <i class="fas fa-print mr-2"></i> Print
@@ -45,7 +31,7 @@
         </div>
 
         <!-- Selection Form -->
-        <form method="GET" action="{{ route('result.annual-class') }}" class="mb-6">
+        <form method="GET" action="{{ route('result.annual') }}" class="mb-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6 bg-white shadow-xl rounded-2xl">
                 <!-- Class Selection -->
                 <div>
@@ -91,17 +77,17 @@
                 <div class="flex flex-wrap gap-2">
                     @foreach($semesters as $sem)
                         <button 
-                            @click="currentTerm = {{ $sem->id }}; $dispatch('term-changed')"
+                            @click="currentTerm = '{{ $sem->id }}'"
                             :class="{
-                                'bg-blue-600 text-white': currentTerm === {{ $sem->id }},
-                                'bg-gray-200 text-gray-800': currentTerm !== {{ $sem->id }}
+                                'bg-blue-600 text-white': currentTerm === '{{ $sem->id }}',
+                                'bg-gray-200 text-gray-800': currentTerm !== '{{ $sem->id }}'
                             }"
                             class="px-4 py-2 rounded-lg font-medium transition-colors">
                             {{ $sem->name }}
                         </button>
                     @endforeach
                     <button 
-                        @click="currentTerm = 'annual'; $dispatch('term-changed')"
+                        @click="currentTerm = 'annual'"
                         :class="{
                             'bg-blue-600 text-white': currentTerm === 'annual',
                             'bg-gray-200 text-gray-800': currentTerm !== 'annual'
@@ -116,156 +102,242 @@
 
     @if(isset($class) && isset($academicYear))
         <!-- Print Header -->
-        <div class="print-only mb-4">
+        <div class="hidden print:block mb-4">
             <h1 class="text-2xl font-bold text-center">{{ config('app.name') }}</h1>
             <h2 class="text-xl text-center">Annual Results - {{ $class->name }} ({{ $academicYear->name }})</h2>
             <p class="text-center text-sm">Generated on {{ now()->format('F j, Y \a\t h:i A') }}</p>
         </div>
 
         <!-- Summary Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6 animate__animated animate__fadeIn">
-            <x-summary-card icon="users" title="Class" value="{{ $class->name }}" color="blue" />
-            <x-summary-card icon="calendar-alt" title="Academic Year" value="{{ $academicYear->name }}" color="blue" />
-            <x-summary-card icon="chart-bar" title="Students" value="{{ $stats['total_students'] }}" color="blue" />
-            <x-summary-card icon="book" title="Subjects" value="{{ $stats['subjects_count'] }}" color="blue" />
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="flex items-center">
+                    <i class="fas fa-users text-blue-600 text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="text-sm font-semibold text-blue-800">Class</h3>
+                        <p class="text-gray-700">{{ $class->name }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="flex items-center">
+                    <i class="fas fa-calendar-alt text-blue-600 text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="text-sm font-semibold text-blue-800">Academic Year</h3>
+                        <p class="text-gray-700">{{ $academicYear->name }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="flex items-center">
+                    <i class="fas fa-user-graduate text-blue-600 text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="text-sm font-semibold text-blue-800">Students</h3>
+                        <p class="text-gray-700">{{ $stats['total_students'] }}</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <div class="flex items-center">
+                    <i class="fas fa-book text-blue-600 text-2xl mr-3"></i>
+                    <div>
+                        <h3 class="text-sm font-semibold text-blue-800">Subjects</h3>
+                        <p class="text-gray-700">{{ $stats['subjects_count'] }}</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Current Term View -->
-        <template x-if="currentTerm !== 'annual'">
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 animate__animated animate__fadeIn">
-                <h2 class="text-xl font-bold text-blue-800 mb-4">
-                    {{ $semesters->firstWhere('id', $semesters->first()->id)?->name }} Results
-                </h2>
-                
-                <!-- Term Statistics -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <x-stat-card 
-                        :value="number_format($termStats[$semesters->first()->id]['average_percentage'] ?? 0, 1).'%'" 
-                        label="Term Average" 
-                        color="blue" />
-                    <x-stat-card 
-                        :value="number_format($termStats[$semesters->first()->id]['pass_rate'] ?? 0, 1).'%'" 
-                        label="Pass Rate" 
-                        color="green" />
-                    <x-stat-card 
-                        :value="$termStats[$semesters->first()->id]['top_student'] ?? 'N/A'" 
-                        label="Top Student" 
-                        color="purple" />
-                    <x-stat-card 
-                        :value="$termStats[$semesters->first()->id]['top_score'] ?? 0" 
-                        label="Top Score" 
-                        color="yellow" />
-                </div>
-
-                <!-- Term Performance Chart -->
-                <div class="bg-white p-4 rounded-lg shadow mb-6">
-                    <h3 class="text-lg font-medium text-gray-800 mb-3">Subject Performance</h3>
-                    <canvas id="termPerformanceChart" height="150"></canvas>
-                </div>
-
-                <!-- Term Results Table -->
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-blue-50">
-                            <tr>
-                                <th @click="sortBy('rank')" class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider cursor-pointer">
-                                    Rank <i class="fas" :class="sortField === 'rank' ? (sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'"></i>
-                                </th>
-                                <th @click="sortBy('name')" class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider cursor-pointer">
-                                    Student <i class="fas" :class="sortField === 'name' ? (sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'"></i>
-                                </th>
-                                @foreach($subjects as $subject)
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                        {{ $subject->name }}
-                                    </th>
-                                @endforeach
-                                <th @click="sortBy('total')" class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider cursor-pointer">
-                                    Total <i class="fas" :class="sortField === 'total' ? (sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'"></i>
-                                </th>
-                                <th @click="sortBy('average')" class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider cursor-pointer">
-                                    Average <i class="fas" :class="sortField === 'average' ? (sortDirection === 'asc' ? 'fa-sort-up' : 'fa-sort-down') : 'fa-sort'"></i>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-                            <template x-for="report in sortedTermReports" :key="report.student.id">
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900" x-text="report.rank"></td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <div class="flex items-center">
-                                            <div class="flex-shrink-0 h-10 w-10">
-                                                <img class="h-10 w-10 rounded-full" :src="report.student.user.profile_photo_url" :alt="report.student.user.name">
-                                            </div>
-                                            <div class="ml-4">
-                                                <div class="text-sm font-medium text-gray-900" x-text="report.student.user.name"></div>
-                                                <div class="text-sm text-gray-500" x-text="report.student.admission_number"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    @foreach($subjects as $subject)
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                            <div x-show="report.results[{{ $subject->id }}]" class="flex flex-col">
-                                                <span class="text-xs text-gray-500">Test: <span x-text="report.results[{{ $subject->id }}].test_score"></span></span>
-                                                <span class="text-xs text-gray-500">Exam: <span x-text="report.results[{{ $subject->id }}].exam_score"></span></span>
-                                                <span class="font-medium" x-text="report.results[{{ $subject->id }}].total_score"></span>
-                                            </div>
-                                            <div x-show="!report.results[{{ $subject->id }}]" class="text-gray-400">-</div>
-                                        </td>
-                                    @endforeach
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center" x-text="report.total_score"></td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-center" x-text="report.percentage + '%'"></td>
-                                </tr>
-                            </template>
-                        </tbody>
-                    </table>
+      <!-- Current Term View -->
+<div x-show="currentTerm !== 'annual'">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+        <h2 class="text-xl font-bold text-blue-800 mb-4">
+            <template x-for="semester in semesters" :key="semester.id">
+                <span x-show="currentTerm == semester.id" x-text="semester.name + ' Results'"></span>
+            </template>
+        </h2>
+        
+        <template x-for="semester in semesters" :key="'sem-'+semester.id">
+            <div x-show="currentTerm == semester.id">
+                <div x-data="{ termId: semester.id }">
+                    @if(isset($termReports) && count($termReports) > 0)
+                        <!-- Term Statistics -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                <h3 class="text-sm font-semibold text-blue-800">Term Average</h3>
+                                <p class="text-xl font-bold" x-text="termStats[termId]?.average_percentage?.toFixed(1) + '%' || '0%'"></p>
+                            </div>
+                            
+                            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                                <h3 class="text-sm font-semibold text-green-800">Pass Rate</h3>
+                                <p class="text-xl font-bold" x-text="termStats[termId]?.pass_rate?.toFixed(1) + '%' || '0%'"></p>
+                            </div>
+                            
+                            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                                <h3 class="text-sm font-semibold text-purple-800">Top Student</h3>
+                                <p class="text-xl font-bold" x-text="termStats[termId]?.top_student || 'N/A'"></p>
+                            </div>
+                            
+                            <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                <h3 class="text-sm font-semibold text-yellow-800">Top Score</h3>
+                                <p class="text-xl font-bold" x-text="termStats[termId]?.top_score?.toFixed(1) + '%' || '0%'"></p>
+                            </div>
+                        </div>
+        
+                        <!-- Term Results Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-blue-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                                            Rank
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                                            Student
+                                        </th>
+                                        @foreach($subjects as $subject)
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                                                {{ $subject->name }}
+                                            </th>
+                                        @endforeach
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                                            Total
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
+                                            Average
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <template x-for="report in termReports[termId]" :key="report.student.id">
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900" x-text="report.rank"></td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center">
+                                                    <div class="flex-shrink-0 h-10 w-10">
+                                                        <img class="h-10 w-10 rounded-full" 
+                                                             :src="report.student.user.profile_photo_url" 
+                                                             :alt="report.student.user.name">
+                                                    </div>
+                                                    <div class="ml-4">
+                                                        <div class="text-sm font-medium text-gray-900" x-text="report.student.user.name"></div>
+                                                        <div class="text-sm text-gray-500" x-text="report.student.admission_number"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            @foreach($subjects as $subject)
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                                                    <template x-if="report.results[{{ $subject->id }}]">
+                                                        <div class="flex flex-col">
+                                                            <span class="text-xs text-gray-500" x-text="'Test: ' + report.results[{{ $subject->id }}].test_score"></span>
+                                                            <span class="text-xs text-gray-500" x-text="'Exam: ' + report.results[{{ $subject->id }}].exam_score"></span>
+                                                            <span class="font-medium" x-text="report.results[{{ $subject->id }}].total_score"></span>
+                                                        </div>
+                                                    </template>
+                                                    <template x-if="!report.results[{{ $subject->id }}]">
+                                                        <div class="text-gray-400">-</div>
+                                                    </template>
+                                                </td>
+                                            @endforeach
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center" x-text="report.total_score"></td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center" x-text="report.percentage + '%'"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="bg-yellow-50 p-4 rounded-lg text-center">
+                            <p class="text-yellow-600">No results found for this term</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </template>
+    </div>
+</div>
 
         <!-- Annual Summary View -->
         <template x-if="currentTerm === 'annual'">
-            <div class="space-y-6 animate__animated animate__fadeIn">
+            <div class="space-y-6">
                 <!-- Annual Performance Summary -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                     <h2 class="text-xl font-bold text-blue-800 mb-4">Annual Performance Summary</h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <x-stat-card 
-                            :value="number_format(array_sum(array_map(function($r) { return $r['average_percentage']; }, $annualReports)) / count($annualReports), 1).'%'" 
-                            label="Annual Average" 
-                            color="blue" />
-                        <x-stat-card 
-                            :value="max(array_map(function($r) { return $r['average_percentage']; }, $annualReports)).'%'" 
-                            label="Highest Score" 
-                            color="green" />
-                        <x-stat-card 
-                            :value="min(array_map(function($r) { return $r['average_percentage']; }, $annualReports)).'%'" 
-                            label="Lowest Score" 
-                            color="yellow" />
-                        <x-stat-card 
-                            :value="count(array_filter($annualReports, function($r) { return $r['average_percentage'] >= 50; }))" 
-                            label="Passing Students" 
-                            color="purple" />
-                    </div>
-
-                    <!-- Performance Trends Chart -->
-                    <div class="bg-white p-4 rounded-lg shadow mb-6">
-                        <h3 class="text-lg font-medium text-gray-800 mb-3">Performance Trends Across Terms</h3>
-                        <canvas id="performanceTrendsChart" height="150"></canvas>
+                        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <h3 class="text-sm font-semibold text-blue-800">Annual Average</h3>
+                            <p class="text-xl font-bold">
+                                {{ number_format(array_sum(array_map(function($r) { return $r['average_percentage']; }, $annualReports)) / count($annualReports), 1) }}%
+                            </p>
+                        </div>
+                        
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <h3 class="text-sm font-semibold text-green-800">Highest Score</h3>
+                            <p class="text-xl font-bold">
+                                {{ max(array_map(function($r) { return $r['average_percentage']; }, $annualReports)) }}%
+                            </p>
+                        </div>
+                        
+                        <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                            <h3 class="text-sm font-semibold text-yellow-800">Lowest Score</h3>
+                            <p class="text-xl font-bold">
+                                {{ min(array_map(function($r) { return $r['average_percentage']; }, $annualReports)) }}%
+                            </p>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                            <h3 class="text-sm font-semibold text-purple-800">Passing Students</h3>
+                            <p class="text-xl font-bold">
+                                {{ count(array_filter($annualReports, function($r) { return $r['average_percentage'] >= 50; })) }}
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Top/Bottom Performers -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <x-performer-section 
-                            title="Top 5 Performers" 
-                            icon="trophy" 
-                            color="green" 
-                            :reports="array_slice($annualReports, 0, 5)" />
-                        <x-performer-section 
-                            title="Bottom 5 Performers" 
-                            icon="exclamation-triangle" 
-                            color="red" 
-                            :reports="array_slice(array_reverse($annualReports), 0, 5)" />
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                        <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                            <h3 class="text-lg font-semibold text-green-800 mb-3">
+                                <i class="fas fa-trophy mr-2"></i> Top 5 Performers
+                            </h3>
+                            <div class="space-y-2">
+                                @foreach(array_slice($annualReports, 0, 5) as $report)
+                                <div class="flex items-center justify-between bg-white p-2 rounded">
+                                    <div class="flex items-center">
+                                        <span class="font-bold text-gray-700 mr-2">{{ $report['rank'] }}</span>
+                                        <img class="h-8 w-8 rounded-full mr-2" 
+                                             src="{{ $report['student']->user->profile_photo_url }}" 
+                                             alt="{{ $report['student']->user->name }}">
+                                        <span>{{ $report['student']->user->name }}</span>
+                                    </div>
+                                    <span class="font-bold text-green-600">{{ $report['average_percentage'] }}%</span>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
+                        
+                        <div class="bg-red-50 p-4 rounded-lg border border-red-200">
+                            <h3 class="text-lg font-semibold text-red-800 mb-3">
+                                <i class="fas fa-exclamation-triangle mr-2"></i> Bottom 5 Performers
+                            </h3>
+                            <div class="space-y-2">
+                                @foreach(array_slice(array_reverse($annualReports), 0, 5) as $report)
+                                <div class="flex items-center justify-between bg-white p-2 rounded">
+                                    <div class="flex items-center">
+                                        <span class="font-bold text-gray-700 mr-2">{{ $report['rank'] }}</span>
+                                        <img class="h-8 w-8 rounded-full mr-2" 
+                                             src="{{ $report['student']->user->profile_photo_url }}" 
+                                             alt="{{ $report['student']->user->name }}">
+                                        <span>{{ $report['student']->user->name }}</span>
+                                    </div>
+                                    <span class="font-bold text-red-600">{{ $report['average_percentage'] }}%</span>
+                                </div>
+                                @endforeach
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -327,129 +399,21 @@
                     </div>
                 </div>
             </div>
-        </template>
+        </template>        
     @endif
 </div>
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('alpine:init', () => {
     Alpine.data('annualClassResults', () => ({
-        currentTerm: @json(isset($semesters) && $semesters->count() ? $semesters->first()->id : 'annual'),
-        sortField: 'rank',
-        sortDirection: 'asc',
-        
-        get sortedTermReports() {
-            if (this.currentTerm === 'annual') return [];
-            const reports = @json($termReports ?? [])[this.currentTerm] || [];
-            return [...reports].sort((a, b) => {
-                const valA = this.getSortValue(a, this.sortField);
-                const valB = this.getSortValue(b, this.sortField);
-                return this.sortDirection === 'asc' ? valA > valB ? 1 : -1 : valA < valB ? 1 : -1;
-            });
-        },
-        
-        getSortValue(report, field) {
-            switch(field) {
-                case 'name': return report.student.user.name.toLowerCase();
-                case 'rank': return report.rank;
-                case 'total': return report.total_score;
-                case 'average': return report.percentage;
-                default: return report.rank;
-            }
-        },
-        
-        sortBy(field) {
-            if (this.sortField === field) {
-                this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                this.sortField = field;
-                this.sortDirection = 'asc';
-            }
-        },
-        
-        initCharts() {
-            if (this.currentTerm === 'annual') {
-                this.initAnnualCharts();
-            } else {
-                this.initTermCharts();
-            }
-        },
-        
-        initAnnualCharts() {
-            if (document.getElementById('performanceTrendsChart') && @json(isset($semesters))) {
-                const ctx = document.getElementById('performanceTrendsChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: @json(isset($semesters) ? $semesters->pluck('name') : []),
-                        datasets: [
-                            {
-                                label: 'Class Average',
-                                data: @json(isset($semesters) ? array_map(function($s) use ($termStats) { return $termStats[$s->id]['average_percentage'] ?? 0; }, $semesters->all()) : []),
-                                borderColor: 'rgba(59, 130, 246, 1)',
-                                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                                tension: 0.3,
-                                fill: true
-                            },
-                            {
-                                label: 'Top Student',
-                                data: @json(isset($semesters) ? array_map(function($s) use ($termStats) { return $termStats[$s->id]['top_score'] ?? 0; }, $semesters->all()) : []),
-                                borderColor: 'rgba(16, 185, 129, 1)',
-                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                tension: 0.3,
-                                fill: true
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                title: {
-                                    display: true,
-                                    text: 'Percentage'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
-        },
-        
-        initTermCharts() {
-            if (document.getElementById('termPerformanceChart') && @json(isset($subjects) && isset($termStats))) {
-                const ctx = document.getElementById('termPerformanceChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: @json(isset($subjects) ? $subjects->pluck('name') : []),
-                        datasets: [{
-                            label: 'Class Average',
-                            data: @json(isset($subjects) ? array_map(function($s) use ($termStats) { 
-                                return $termStats[this.currentTerm]?.subject_averages[$s->id] ?? 0; 
-                            }, $subjects->all()) : []),
-                            backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                max: 100,
-                                title: {
-                                    display: true,
-                                    text: 'Score'
-                                }
-                            }
-                        }
-                    }
-                });
-            }
+        currentTerm: 'annual',
+        semesters: @json($semesters ?? []),
+        termReports: @json($termReports ?? []),
+        termStats: @json($termStats ?? []),
+        annualReports: @json($annualReports ?? []),
+        init() {
+            // Initialize any additional data or logic here
         }
     }));
 });
@@ -457,11 +421,10 @@ document.addEventListener('alpine:init', () => {
 @endpush
 
 @push('styles')
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 <style>
     @media print {
-        .print-only {
+        .print\:block {
             display: block !important;
         }
         .no-print {
