@@ -30,7 +30,7 @@
             }
 
             .print-border {
-                border: 1px solid #000;
+                border: 2px solid #000;
                 min-height: 27.7cm;
                 box-sizing: border-box;
             }
