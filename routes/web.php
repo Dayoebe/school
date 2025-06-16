@@ -74,7 +74,9 @@ Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::cl
     ->name('result.student.annual');
 
 
-
+// Add this to your existing routes
+Route::get('/student-result-history/{student}', \App\Livewire\StudentResultHistory::class)
+    ->name('student-result-history');
 
 
 
