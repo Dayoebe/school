@@ -38,12 +38,14 @@ class ResultPage extends Component
     public $grandTotalExam = 0;
     public $totalPossibleMarks = 0;
     public $percentage = 0;
+    public $recentActivities = [];
     public $bulkEditMode = false;
-public $selectedSubjectForBulkEdit = null;
-public $bulkResults = [];
-public $bulkStudents = [];
+    public $selectedSubjectForBulkEdit = null;
+    public $bulkResults = [];
+    public $bulkStudents = [];
     public $principalComment = 'Keep up the good work!';
     public $overallTeacherComment = 'Impressive';
+    public $showSubjectModal = false; // Added for subject modal
     protected $paginationTheme = 'tailwind';
 
     public function rules()
@@ -51,15 +53,106 @@ public $bulkStudents = [];
         $rules = [];
         foreach ($this->subjects as $subject) {
             $id = $subject->id;
-            $rules["results.$id.test_score"] = 'nullable|numeric|min:0|max:40';
+            $rules["results.$id.ca1_score"] = 'nullable|numeric|min:0|max:10';
+            $rules["results.$id.ca2_score"] = 'nullable|numeric|min:0|max:10';
+            $rules["results.$id.ca3_score"] = 'nullable|numeric|min:0|max:10';
+            $rules["results.$id.ca4_score"] = 'nullable|numeric|min:0|max:10';
             $rules["results.$id.exam_score"] = 'nullable|numeric|min:0|max:60';
             $rules["results.$id.comment"] = 'nullable|string|max:255';
         }
         return $rules;
     }
 
+    public function openSubjectBulkEdit($subjectId)
+    {
+        $this->selectedSubjectForBulkEdit = $subjectId;
+        
+        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function ($q) use ($subjectId) {
+            $q->where('subject_id', $subjectId);
+        })
+        ->with(['user', 'results' => function ($q) use ($subjectId) {
+            $q->where('subject_id', $subjectId)
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('semester_id', $this->semesterId);
+        }])
+        ->get();
+
+        $this->bulkResults = [];
+        foreach ($this->bulkStudents as $student) {
+            $existing = $student->results->first();
+            $this->bulkResults[$student->id] = [
+                'ca1_score' => $existing?->ca1_score ?? null,
+                'ca2_score' => $existing?->ca2_score ?? null,
+                'ca3_score' => $existing?->ca3_score ?? null,
+                'ca4_score' => $existing?->ca4_score ?? null,
+                'exam_score' => $existing?->exam_score ?? null,
+                'comment' => $existing?->teacher_comment ?? '',
+            ];
+        }
+
+        $this->showSubjectModal = false;
+        $this->bulkEditMode = true;
+    }
+
+    public function saveBulkResults()
+    {
+        $this->validate([
+            'bulkResults.*.ca1_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.ca2_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.ca3_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.ca4_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
+            'bulkResults.*.comment' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                foreach ($this->bulkResults as $studentId => $data) {
+                    if (
+                        !is_null($data['ca1_score']) || !is_null($data['ca2_score']) ||
+                        !is_null($data['ca3_score']) || !is_null($data['ca4_score']) ||
+                        !is_null($data['exam_score'])
+                    ) {
+
+                        $total = ($data['ca1_score'] ?? 0) + ($data['ca2_score'] ?? 0) +
+                            ($data['ca3_score'] ?? 0) + ($data['ca4_score'] ?? 0) +
+                            ($data['exam_score'] ?? 0);
+
+                        Result::updateOrCreate(
+                            [
+                                'student_record_id' => $studentId,
+                                'subject_id' => $this->selectedSubjectForBulkEdit,
+                                'academic_year_id' => $this->academicYearId,
+                                'semester_id' => $this->semesterId,
+                            ],
+                            [
+                                'ca1_score' => $data['ca1_score'],
+                                'ca2_score' => $data['ca2_score'],
+                                'ca3_score' => $data['ca3_score'],
+                                'ca4_score' => $data['ca4_score'],
+                                'exam_score' => $data['exam_score'],
+                                'teacher_comment' => $data['comment'],
+                                'total_score' => $total,
+                            ]
+                        );
+                    }
+                }
+            });
+
+            $this->dispatch('showSuccess', 'Bulk results saved successfully!');
+            $this->bulkEditMode = false;
+        } catch (\Exception $e) {
+            $this->dispatch('showSuccess', 'Error saving results: ' . $e->getMessage());
+        }
+    }
+
     public function mount($studentId = null)
     {
+        $this->recentActivities = [
+            ['icon' => 'upload', 'action' => 'Bulk upload initiated', 'time' => now()->subMinutes(5)->diffForHumans()],
+            ['icon' => 'user-edit', 'action' => 'Individual result updated', 'time' => now()->subHours(2)->diffForHumans()],
+            ['icon' => 'eye', 'action' => 'Results viewed', 'time' => now()->subDays(1)->diffForHumans()],
+        ];
         $this->subjects = auth()->user()->isAdmin() ? Subject::all() : auth()->user()->assignedSubjects;
         $this->setDefaultAcademicYearAndSemester();
 
@@ -79,7 +172,10 @@ public $bulkStudents = [];
                 ])->first();
 
                 $this->results[$subject->id] = [
-                    'test_score' => $existing?->test_score ?? '',
+                    'ca1_score' => $existing?->ca1_score ?? '',
+                    'ca2_score' => $existing?->ca2_score ?? '',
+                    'ca3_score' => $existing?->ca3_score ?? '',
+                    'ca4_score' => $existing?->ca4_score ?? '',
                     'exam_score' => $existing?->exam_score ?? '',
                     'comment' => $existing?->teacher_comment ?? '',
                 ];
@@ -190,7 +286,7 @@ public $bulkStudents = [];
         $this->reset(['selectedSubject', 'showStudents']);
         $this->subjects = $this->getSubjectsProperty();
     }
-
+   
     public function goToUpload($studentId)
     {
         $this->mode = 'upload';
@@ -210,7 +306,10 @@ public $bulkStudents = [];
             ])->first();
 
             $this->results[$subject->id] = [
-                'test_score' => $existing?->test_score,
+                'ca1_score' => $existing?->ca1_score,
+                'ca2_score' => $existing?->ca2_score,
+                'ca3_score' => $existing?->ca3_score,
+                'ca4_score' => $existing?->ca4_score,
                 'exam_score' => $existing?->exam_score,
                 'comment' => $existing?->teacher_comment ?? '',
             ];
@@ -234,19 +333,26 @@ public $bulkStudents = [];
                 'semester_id' => $this->semesterId,
             ])->first();
 
-            $test = (int) ($existing?->test_score ?? 0);
+            $ca1 = (int) ($existing?->ca1_score ?? 0);
+            $ca2 = (int) ($existing?->ca2_score ?? 0);
+            $ca3 = (int) ($existing?->ca3_score ?? 0);
+            $ca4 = (int) ($existing?->ca4_score ?? 0);
             $exam = (int) ($existing?->exam_score ?? 0);
+            $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
 
             $this->results[$subject->id] = [
-                'test_score' => $test,
+                'ca1_score' => $ca1,
+                'ca2_score' => $ca2,
+                'ca3_score' => $ca3,
+                'ca4_score' => $ca4,
                 'exam_score' => $exam,
-                'total_score' => $test + $exam,
+                'total_score' => $total,
                 'comment' => $existing?->teacher_comment ?? '',
             ];
 
-            $this->grandTotalTest += $test;
+            $this->grandTotalTest += $ca1 + $ca2 + $ca3 + $ca4;
             $this->grandTotalExam += $exam;
-            $this->grandTotal += $test + $exam;
+            $this->grandTotal += $total;
         }
 
         $termReport = TermReport::where([
@@ -299,21 +405,24 @@ public $bulkStudents = [];
         }
 
         $entry = $this->results[$subjectId];
-        $test = (int) ($entry['test_score'] ?? 0);
+        $ca1 = (int) ($entry['ca1_score'] ?? 0);
+        $ca2 = (int) ($entry['ca2_score'] ?? 0);
+        $ca3 = (int) ($entry['ca3_score'] ?? 0);
+        $ca4 = (int) ($entry['ca4_score'] ?? 0);
         $exam = (int) ($entry['exam_score'] ?? 0);
-        $total = $test + $exam;
+        $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
         $grade = $this->calculateGrade($total);
 
         $comment = match ($grade) {
-            'A1' => 'Outstanding! Keep up the brilliance ✨',
-            'B2' => 'Excellent work! You’re almost at the top 💪',
-            'B3' => 'Very good! Stay consistent 🔥',
-            'C4' => 'Good effort, room for improvement 👍',
-            'C5' => 'You did well. Keep aiming higher 🌱',
-            'C6' => 'Satisfactory. Try to do better next time 📈',
-            'D7' => 'Passable, but improvement is needed ⏳',
-            'E8' => 'Weak performance. More effort required ⚠️',
-            'F9' => 'Failing grade. Needs urgent attention 🚨',
+            'A1' => 'Distinction ✨',
+            'B2' => 'Very good 💪',
+            'B3' => 'Good 🔥',
+            'C4' => 'Credit 👍',
+            'C5' => 'Credit 🌱',
+            'C6' => 'Credit 📈',
+            'D7' => 'Pass ⏳',
+            'E8' => 'Pass ⚠️',
+            'F9' => 'Fail 🚨',
             default => '',
         };
 
@@ -326,7 +435,10 @@ public $bulkStudents = [];
             'academic_year_id' => $this->academicYearId,
             'semester_id' => $this->semesterId,
         ], [
-            'test_score' => $test,
+            'ca1_score' => $ca1,
+            'ca2_score' => $ca2,
+            'ca3_score' => $ca3,
+            'ca4_score' => $ca4,
             'exam_score' => $exam,
             'total_score' => $total,
             'teacher_comment' => $entry['comment'] ?? '',
@@ -337,25 +449,26 @@ public $bulkStudents = [];
     public function saveResults()
     {
         $this->validate([
-            'results.*.test_score' => 'nullable|numeric|min:0|max:40',
+            'results.*.ca1_score' => 'nullable|numeric|min:0|max:10',
+            'results.*.ca2_score' => 'nullable|numeric|min:0|max:10',
+            'results.*.ca3_score' => 'nullable|numeric|min:0|max:10',
+            'results.*.ca4_score' => 'nullable|numeric|min:0|max:10',
             'results.*.exam_score' => 'nullable|numeric|min:0|max:60',
             'results.*.comment' => 'nullable|string|max:255',
         ]);
 
-        if (empty($this->results)) {
-            session()->flash('error', 'No results to save.');
-            return;
-        }
-
         try {
             DB::transaction(function () {
                 foreach ($this->results as $subjectId => $data) {
-                    $test = isset($data['test_score']) ? (int) $data['test_score'] : null;
+                    $ca1 = isset($data['ca1_score']) ? (int) $data['ca1_score'] : null;
+                    $ca2 = isset($data['ca2_score']) ? (int) $data['ca2_score'] : null;
+                    $ca3 = isset($data['ca3_score']) ? (int) $data['ca3_score'] : null;
+                    $ca4 = isset($data['ca4_score']) ? (int) $data['ca4_score'] : null;
                     $exam = isset($data['exam_score']) ? (int) $data['exam_score'] : null;
-                    $total = ($test ?? 0) + ($exam ?? 0);
+                    $total = ($ca1 ?? 0) + ($ca2 ?? 0) + ($ca3 ?? 0) + ($ca4 ?? 0) + ($exam ?? 0);
                     $comment = $data['comment'] ?? null;
 
-                    if ($test === null && $exam === null) {
+                    if ($ca1 === null && $ca2 === null && $ca3 === null && $ca4 === null && $exam === null) {
                         continue;
                     }
 
@@ -367,12 +480,14 @@ public $bulkStudents = [];
                             'semester_id' => $this->semesterId,
                         ],
                         [
-                            'test_score' => $test,
+                            'ca1_score' => $ca1,
+                            'ca2_score' => $ca2,
+                            'ca3_score' => $ca3,
+                            'ca4_score' => $ca4,
                             'exam_score' => $exam,
                             'total_score' => $total,
                             'teacher_comment' => $comment,
                             'approved' => false,
-                            'resumption_date' => now()->addMonth(),
                         ]
                     );
                 }
@@ -395,80 +510,6 @@ public $bulkStudents = [];
             session()->flash('error', 'Failed to save results. Error: ' . $e->getMessage());
         }
     }
-
-
-
-
-
-
-    public function openBulkEdit($subjectId)
-    {
-        $this->selectedSubjectForBulkEdit = $subjectId;
-        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function($q) use ($subjectId) {
-            $q->where('subject_id', $subjectId);
-        })
-        ->with(['user', 'results' => function($q) use ($subjectId) {
-            $q->where('subject_id', $subjectId)
-              ->where('academic_year_id', $this->academicYearId)
-              ->where('semester_id', $this->semesterId);
-        }])
-        ->get();
-    
-        $this->bulkResults = [];
-        foreach ($this->bulkStudents as $student) {
-            $existing = $student->results->first();
-            $this->bulkResults[$student->id] = [
-                'test_score' => $existing?->test_score ?? null,
-                'exam_score' => $existing?->exam_score ?? null,
-                'comment' => $existing?->teacher_comment ?? '',
-            ];
-        }
-    
-        $this->bulkEditMode = true;
-    }
-    
-    public function saveBulkResults()
-    {
-        $this->validate([
-            'bulkResults.*.test_score' => 'nullable|numeric|min:0|max:40',
-            'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
-            'bulkResults.*.comment' => 'nullable|string|max:255',
-        ]);
-    
-        foreach ($this->bulkResults as $studentId => $data) {
-            if (!is_null($data['test_score']) || !is_null($data['exam_score'])) {
-                Result::updateOrCreate(
-                    [
-                        'student_record_id' => $studentId,
-                        'subject_id' => $this->selectedSubjectForBulkEdit,
-                        'academic_year_id' => $this->academicYearId,
-                        'semester_id' => $this->semesterId,
-                    ],
-                    [
-                        'test_score' => $data['test_score'],
-                        'exam_score' => $data['exam_score'],
-                        'teacher_comment' => $data['comment'],
-                        'total_score' => ($data['test_score'] ?? 0) + ($data['exam_score'] ?? 0),
-                    ]
-                );
-            }
-        }
-    
-        session()->flash('success', 'Bulk results saved successfully!');
-        $this->bulkEditMode = false;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
 
     public function render()
     {
