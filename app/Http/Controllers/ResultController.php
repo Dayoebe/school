@@ -56,9 +56,12 @@ class ResultController extends Controller
         }
 
         $results = $rawResults->keyBy('subject_id')->map(function ($result) {
-            $test = (int) $result->test_score;
+            $ca1 = (int) $result->ca1_score;
+            $ca2 = (int) $result->ca2_score;
+            $ca3 = (int) $result->ca3_score;
+            $ca4 = (int) $result->ca4_score;
             $exam = (int) $result->exam_score;
-            $total = $test + $exam;
+            $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
 
             $grade = match (true) {
                 $total >= 75 => 'A1',
@@ -85,7 +88,10 @@ class ResultController extends Controller
             };
 
             return [
-                'test_score' => $test,
+                'ca1_score' => $ca1,
+                'ca2_score' => $ca2,
+                'ca3_score' => $ca3,
+                'ca4_score' => $ca4,
                 'exam_score' => $exam,
                 'total_score' => $total,
                 'grade' => $grade,

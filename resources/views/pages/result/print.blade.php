@@ -20,9 +20,9 @@
             }
 
             .print-container {
-                transform: scale(0.9);
+                transform: scale(0.85);
                 transform-origin: top left;
-                width: 111%;
+                width: 117%;
             }
 
             .no-print {
@@ -129,8 +129,11 @@
                 <thead class="bg-blue-900 text-white">
                     <tr>
                         <th class="border p-1 text-left">Subject</th>
-                        <th class="border p-1">Test</th>
-                        <th class="border p-1">Exam</th>
+                        <th class="border p-1">CA1 (10)</th>
+                        <th class="border p-1">CA2 (10)</th>
+                        <th class="border p-1">CA3 (10)</th>
+                        <th class="border p-1">CA4 (10)</th>
+                        <th class="border p-1">Exam (60)</th>
                         <th class="border p-1">Total</th>
                         <th class="border p-1">Grade</th>
                         <th class="border p-1">Highest Score</th>
@@ -149,7 +152,10 @@
                         @endphp
                         <tr class="{{ $gradeClass }}">
                             <td class="border p-1">{{ $subject->name }}</td>
-                            <td class="border p-1 text-center">{{ $result['test_score'] ?? '-' }}</td>
+                            <td class="border p-1 text-center">{{ $result['ca1_score'] ?? '-' }}</td>
+                            <td class="border p-1 text-center">{{ $result['ca2_score'] ?? '-' }}</td>
+                            <td class="border p-1 text-center">{{ $result['ca3_score'] ?? '-' }}</td>
+                            <td class="border p-1 text-center">{{ $result['ca4_score'] ?? '-' }}</td>
                             <td class="border p-1 text-center">{{ $result['exam_score'] ?? '-' }}</td>
                             <td class="border p-1 text-center {{ $isHighest ? 'font-bold text-green-600' : '' }} {{ $isLowest ? 'font-bold text-red-600' : '' }}">
                                 {{ $result['total_score'] ?? '-' }}
@@ -200,14 +206,30 @@
             <div class="border border-gray-300 p-4 rounded-lg shadow-sm">
                 <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-2 mb-2">ACADEMIC SUMMARY</h3>
                 <div class="space-y-2">
-                    <p><span class="font-semibold">Subjects:</span> {{ count($subjects) }} (Passed: {{ $subjectsPassed }})</p>
-                    <p><span class="font-semibold">Total Score:</span> {{ $totalScore }}/{{ $maxTotalScore }}</p>
-                    <p><span class="font-semibold">Percentage:</span> {{ round(($totalScore / $maxTotalScore) * 100, 2) }}%</p>
+                    @php
+                        $subjectCount = count($subjects);
+                        $passedCount = $subjectCount > 0 
+                            ? ($subjectsPassed ?? collect($results)->filter(fn($r) => ($r['total_score'] ?? 0) >= 40)->count())
+                            : 0;
+                        $maxPossible = $subjectCount * 100;
+                        $percentage = $maxPossible > 0 
+                            ? round(($totalScore / $maxPossible) * 100, 2) 
+                            : 0;
+                        $passed = $maxPossible > 0 && $totalScore >= ($maxPossible * 0.4);
+                    @endphp
+                    
+                    <p><span class="font-semibold">Subjects:</span> {{ $subjectCount }} (Passed: {{ $passedCount }})</p>
+                    <p><span class="font-semibold">Total Score:</span> {{ $totalScore }}/{{ $maxPossible }}</p>
+                    <p><span class="font-semibold">Percentage:</span> {{ $percentage }}%</p>
                     <p><span class="font-semibold">Position:</span> {{ $classPosition }} out of {{ $totalStudents }}</p>
                     <p><span class="font-semibold">Result:</span>
-                        <span class="font-bold {{ $totalScore < $maxTotalScore * 0.4 ? 'text-red-600' : 'text-green-600' }}">
-                            {{ $totalScore < $maxTotalScore * 0.4 ? 'FAILED' : 'PASSED' }}
-                        </span>
+                        @if($subjectCount > 0)
+                            <span class="font-bold {{ $passed ? 'text-green-600' : 'text-red-600' }}">
+                                {{ $passed ? 'PASSED' : 'FAILED' }}
+                            </span>
+                        @else
+                            <span class="font-bold text-gray-600">N/A</span>
+                        @endif
                     </p>
                 </div>
             </div>
