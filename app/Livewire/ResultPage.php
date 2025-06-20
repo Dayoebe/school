@@ -533,6 +533,59 @@ class ResultPage extends Component
         ]);
     }
 
+    public function deleteResult($subjectId)
+    {
+        try {
+            Result::where([
+                'student_record_id' => $this->studentRecord->id,
+                'subject_id' => $subjectId,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ])->delete();
+
+            // Reset the result fields for this subject
+            $this->results[$subjectId] = [
+                'ca1_score' => '',
+                'ca2_score' => '',
+                'ca3_score' => '',
+                'ca4_score' => '',
+                'exam_score' => '',
+                'comment' => '',
+                'grade' => '',
+            ];
+
+            session()->flash('success', 'Result deleted successfully!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to delete result: ' . $e->getMessage());
+        }
+    }
+
+    public function deleteBulkResult($studentId)
+    {
+        try {
+            Result::where([
+                'student_record_id' => $studentId,
+                'subject_id' => $this->selectedSubjectForBulkEdit,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ])->delete();
+
+            // Reset the bulk result fields for this student
+            $this->bulkResults[$studentId] = [
+                'ca1_score' => null,
+                'ca2_score' => null,
+                'ca3_score' => null,
+                'ca4_score' => null,
+                'exam_score' => null,
+                'comment' => '',
+            ];
+
+            $this->dispatch('showSuccess', 'Result deleted successfully!');
+        } catch (\Exception $e) {
+            $this->dispatch('showSuccess', 'Failed to delete result: ' . $e->getMessage());
+        }
+    }
+    
     public function clearFilters()
     {
         $this->reset(['selectedClass', 'selectedSection', 'studentSearch', 'selectedSubject']);
