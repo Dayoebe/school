@@ -11,11 +11,14 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-    <!-- Student Profile Header -->
+    <!-- Student Profile Header with Back Button -->
     <div class="bg-gradient-to-r from-indigo-600 to-blue-700 rounded-2xl shadow-2xl p-6 mb-8 relative overflow-hidden">
         <div class="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
         <div class="flex flex-col md:flex-row justify-between items-center relative z-10">
             <div class="flex items-center mb-4 md:mb-0">
+                <a href="{{ url()->previous() }}" class="mr-4 text-white hover:text-gray-200 transition-colors flex items-center">
+                    <i class="fas fa-arrow-left mr-2"></i> Back
+                </a>
                 <div class="relative">
                     <img class="w-24 h-24 rounded-full border-4 border-white/40 shadow-xl" 
                          src="{{ $studentRecord->user->profile_photo_url ?? asset('images/default-avatar.png') }}" 
@@ -114,30 +117,23 @@
                 </div>
             </div>
 
-            <!-- Academic Progress -->
-            <div class="bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-2xl shadow-xl p-6 transform transition-transform hover:scale-[1.02]">
+            <!-- Worst Subject -->
+            <div class="bg-gradient-to-br from-rose-500 to-rose-700 text-white rounded-2xl shadow-xl p-6 transform transition-transform hover:scale-[1.02]">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h3 class="text-lg font-semibold mb-2">Academic Progress</h3>
-                        <div class="text-2xl font-bold flex items-center">
-                            @if($overallStats['average_score'] >= 70)
-                                <i class="fas fa-arrow-up mr-2"></i> Excellent
-                            @elseif($overallStats['average_score'] >= 50)
-                                <i class="fas fa-arrow-up-right mr-2"></i> Good
-                            @else
-                                <i class="fas fa-arrows-h mr-2"></i> Steady
-                            @endif
-                        </div>
+                        <h3 class="text-lg font-semibold mb-2">Worst Subject</h3>
+                        <div class="text-2xl font-bold truncate">{{ $overallStats['worst_subject'] }}</div>
+                        <div class="mt-2 text-rose-100">{{ $overallStats['worst_subject_avg'] }}% Average</div>
                     </div>
                     <div class="bg-white/20 p-3 rounded-xl">
-                        <i class="fas fa-trend-up text-2xl"></i>
+                        <i class="fas fa-exclamation-triangle text-2xl"></i>
                     </div>
                 </div>
-                <div class="mt-5 pt-4 border-t border-amber-400/50">
+                <div class="mt-5 pt-4 border-t border-rose-400/50">
                     <div class="flex justify-between text-sm">
-                        <span class="text-amber-100">Compared to Peers</span>
+                        <span class="text-rose-100">Performance</span>
                         <span class="font-medium">
-                            @if($overallStats['average_score'] >= 75) Top 10% @else Average @endif
+                            @if($overallStats['worst_subject_avg'] >= 50) Satisfactory @else Needs Improvement @endif
                         </span>
                     </div>
                 </div>
@@ -223,7 +219,7 @@
                 </div>
             </div>
 
-            <!-- Subject Performance -->
+            <!-- Subject Performance Bar Charts -->
             <div class="lg:col-span-3">
                 <div class="bg-white rounded-2xl shadow-lg p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-5 flex items-center">
@@ -231,36 +227,37 @@
                         Subject Performance
                     </h2>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="space-y-6">
                         @foreach($subjectPerformance as $subject)
                             @php
-                                $barColor = $subject['average'] >= 75 ? 'from-emerald-500 to-emerald-600' :
-                                            ($subject['average'] >= 50 ? 'from-amber-500 to-amber-600' : 'from-rose-500 to-rose-600');
+                                $barColor = $subject['average'] >= 75 ? 'bg-emerald-500' :
+                                            ($subject['average'] >= 50 ? 'bg-amber-500' : 'bg-rose-500');
                                 $icon = match(true) {
                                     $subject['average'] >= 80 => 'fas fa-star text-yellow-300',
                                     $subject['average'] >= 60 => 'fas fa-check-circle text-emerald-400',
                                     default => 'fas fa-book text-indigo-400'
                                 };
+                                $barWidth = min(100, max(5, $subject['average']));
                             @endphp
                             <div class="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                                <div class="flex justify-between mb-3">
+                                <div class="flex justify-between mb-2">
                                     <div class="flex items-center">
                                         <i class="{{ $icon }} text-lg mr-3"></i>
                                         <span class="font-medium text-gray-800">{{ $subject['subject']->name }}</span>
                                     </div>
                                     <span class="font-bold text-gray-800">{{ round($subject['average'], 1) }}%</span>
                                 </div>
-                                <div class="relative">
-                                    <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-                                        <div class="h-full bg-gradient-to-r {{ $barColor }} rounded-full" 
-                                            style="width: {{ $subject['average'] }}%"></div>
-                                    </div>
-                                    <div class="flex justify-between text-xs text-gray-500 mt-1.5">
-                                        <span>0%</span>
-                                        <span>100%</span>
+                                <div class="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
+                                    <div class="h-6 flex items-center justify-end {{ $barColor }} pr-3 text-xs font-medium text-white" 
+                                         style="width: {{ $barWidth }}%">
+                                        {{ round($subject['average'], 1) }}%
                                     </div>
                                 </div>
-                                <div class="mt-2 text-xs text-gray-500">
+                                <div class="mt-1 text-xs text-gray-500 flex justify-between">
+                                    <span>0%</span>
+                                    <span>100%</span>
+                                </div>
+                                <div class="mt-1 text-xs text-gray-500">
                                     @if($subject['average'] >= 75)
                                         Excellent performance
                                     @elseif($subject['average'] >= 50)
@@ -304,8 +301,7 @@
                                     </div>
                                 </div>
                                 <div class="flex items-center">
-                                    <span class="text-sm text-gray-500 mr-3 hidden md:block">
-                                        {{-- {{ $expanded ? 'Collapse' : 'Expand' }} --}}
+                                    <span class="text-sm text-gray-500 mr-3 hidden md:block" x-text="expanded ? 'Collapse' : 'Expand'">
                                     </span>
                                     <i :class="expanded ? 'fas fa-chevron-up' : 'fas fa-chevron-down'" 
                                         class="text-gray-500 group-hover:text-indigo-600"></i>
@@ -452,6 +448,21 @@
         .bg-gradient-to-r, .bg-gradient-to-br {
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
+        }
+        .shadow-xl, .shadow-lg, .shadow-md {
+            box-shadow: none !important;
+        }
+        .rounded-2xl, .rounded-xl {
+            border-radius: 0.25rem !important;
+        }
+        .px-4, .py-6, .p-6 {
+            padding: 1rem !important;
+        }
+        .grid, .flex {
+            display: block !important;
+        }
+        .divide-y > :not([hidden]) ~ :not([hidden]) {
+            border-top-width: 1px;
         }
     }
 </style>

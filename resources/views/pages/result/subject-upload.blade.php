@@ -1,4 +1,4 @@
-<div x-data="{ isOpen: @entangle('bulkEditMode') }" 
+{{-- <div x-data="{ isOpen: @entangle('bulkEditMode') }" 
      x-show="isOpen"
      class="fixed inset-0 z-50 overflow-y-auto"
      x-transition>
@@ -9,7 +9,7 @@
         </div>
 
         <!-- Modal content -->
-        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full"
+        <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full"
              x-on:click.away="isOpen = false">
             <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                 <div class="flex justify-between items-start">
@@ -34,8 +34,12 @@
                         <thead class="bg-gray-50">
                             <tr>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Test (40)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1st CA (10)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">2nd CA (10)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">3rd CA (10)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">4th CA (10)</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exam (60)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comment</th>
                             </tr>
                         </thead>
@@ -50,11 +54,32 @@
                                     </div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <input wire:model.defer="bulkResults.{{ $student->id }}.test_score" 
+                                    <input wire:model.defer="bulkResults.{{ $student->id }}.ca1_score" 
                                            type="number" 
                                            min="0" 
-                                           max="40"
-                                           class="w-20 border rounded px-2 py-1">
+                                           max="10"
+                                           class="w-16 border rounded px-2 py-1">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input wire:model.defer="bulkResults.{{ $student->id }}.ca2_score" 
+                                           type="number" 
+                                           min="0" 
+                                           max="10"
+                                           class="w-16 border rounded px-2 py-1">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input wire:model.defer="bulkResults.{{ $student->id }}.ca3_score" 
+                                           type="number" 
+                                           min="0" 
+                                           max="10"
+                                           class="w-16 border rounded px-2 py-1">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input wire:model.defer="bulkResults.{{ $student->id }}.ca4_score" 
+                                           type="number" 
+                                           min="0" 
+                                           max="10"
+                                           class="w-16 border rounded px-2 py-1">
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <input wire:model.defer="bulkResults.{{ $student->id }}.exam_score" 
@@ -62,6 +87,15 @@
                                            min="0" 
                                            max="60"
                                            class="w-20 border rounded px-2 py-1">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center">
+                                    {{ 
+                                        ($bulkResults[$student->id]['ca1_score'] ?? 0) + 
+                                        ($bulkResults[$student->id]['ca2_score'] ?? 0) + 
+                                        ($bulkResults[$student->id]['ca3_score'] ?? 0) + 
+                                        ($bulkResults[$student->id]['ca4_score'] ?? 0) + 
+                                        ($bulkResults[$student->id]['exam_score'] ?? 0)
+                                    }}
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <input wire:model.defer="bulkResults.{{ $student->id }}.comment" 
@@ -89,4 +123,4 @@
             </div>
         </div>
     </div>
-</div>
+</div> --}}

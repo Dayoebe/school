@@ -244,30 +244,30 @@
                         <i class="fas fa-history mr-2 text-indigo-600"></i>
                         Recent Activity
                     </h2>
-                    
 
-                        <div class="flex flex-wrap gap-4">
-                            @forelse ($recentActivities as $activity)
-                                <div
-                                    class="flex items-start p-3 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-blue-50 transition-all duration-300 flex-1 min-w-[220px] max-w-xs">
-                                    <div class="bg-indigo-100 p-2 rounded-xl mr-3">
-                                        <i class="fas fa-{{ $activity['icon'] }} text-indigo-600 text-sm"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-sm font-medium text-gray-800">{{ $activity['action'] }}</p>
-                                        <p class="text-xs text-gray-500 mt-1">{{ $activity['time'] }}</p>
-                                    </div>
-                                    <div class="text-xs text-gray-400">
-                                        <i class="fas fa-chevron-right"></i>
-                                    </div>
+
+                    <div class="flex flex-wrap gap-4">
+                        @forelse ($recentActivities as $activity)
+                            <div
+                                class="flex items-start p-3 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-blue-50 transition-all duration-300 flex-1 min-w-[220px] max-w-xs">
+                                <div class="bg-indigo-100 p-2 rounded-xl mr-3">
+                                    <i class="fas fa-{{ $activity['icon'] }} text-indigo-600 text-sm"></i>
                                 </div>
-                            @empty
-                                <div class="text-center py-6 text-gray-500 rounded-xl bg-gray-50 w-full">
-                                    <i class="fas fa-info-circle mr-1"></i> No recent activity
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium text-gray-800">{{ $activity['action'] }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">{{ $activity['time'] }}</p>
                                 </div>
-                            @endforelse
-                        </div>
-                    
+                                <div class="text-xs text-gray-400">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center py-6 text-gray-500 rounded-xl bg-gray-50 w-full">
+                                <i class="fas fa-info-circle mr-1"></i> No recent activity
+                            </div>
+                        @endforelse
+                    </div>
+
                 </div>
             </div>
 
@@ -400,6 +400,12 @@
                                                             class="text-white bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 px-4 py-2 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center shadow">
                                                             <i class="fas fa-print mr-1"></i> Print
                                                         </a>
+
+
+                                                        <a href="{{ route('student-result-history', $student->id) }}"
+                                                            class="text-white bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 px-4 py-2 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center shadow">
+                                                            <i class="fas fa-history mr-1"></i> History
+                                                        </a>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -514,8 +520,11 @@
                     <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
                 </div>
 
-                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full"
+                <!-- Modal container with fixed height and flex column layout -->
+                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-6xl sm:w-full h-[90vh] flex flex-col"
                     x-on:click.away="showBulkModal = false">
+
+                    <!-- Modal header -->
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="flex justify-between items-start">
                             <h3 class="text-lg leading-6 font-medium text-gray-900">
@@ -535,35 +544,50 @@
                                 {{ session('success') }}
                             </div>
                         @endif
+                    </div>
 
+                    <!-- Scrollable content area -->
+                    <div class="flex-1 overflow-y-auto px-4 sm:px-6">
                         <div class="mt-6 overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50">
+                                <thead class="bg-gray-50 sticky top-0">
                                     <tr>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Student</th>
+                                            Student
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            1st CA (10)</th>
+                                            1st CA (10)
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            2nd CA (10)</th>
+                                            2nd CA (10)
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            3rd CA (10)</th>
+                                            3rd CA (10)
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            4th CA (10)</th>
+                                            4th CA (10)
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Exam (60)</th>
+                                            Exam (60)
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Total</th>
+                                            Total
+                                        </th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Comment</th>
+                                            Comment
+                                        </th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Action
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -612,6 +636,13 @@
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.comment"
                                                     type="text" class="w-full border rounded px-2 py-1">
                                             </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                                <button wire:click="deleteBulkResult({{ $student->id }})"
+                                                    onclick="return confirm('Are you sure you want to delete this result?')"
+                                                    class="text-red-600 hover:text-red-800 transition-colors duration-200">
+                                                    <i class="fas fa-trash-alt"></i>
+                                                </button>
+                                            </td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -619,7 +650,9 @@
                         </div>
                     </div>
 
-                    <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <!-- Fixed footer with action buttons -->
+                    <div
+                        class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse border-t border-gray-200 sticky bottom-0">
                         <button wire:click="saveBulkResults" type="button"
                             class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm">
                             Save All Results
@@ -634,82 +667,83 @@
         </div>
     </div>
 
-    @push('styles')
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
-        <style>
-            [x-cloak] {
-                display: none !important;
+
+@push('styles')
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        .animate-slide-up {
+            animation: slideUp 0.5s ease-out;
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        .animate-fade-in-up {
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
             }
 
-            .animate-slide-up {
-                animation: slideUp 0.5s ease-out;
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
             }
 
-            .animate-fade-in {
-                animation: fadeIn 0.8s ease-in;
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
             }
 
-            .animate-fade-in-up {
-                animation: fadeInUp 0.5s ease-out;
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-bounce {
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            20%,
+            50%,
+            80%,
+            100% {
+                transform: translateY(0);
             }
 
-            @keyframes slideUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
+            40% {
+                transform: translateY(-15px);
             }
 
-            @keyframes fadeIn {
-                from {
-                    opacity: 0;
-                }
-
-                to {
-                    opacity: 1;
-                }
+            60% {
+                transform: translateY(-10px);
             }
-
-            @keyframes fadeInUp {
-                from {
-                    opacity: 0;
-                    transform: translateY(20px);
-                }
-
-                to {
-                    opacity: 1;
-                    transform: translateY(0);
-                }
-            }
-
-            .animate-bounce {
-                animation: bounce 2s infinite;
-            }
-
-            @keyframes bounce {
-
-                0%,
-                20%,
-                50%,
-                80%,
-                100% {
-                    transform: translateY(0);
-                }
-
-                40% {
-                    transform: translateY(-15px);
-                }
-
-                60% {
-                    transform: translateY(-10px);
-                }
-            }
-        </style>
-    @endpush
+        }
+    </style>
+@endpush
 </div>
