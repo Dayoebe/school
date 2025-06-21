@@ -45,22 +45,36 @@
                         <tbody class="divide-y divide-gray-100">
                             @foreach ($subjects as $subject)
                                 @php
+
                                     $data = $results[$subject->id] ?? [
-                                        'ca1_score' => 0,
-                                        'ca2_score' => 0,
-                                        'ca3_score' => 0,
-                                        'ca4_score' => 0,
-                                        'exam_score' => 0,
+                                        'ca1_score' => null,
+                                        'ca2_score' => null,
+                                        'ca3_score' => null,
+                                        'ca4_score' => null,
+                                        'exam_score' => null,
                                         'comment' => '',
                                         'grade' => '',
                                     ];
-                                    $ca1 = $data['ca1_score'];
-                                    $ca2 = $data['ca2_score'];
-                                    $ca3 = $data['ca3_score'];
-                                    $ca4 = $data['ca4_score'];
-                                    $exam = $data['exam_score'];
-                                    $total = (int) $ca1 + (int) $ca2 + (int) $ca3 + (int) $ca4 + (int) $exam;
+
+                                    // Only calculate total if scores exist
+                                    $total = null;
+                                    if (
+                                        !is_null($data['ca1_score']) ||
+                                        !is_null($data['ca2_score']) ||
+                                        !is_null($data['ca3_score']) ||
+                                        !is_null($data['ca4_score']) ||
+                                        !is_null($data['exam_score'])
+                                    ) {
+                                        $total =
+                                            (int) ($data['ca1_score'] ?? 0) +
+                                            (int) ($data['ca2_score'] ?? 0) +
+                                            (int) ($data['ca3_score'] ?? 0) +
+                                            (int) ($data['ca4_score'] ?? 0) +
+                                            (int) ($data['exam_score'] ?? 0);
+                                    }
+                                    // Grade and styling logic
                                     $grade = $data['grade'] ?? '';
+
                                     $gradeStyles = [
                                         'A1' => 'bg-green-100 text-green-800',
                                         'B2' => 'bg-emerald-100 text-emerald-800',
@@ -88,23 +102,30 @@
                                     <td class="px-4 py-2 border font-medium text-gray-800">
                                         {{ $subject->name }}
                                     </td>
+
+
                                     <td class="px-4 py-2 border text-center">
                                         <div class="relative">
                                             <input type="number"
                                                 wire:model.live="results.{{ $subject->id }}.ca1_score"
-                                                class="w-full border rounded px-2 py-1 @if ((int) ($results[$subject->id]['ca1_score'] ?? 0) > 10) border-red-500 @endif"
-                                                min="0" max="10">
+                                                class="w-full border rounded px-2 py-1  @if ((int) ($results[$subject->id]['ca1_score'] ?? 0) > 10) border-red-500 @endif"
+                                                min="0" max="10"
+                                                value="{{ $results[$subject->id]['ca1_score'] ?? '' }}" min="0"
+                                                max="10">
                                             @if ((int) ($results[$subject->id]['ca1_score'] ?? 0) > 10)
                                                 <p class="text-red-500 text-xs mt-1">Max CA score is 10</p>
                                             @endif
                                         </div>
                                     </td>
+
                                     <td class="px-4 py-2 border text-center">
                                         <div class="relative">
                                             <input type="number"
                                                 wire:model.live="results.{{ $subject->id }}.ca2_score"
-                                                class="w-full border rounded px-2 py-1 @if ((int) ($results[$subject->id]['ca2_score'] ?? 0) > 10) border-red-500 @endif"
-                                                min="0" max="10">
+                                                class="w-full border rounded px-2 py-1  @if ((int) ($results[$subject->id]['ca2_score'] ?? 0) > 10) border-red-500 @endif"
+                                                min="0" max="10"
+                                                value="{{ $results[$subject->id]['ca2_score'] ?? '' }}" min="0"
+                                                max="10">
                                             @if ((int) ($results[$subject->id]['ca2_score'] ?? 0) > 10)
                                                 <p class="text-red-500 text-xs mt-1">Max CA score is 10</p>
                                             @endif
@@ -114,8 +135,10 @@
                                         <div class="relative">
                                             <input type="number"
                                                 wire:model.live="results.{{ $subject->id }}.ca3_score"
-                                                class="w-full border rounded px-2 py-1 @if ((int) ($results[$subject->id]['ca3_score'] ?? 0) > 10) border-red-500 @endif"
-                                                min="0" max="10">
+                                                class="w-full border rounded px-2 py-1  @if ((int) ($results[$subject->id]['ca3_score'] ?? 0) > 10) border-red-500 @endif"
+                                                min="0" max="10"
+                                                value="{{ $results[$subject->id]['ca3_score'] ?? '' }}" min="0"
+                                                max="10">
                                             @if ((int) ($results[$subject->id]['ca3_score'] ?? 0) > 10)
                                                 <p class="text-red-500 text-xs mt-1">Max CA score is 10</p>
                                             @endif
@@ -125,39 +148,50 @@
                                         <div class="relative">
                                             <input type="number"
                                                 wire:model.live="results.{{ $subject->id }}.ca4_score"
-                                                class="w-full border rounded px-2 py-1 @if ((int) ($results[$subject->id]['ca4_score'] ?? 0) > 10) border-red-500 @endif"
-                                                min="0" max="10">
+                                                class="w-full border rounded px-2 py-1  @if ((int) ($results[$subject->id]['ca4_score'] ?? 0) > 10) border-red-500 @endif"
+                                                min="0" max="10"
+                                                value="{{ $results[$subject->id]['ca4_score'] ?? '' }}" min="0"
+                                                max="10">
                                             @if ((int) ($results[$subject->id]['ca4_score'] ?? 0) > 10)
                                                 <p class="text-red-500 text-xs mt-1">Max CA score is 10</p>
                                             @endif
                                         </div>
                                     </td>
+
+
                                     <td class="px-4 py-2 border text-center">
                                         <div class="relative">
                                             <input type="number"
                                                 wire:model.live="results.{{ $subject->id }}.exam_score"
-                                                class="w-full border rounded px-2 py-1 @if ((int) ($results[$subject->id]['exam_score'] ?? 0) > 60) border-red-500 @endif"
-                                                min="0" max="60">
+                                                class="w-full border rounded px-2 py-1  @if ((int) ($results[$subject->id]['exam_score'] ?? 0) > 60) border-red-500 @endif"
+                                                min="0" max="60"
+                                                value="{{ $results[$subject->id]['exam_score'] ?? '' }}" min="0"
+                                                max="60">
                                             @if ((int) ($results[$subject->id]['exam_score'] ?? 0) > 60)
                                                 <p class="text-red-500 text-xs mt-1">Max exam score is 60</p>
                                             @endif
                                         </div>
                                     </td>
+
                                     <td class="px-4 py-2 border text-center">
-                                        <span
-                                            class="font-semibold px-2 py-1 rounded {{ $gradeStyles[$grade] ?? 'bg-gray-200 text-gray-800' }}">
-                                            {{ $total }} <span class="text-xs">({{ $grade }})
-                                                {{ $gradeEmoji[$grade] ?? '' }}</span>
-                                        </span>
+                                        @if (!is_null($total))
+                                            <span
+                                                class="font-semibold px-2 py-1 rounded {{ $gradeStyles[$grade] ?? 'bg-gray-200 text-gray-800' }}">
+                                                {{ $total }} <span class="text-xs">({{ $grade }})
+                                                    {{ $gradeEmoji[$grade] ?? '' }}</span>
+                                            </span>
+                                        @endif
                                     </td>
+
+
                                     <td class="px-4 py-2 border">
                                         <input type="text" wire:model.live="results.{{ $subject->id }}.comment"
                                             class="w-full border rounded px-2 py-1">
                                     </td>
                                     <td class="px-4 py-2 border text-center">
-                                        <button wire:click="deleteResult({{ $subject->id }})" 
-                                                onclick="return confirm('Are you sure you want to delete this result?')"
-                                                class="text-red-600 hover:text-red-800 transition-colors duration-200">
+                                        <button wire:click="deleteResult({{ $subject->id }})"
+                                            onclick="return confirm('Are you sure you want to delete this result?')"
+                                            class="text-red-600 hover:text-red-800 transition-colors duration-200">
                                             <i class="fas fa-trash-alt"></i>
                                         </button>
                                     </td>

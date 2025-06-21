@@ -55,8 +55,11 @@
                     <thead>
                         <tr class="bg-gray-100">
                             <th class="p-2 border">Subject</th>
-                            <th class="p-2 border">Test</th>
-                            <th class="p-2 border">Exam</th>
+                            <th class="p-2 border">1st CA (10)</th>
+                            <th class="p-2 border">2nd CA (10)</th>
+                            <th class="p-2 border">3rd CA (10)</th>
+                            <th class="p-2 border">4th CA (10)</th>
+                            <th class="p-2 border">Exam (60)</th>
                             <th class="p-2 border">Total</th>
                             <th class="p-2 border">Teacher's Comment</th>
                         </tr>
@@ -65,16 +68,46 @@
                         @foreach ($subjects as $subject)
                             <tr>
                                 <td class="p-2 border">{{ $subject->name }}</td>
-                                <td class="p-2 border">{{ $results[$subject->id]['test_score'] }}</td>
-                                <td class="p-2 border">{{ $results[$subject->id]['exam_score'] }}</td>
-                                <td class="p-2 border">{{ $results[$subject->id]['total_score'] }}</td>
-                                <td class="p-2 border">{{ $results[$subject->id]['comment'] }}</td>
+                                <td class="p-2 border">
+                                    @if (isset($results[$subject->id]['ca1_score']) && $results[$subject->id]['ca1_score'] !== null)
+                                        {{ (int) $results[$subject->id]['ca1_score'] }}
+                                    @endif
+                                </td>
+                                <td class="p-2 border">
+                                    @if (isset($results[$subject->id]['ca2_score']) && $results[$subject->id]['ca2_score'] !== null)
+                                        {{ (int) $results[$subject->id]['ca2_score'] }}
+                                    @endif
+                                </td>
+                                <td class="p-2 border">
+                                    @if (isset($results[$subject->id]['ca3_score']) && $results[$subject->id]['ca3_score'] !== null)
+                                        {{ (int) $results[$subject->id]['ca3_score'] }}
+                                    @endif
+                                </td>
+                                <td class="p-2 border">
+                                    @if (isset($results[$subject->id]['ca4_score']) && $results[$subject->id]['ca4_score'] !== null)
+                                        {{ (int) $results[$subject->id]['ca4_score'] }}
+                                    @endif
+                                </td>
+                                <td class="p-2 border">
+                                    @if (isset($results[$subject->id]['exam_score']) && $results[$subject->id]['exam_score'] !== null)
+                                        {{ (int) $results[$subject->id]['exam_score'] }}
+                                    @endif
+                                </td>
+                                <td class="p-2 border">
+                                    @if (isset($results[$subject->id]['total_score']) && $results[$subject->id]['total_score'] !== null)
+                                        {{ (int) $results[$subject->id]['total_score'] }}
+                                    @endif
+                                </td>
+                                <td class="p-2 border">{{ $results[$subject->id]['comment'] ?? '' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
                     <tfoot>
                         <tr class="bg-gray-100">
                             <th class="p-2 border">Grand Total</th>
+                            <td class="p-2 border">{{ $grandTotalTest }}</td>
+                            <td class="p-2 border">{{ $grandTotalTest }}</td>
+                            <td class="p-2 border">{{ $grandTotalTest }}</td>
                             <td class="p-2 border">{{ $grandTotalTest }}</td>
                             <td class="p-2 border">{{ $grandTotalExam }}</td>
                             <td class="p-2 border">{{ $grandTotal }}</td>
