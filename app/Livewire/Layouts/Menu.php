@@ -309,56 +309,159 @@ class Menu extends Component
                     ],
                 ],
             ],
+            // [
+            //     'type'    => 'menu-item',
+            //     'text'    => 'Attendance',
+            //     'icon'    => 'fas fa-check',
+            //     'can'     => 'menu-attendance',
+            //     'submenu' => [
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Attendance',
+            //             'route' => 'dashboard',
+            //             'can'   => 'read attendance',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Take Attendance',
+            //             'route' => 'dashboard',
+            //             'can'   => 'create attendance',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Attendance Report',
+            //             'route' => 'dashboard',
+            //             'can'   => 'read attendance report',
+            //         ],
+            //     ],
+            // ],
+            // ['header' => 'Finance', 'can' => 'header-finance'],
+            // [
+            //     'type'    => 'menu-item',
+            //     'text'    => 'Finance Settings',
+            //     'icon'    => 'fas fa-cog',
+            //     'can'     => 'menu-finance-settings',
+            //     'submenu' => [
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Finance Settings',
+            //             'route' => 'dashboard',
+            //             'can'   => 'read finance settings',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Finance Settings',
+            //             'route' => 'dashboard',
+            //             'can'   => 'create finance settings',
+            //         ],
+            //     ],
+            // ],
+            // [
+            //     'type'    => 'menu-item',
+            //     'text'    => 'Payment Methods',
+            //     'icon'    => 'fas fa-credit-card',
+            //     'can'     => 'menu-payment-method',
+            //     'submenu' => [
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Payment Methods',
+            //             'route' => 'dashboard',
+            //             'can'   => 'read payment method',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Payment Method',
+            //             'route' => 'dashboard',
+            //             'can'   => 'create payment method',
+            //         ],
+            //     ],
+            // ],
+            // [
+            //     'type'    => 'menu-item',
+            //     'text'    => 'Transactions',
+            //     'icon'    => 'fas fa-exchange-alt',
+            //     'can'     => 'menu-transaction',
+            //     'submenu' => [
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Transactions',
+            //             'route' => 'dashboard',
+            //             'can'   => 'read transaction',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Transaction',
+            //             'route' => 'dashboard',
+            //             'can'   => 'create transaction',
+            //         ],
+            //     ],
+            // ],
+            // [
+            //     'type'    => 'menu-item',
+            //     'text'    => 'Transaction Categories',
+            //     'icon'    => 'fas fa-tags',
+            //     'can'     => 'menu-transaction-category',
+            //     'submenu' => [
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Transaction Categories',
+            //             'route' => 'dashboard',
+            //             'can'   => 'read transaction category',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Transaction Category',
+            //             'route' => 'dashboard',
+            //             'can'   => 'create transaction category',
+            //         ],
+            //     ],
+            // ], 
 
 
-          
-            
-
-
-            [
-                'type'    => 'menu-item',
-                'text'    => 'Fees',
-                'icon'    => 'fas fa-dollar',
-                'can'     => 'menu-fee',
-                'submenu' => [
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Fee Invoices',
-                        'route' => 'fee-invoices.index',
-                        'can'   => 'read fee invoice',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'Create Fee Invoice',
-                        'route' => 'fee-invoices.create',
-                        'can'   => 'create fee invoice',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Fees',
-                        'route' => 'fees.index',
-                        'can'   => 'read fee',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'Create Fee',
-                        'route' => 'fees.create',
-                        'can'   => 'create fee',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Fee Categories',
-                        'route' => 'fee-categories.index',
-                        'can'   => 'read fee category',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'Create Fee Category',
-                        'route' => 'fee-categories.create',
-                        'can'   => 'create fee category',
-                    ],
-                ],
-            ],
+            // [
+            //     'type'    => 'menu-item',
+            //     'text'    => 'Fees',
+            //     'icon'    => 'fas fa-dollar',
+            //     'can'     => 'menu-fee',
+            //     'submenu' => [
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Fee Invoices',
+            //             'route' => 'fee-invoices.index',
+            //             'can'   => 'read fee invoice',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Fee Invoice',
+            //             'route' => 'fee-invoices.create',
+            //             'can'   => 'create fee invoice',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Fees',
+            //             'route' => 'fees.index',
+            //             'can'   => 'read fee',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Fee',
+            //             'route' => 'fees.create',
+            //             'can'   => 'create fee',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'View Fee Categories',
+            //             'route' => 'fee-categories.index',
+            //             'can'   => 'read fee category',
+            //         ],
+            //         [
+            //             'type'  => 'menu-item',
+            //             'text'  => 'Create Fee Category',
+            //             'route' => 'fee-categories.create',
+            //             'can'   => 'create fee category',
+            //         ],
+            //     ],
+            // ],
             [
                 'type'    => 'menu-item',
                 'text'    => 'Subjects',
