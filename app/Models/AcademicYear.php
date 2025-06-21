@@ -39,6 +39,7 @@ class AcademicYear extends Model
         return $this->hasMany(Semester::class);
     }
 
+
     /**
      * Get all of the exams for the AcademicYear.
      */

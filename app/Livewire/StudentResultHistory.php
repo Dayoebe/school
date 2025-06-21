@@ -155,14 +155,32 @@ class StudentResultHistory extends Component
         }
     }
     
-    // Calculate overall statistics
-    $this->overallStats = [
-        'total_terms' => $results->groupBy('semester_id')->count(),
-        'average_score' => $totalPossible > 0 ? round($totalGrandTotal / $totalPossible * 100, 2) : 0,
-        'best_subject' => count($this->subjectPerformance) > 0 ? $this->subjectPerformance[0]['subject']->name : 'N/A',
-        'best_subject_avg' => count($this->subjectPerformance) > 0 ? round($this->subjectPerformance[0]['average'], 2) : 0,
-        'overall_position' => 'N/A' // Would require additional logic
-    ];
+// Sort subjects by average
+usort($this->subjectPerformance, function($a, $b) {
+    return $b['average'] <=> $a['average'];
+});
+
+// Calculate overall statistics
+$worstSubject = count($this->subjectPerformance) > 0 ? end($this->subjectPerformance) : null;
+
+$this->overallStats = [
+    'total_terms' => $results->groupBy('semester_id')->count(),
+    'average_score' => $totalPossible > 0 ? round($totalGrandTotal / $totalPossible * 100, 2) : 0,
+    'best_subject' => count($this->subjectPerformance) > 0 ? $this->subjectPerformance[0]['subject']->name : 'N/A',
+    'best_subject_avg' => count($this->subjectPerformance) > 0 ? round($this->subjectPerformance[0]['average'], 2) : 0,
+    'worst_subject' => $worstSubject ? $worstSubject['subject']->name : 'N/A',
+    'worst_subject_avg' => $worstSubject ? round($worstSubject['average'], 2) : 0,
+    'overall_position' => 'N/A'
+];
+
+    // // Calculate overall statistics
+    // $this->overallStats = [
+    //     'total_terms' => $results->groupBy('semester_id')->count(),
+    //     'average_score' => $totalPossible > 0 ? round($totalGrandTotal / $totalPossible * 100, 2) : 0,
+    //     'best_subject' => count($this->subjectPerformance) > 0 ? $this->subjectPerformance[0]['subject']->name : 'N/A',
+    //     'best_subject_avg' => count($this->subjectPerformance) > 0 ? round($this->subjectPerformance[0]['average'], 2) : 0,
+    //     'overall_position' => 'N/A' // Would require additional logic
+    // ];
     
     $this->loading = false;
 }
@@ -196,18 +214,17 @@ public function render()
             ['href' => route('dashboard'), 'text' => 'Dashboard'],
             ['href' => route('result'), 'text' => 'Results', 'active' => true],
         ],
-        'title' => __('Results'),
-        'page_heading' => __('Student Results History'),
+        'title' => 'Results',
+        'page_heading' => 'Student Results History',
     ]);
 }
 
-    // public function render()
-    // {
-    //     return view('livewire.student-result-history', [
-    //         'filteredData' => $this->getFilteredData()
-    //     ]);
-    // }
-    
+// public function render()
+// {
+//     return view('livewire.student-result-history', [
+//         'filteredData' => $this->getFilteredData()
+//     ]);
+// }    
     protected function getFilteredData()
     {
         if ($this->loading) return [];

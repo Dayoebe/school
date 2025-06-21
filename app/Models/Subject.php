@@ -15,9 +15,14 @@ class Subject extends Model
         'name',
         'short_name',
         'school_id',
+        'is_general',
         'my_class_id',
     ];
 
+    public function sections()
+    {
+        return $this->belongsToMany(Section::class);
+    }
     public function myClass()
     {
         return $this->belongsTo(MyClass::class);
@@ -28,7 +33,6 @@ class Subject extends Model
         return $this->belongsToMany(User::class, 'subject_user');
     }
 
-    // FIX: Change this relationship
     public function results()
     {
         return $this->hasMany(Result::class);
@@ -38,11 +42,21 @@ class Subject extends Model
     {
         return $this->morphOne(TimetableRecord::class, 'timetable_time_slot_weekdayable');
     }
-
+    public function studentRecords()
+    {
+        return $this->belongsToMany(
+            StudentRecord::class,
+            'student_subject',
+            'subject_id',
+            'student_record_id'
+        )->withPivot('my_class_id', 'section_id');
+    }
     public function students()
     {
         return $this->belongsToMany(User::class, 'student_subject')
             ->withTimestamps()
             ->withPivot('my_class_id', 'section_id');
     }
+
 }
+

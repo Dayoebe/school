@@ -24,11 +24,15 @@ class Semester extends Model
         return $this->belongsTo(School::class);
     }
 
-    public function result()
-    {
-        return $this->belongsTo(Result::class);
-    }
+    // public function result()
+    // {
+    //     return $this->belongsTo(Result::class);
+    // }
 
+    public function results()
+{
+    return $this->hasMany(Result::class);
+}
     /**
      * Get all of the exams for the Semester.
      *

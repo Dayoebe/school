@@ -18,6 +18,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Models\StudentResult;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -66,6 +67,17 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         static::addGlobalScope('orderByName', fn(Builder $builder) => $builder->orderBy('name'));
     }
+
+
+    public function results()
+{
+    return $this->hasMany(Result::class, 'student_id');
+}
+
+public function studentRecords()
+{
+    return $this->hasMany(StudentRecord::class);
+}
 
     public function scopeStudents($query)
     {
