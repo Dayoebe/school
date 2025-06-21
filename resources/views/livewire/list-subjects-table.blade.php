@@ -32,6 +32,7 @@
                 </div>
             @endisset
         @else
+        
             <p>No classes and sections created in this school</p>
         @endif
     </div>

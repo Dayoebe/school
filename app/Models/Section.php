@@ -37,6 +37,15 @@ class Section extends Model
      *
      * @return Collection
      */
+
+
+     // Add to Section model
+public function subjects()
+{
+    return $this->belongsToMany(Subject::class);
+}
+ 
+     
     public function students()
     {
         $students = User::students()->inSchool()->whereRelation('studentRecord.section', 'id', $this->id)->get();

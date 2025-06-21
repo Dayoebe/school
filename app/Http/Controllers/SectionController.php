@@ -7,7 +7,9 @@ use App\Http\Requests\SectionUpdateRequest;
 use App\Models\Section;
 use App\Services\Section\SectionService;
 use Illuminate\Http\RedirectResponse;
+use App\Models\Subject;
 use Illuminate\View\View;
+use Illuminate\Http\Request;
 
 class SectionController extends Controller
 {
@@ -19,12 +21,56 @@ class SectionController extends Controller
         $this->authorizeResource(Section::class, 'section');
     }
 
-    /**
-     * Display a listing of the resource.
-     */
+    public function attachSubjects(Section $section, Request $request)
+    {
+        $request->validate([
+            'subject_ids' => 'required|array',
+            'subject_ids.*' => 'exists:subjects,id'
+        ]);
+        
+        $section->subjects()->syncWithoutDetaching($request->subject_ids);
+        
+        // Update students in this section
+        foreach ($section->studentRecords as $record) {
+            $record->assignSubjectsAutomatically();
+        }
+        
+        return back()->with('success', 'Subjects added to section successfully');
+    }
+
+public function detachSubject(Section $section, Subject $subject)
+{
+    // Fix: Use correct pivot table name
+    $section->subjects()->detach($subject->id);
+    
+    // Update students in this section
+    foreach ($section->studentRecords as $record) {
+        $record->assignSubjectsAutomatically();
+    }
+    
+    return back()->with('success', 'Subject removed from section');
+}
+
+
     public function index(): View
     {
         return view('pages.section.index');
+    }
+
+
+
+    public function show(Section $section)
+    {
+        $section->load(['subjects.teachers', 'studentRecords.user']);
+        
+        $availableSubjects = Subject::where('my_class_id', $section->my_class_id)
+            ->whereDoesntHave('sections', function ($query) use ($section) {
+                $query->where('sections.id', $section->id);
+            })
+            ->with('teachers') // Eager-load teachers
+            ->get();
+    
+        return view('pages.section.show', compact('section', 'availableSubjects'));
     }
 
     /**
@@ -43,20 +89,10 @@ class SectionController extends Controller
         $data = $request->except('_token');
         $this->section->createSection($data);
 
-        return back()->with('success', __('Section created successfully'));
+        return back()->with('success', 'Section created successfully');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Section $section): View
-    {
-        return view('pages.section.show', compact('section'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
+    
     public function edit(Section $section): View
     {
         $data['section'] = $section;
@@ -73,7 +109,7 @@ class SectionController extends Controller
 
         $this->section->updateSection($section, $request);
 
-        return back()->with('success', __('Section updated successfully'));
+        return back()->with('success', 'Section updated successfully');
     }
 
     /**
@@ -83,6 +119,6 @@ class SectionController extends Controller
     {
         $this->section->deleteSection($section);
 
-        return back()->with('success', __('Section deleted successfully'));
+        return back()->with('success', 'Section deleted successfully');
     }
 }
