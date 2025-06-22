@@ -20,88 +20,53 @@ class StudentRecord extends Model
     ];
 
     public function assignSubjectsAutomatically()
-{
-    // For junior classes without sections
-    if (!$this->section_id) {
-        $subjects = Subject::where('my_class_id', $this->my_class_id)
-            ->pluck('id');
-    } 
-    // For senior classes with sections
-    else {
-        $subjects = $this->section->subjects->pluck('id');
+    {
+        if (!$this->section_id) {
+            $subjects = Subject::where('my_class_id', $this->my_class_id)
+                ->pluck('id');
+        } 
+        else {
+            $subjects = $this->section->subjects->pluck('id');
+        }
+
+        $syncData = [];
+        foreach ($subjects as $subjectId) {
+            $syncData[$subjectId] = [
+                'my_class_id' => $this->my_class_id,
+                'section_id' => $this->section_id,
+            ];
+        }
+
+        $this->studentSubjects()->syncWithoutDetaching($syncData);
     }
 
-    $syncData = [];
-    foreach ($subjects as $subjectId) {
-        $syncData[$subjectId] = [
-            'my_class_id' => $this->my_class_id,
-            'section_id' => $this->section_id,
-        ];
+    public function studentSubjects()
+    {
+        return $this->belongsToMany(
+            Subject::class,
+            'student_subject',
+            'student_record_id',
+            'subject_id'
+        )->withPivot('my_class_id', 'section_id');
     }
 
-    $this->studentSubjects()->syncWithoutDetaching($syncData);
-}
-//     public function assignSubjectsAutomatically()
-// {
-//     // For junior classes without sections
-//     if (!$this->section_id) {
-//         $subjects = Subject::where('my_class_id', $this->my_class_id)
-//             ->pluck('id');
-//     } 
-//     // For senior classes with sections
-//     else {
-//         $subjects = $this->section->subjects->pluck('id');
-//     }
+    public function getFilteredSubjects()
+    {
+        if (!$this->section_id) {
+            return Subject::where('my_class_id', $this->my_class_id)->get();
+        }
 
-//     $syncData = [];
-//     foreach ($subjects as $subjectId) {
-//         $syncData[$subjectId] = [
-//             'my_class_id' => $this->my_class_id,
-//             'section_id' => $this->section_id,
-//         ];
-//     }
-
-    // Use the correct relationship method
-//     $this->studentSubjects()->syncWithoutDetaching($syncData);
-// }
-
-// Update the relationship to use student_record_id
-// public function studentSubjects()
-// {
-//     return $this->belongsToMany(
-//         Subject::class,
-//         'student_subject',
-//         'student_record_id',  // Changed from user_id
-//         'subject_id'
-//     )->withPivot('my_class_id', 'section_id');
-// }
-
-public function studentSubjects()
-{
-    return $this->belongsToMany(
-        Subject::class,
-        'student_subject',
-        'student_record_id',
-        'subject_id'
-    )->withPivot('my_class_id', 'section_id');
-}
-
-public function getFilteredSubjects()
-{
-    // For junior classes without sections
-    if (!$this->section_id) {
-        return Subject::where('my_class_id', $this->my_class_id)->get();
+        return Subject::where('my_class_id', $this->my_class_id)
+            ->where(function($query) {
+                $query->where('is_general', true)
+                      ->orWhereHas('sections', function($q) {
+                          $q->where('sections.id', $this->section_id);
+                      });
+            })
+            ->get();
     }
 
-    return Subject::where('my_class_id', $this->my_class_id)
-        ->where(function($query) {
-            $query->where('is_general', true)
-                  ->orWhereHas('sections', function($q) {
-                      $q->where('sections.id', $this->section_id);
-                  });
-        })
-        ->get();
-}    protected static function booted()
+    protected static function booted()
     {
         static::addGlobalScope('notGraduated', function (Builder $builder) {
             $builder->where('is_graduated', 0);
@@ -165,8 +130,6 @@ public function getFilteredSubjects()
     {
         return $this->academicYears()->wherePivot('academic_year_id', $this->user->school->academicYear->id);
     }
-
-
 
     public function results()
     {
