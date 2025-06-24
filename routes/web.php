@@ -91,6 +91,9 @@ Route::get('/results/annual', [ResultController::class, 'annualClassResult'])->n
 
 
 
+    Route::post('/classes/{class}/assign-subjects', [MyClassController::class, 'assignSubjects'])
+    ->name('classes.assign-subjects');
+
 // Add to routes/web.php
 Route::post('/sections/{section}/subjects', [SectionController::class, 'attachSubjects'])
     ->name('sections.subjects.attach');
@@ -99,7 +102,7 @@ Route::delete('/sections/{section}/subjects/{subject}', [SectionController::clas
     ->name('sections.subjects.detach');
 
 
-    
+
 Route::middleware(['guest'])->group(function () {
     Route::get('/register', ['App\Http\Controllers\RegistrationController', 'registerView'])->name('register');
     Route::post('/register', ['App\Http\Controllers\RegistrationController', 'register']);
