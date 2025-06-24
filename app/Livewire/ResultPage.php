@@ -64,36 +64,46 @@ class ResultPage extends Component
     }
 
     public function openSubjectBulkEdit($subjectId)
-    {
-        $this->selectedSubjectForBulkEdit = $subjectId;
-        
-        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function ($q) use ($subjectId) {
+{  $this->selectedSubjectForBulkEdit = $subjectId;
+    
+    $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function ($q) use ($subjectId) {
             $q->where('subject_id', $subjectId);
         })
-        ->with(['user', 'results' => function ($q) use ($subjectId) {
+        ->whereHas('user', function ($q) { // Add this filter
+            $q->whereNull('deleted_at'); // Hide deleted users
+        })
+        ->when($this->selectedClass, function ($query) {
+            $query->where('my_class_id', $this->selectedClass);
+        })
+        ->when($this->selectedSection, function ($query) {
+            $query->where('section_id', $this->selectedSection);
+        })
+        ->with(['user', 'myClass', 'section', 'results' => function ($q) use ($subjectId) {
             $q->where('subject_id', $subjectId)
                 ->where('academic_year_id', $this->academicYearId)
                 ->where('semester_id', $this->semesterId);
         }])
         ->get();
 
-        $this->bulkResults = [];
-        foreach ($this->bulkStudents as $student) {
-            $existing = $student->results->first();
-            $this->bulkResults[$student->id] = [
-                'ca1_score' => $existing?->ca1_score ?? null,
-                'ca2_score' => $existing?->ca2_score ?? null,
-                'ca3_score' => $existing?->ca3_score ?? null,
-                'ca4_score' => $existing?->ca4_score ?? null,
-                'exam_score' => $existing?->exam_score ?? null,
-                'comment' => $existing?->teacher_comment ?? '',
-            ];
-        }
-
-        $this->showSubjectModal = false;
-        $this->bulkEditMode = true;
+    $this->bulkResults = [];
+    foreach ($this->bulkStudents as $student) {
+        $existing = $student->results->first();
+        $this->bulkResults[$student->id] = [
+            'ca1_score' => $existing?->ca1_score ?? null,
+            'ca2_score' => $existing?->ca2_score ?? null,
+            'ca3_score' => $existing?->ca3_score ?? null,
+            'ca4_score' => $existing?->ca4_score ?? null,
+            'exam_score' => $existing?->exam_score ?? null,
+            'comment' => $existing?->teacher_comment ?? '',
+        ];
     }
 
+    $this->showSubjectModal = false;
+    $this->dispatch('show-loading');
+
+    $this->bulkEditMode = true;
+    $this->dispatch('hide-loading');
+}
     public function saveBulkResults()
     {
         $this->validate([

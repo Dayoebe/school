@@ -367,12 +367,12 @@
                                                         <div
                                                             class="flex-shrink-0 h-12 w-12 rounded-full overflow-hidden border-2 border-indigo-200">
                                                             <img class="h-12 w-12 object-cover"
-                                                                src="{{ $student->user->profile_photo_url }}"
-                                                                alt="{{ $student->user->name }}">
+                                                                src="{{ $student->user?->profile_photo_url ?? asset('images/default-avatar.png') }}"
+                                                                alt="{{ $student->user?->name ?? 'Deleted User' }}">
                                                         </div>
                                                         <div class="ml-4">
                                                             <div class="text-sm font-bold text-gray-900">
-                                                                {{ $student->user->name ?? 'N/A' }}
+                                                                {{ $student->user?->name ?? 'Deleted User' }}
                                                             </div>
                                                             <div class="text-sm text-gray-500">
                                                                 {{ $student->myClass->name ?? '' }} •
@@ -591,60 +591,90 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach ($bulkStudents as $student)
+                                    @forelse ($bulkStudents as $student)
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        {{ $student->user->name }}
+                                                    @if($student->user && $student->user->profile_photo_url)
+                                                        <div class="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden mr-3">
+                                                            <img class="h-10 w-10 object-cover" 
+                                                                 src="{{ $student->user->profile_photo_url }}" 
+                                                                 alt="{{ $student->user->name }}">
+                                                        </div>
+                                                    @endif
+                                                    <div>
+                                                        <div class="text-sm font-medium text-gray-900">
+                                                            {{ $student->user?->name ?? 'Deleted User' }}
+                                                        </div>
+                                                        <div class="text-xs text-gray-500">
+                                                            {{ $student->admission_number }}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.ca1_score"
-                                                    type="number" min="0" max="10"
-                                                    class="w-16 border rounded px-2 py-1">
+                                                    type="number" min="0" max="10" step="0.5"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.ca2_score"
-                                                    type="number" min="0" max="10"
-                                                    class="w-16 border rounded px-2 py-1">
+                                                    type="number" min="0" max="10" step="0.5"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.ca3_score"
-                                                    type="number" min="0" max="10"
-                                                    class="w-16 border rounded px-2 py-1">
+                                                    type="number" min="0" max="10" step="0.5"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.ca4_score"
-                                                    type="number" min="0" max="10"
-                                                    class="w-16 border rounded px-2 py-1">
+                                                    type="number" min="0" max="10" step="0.5"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.exam_score"
-                                                    type="number" min="0" max="60"
-                                                    class="w-20 border rounded px-2 py-1">
+                                                    type="number" min="0" max="60" step="0.5"
+                                                    class="w-20 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-center">
+                                            <td class="px-6 py-4 whitespace-nowrap text-center font-medium">
                                                 {{ ($bulkResults[$student->id]['ca1_score'] ?? 0) +
-                                                    ($bulkResults[$student->id]['ca2_score'] ?? 0) +
-                                                    ($bulkResults[$student->id]['ca3_score'] ?? 0) +
-                                                    ($bulkResults[$student->id]['ca4_score'] ?? 0) +
-                                                    ($bulkResults[$student->id]['exam_score'] ?? 0) }}
+                                                   ($bulkResults[$student->id]['ca2_score'] ?? 0) +
+                                                   ($bulkResults[$student->id]['ca3_score'] ?? 0) +
+                                                   ($bulkResults[$student->id]['ca4_score'] ?? 0) +
+                                                   ($bulkResults[$student->id]['exam_score'] ?? 0) }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input wire:model.defer="bulkResults.{{ $student->id }}.comment"
-                                                    type="text" class="w-full border rounded px-2 py-1">
+                                                    type="text" 
+                                                    class="w-full border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
                                                 <button wire:click="deleteBulkResult({{ $student->id }})"
                                                     onclick="return confirm('Are you sure you want to delete this result?')"
-                                                    class="text-red-600 hover:text-red-800 transition-colors duration-200">
+                                                    class="text-red-600 hover:text-red-800 transition-colors duration-200"
+                                                    title="Delete result">
                                                     <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </td>
                                         </tr>
-                                    @endforeach
+                                    @empty
+                                        <tr>
+                                            <td colspan="9" class="px-6 py-8 text-center">
+                                                <div class="text-gray-500">
+                                                    <i class="fas fa-user-slash text-4xl text-gray-300 mb-3"></i>
+                                                    <h3 class="text-lg font-medium text-gray-700">No students found</h3>
+                                                    <p class="mt-1 text-sm">
+                                                        No students are assigned to this subject for 
+                                                        {{ \App\Models\MyClass::find($selectedClass)?->name ?? 'selected class' }}
+                                                    </p>
+                                                    <p class="mt-2 text-xs text-gray-500">
+                                                        Check student-subject assignments in the Subjects section
+                                                    </p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
