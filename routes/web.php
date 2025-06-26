@@ -55,7 +55,9 @@ Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultContr
     ->name('result.print');
 
 
-// In web.php
+Route::get('/results/view', [ResultController::class, 'viewResults'])->name('view-results');
+Route::get('/get-semesters', [ResultController::class, 'getSemesters']);
+Route::get('/get-subjects', [ResultController::class, 'getSubjects']);
 
 Route::get('/results/class', [ResultController::class, 'classResult'])->name('result.class');
 Route::get('/results/class/print', [ResultController::class, 'printClassResult'])->name('result.class.print');
@@ -91,7 +93,7 @@ Route::get('/results/annual', [ResultController::class, 'annualClassResult'])->n
 
 
 
-    Route::post('/classes/{class}/assign-subjects', [MyClassController::class, 'assignSubjects'])
+Route::post('/classes/{class}/assign-subjects', [MyClassController::class, 'assignSubjects'])
     ->name('classes.assign-subjects');
 
 // Add to routes/web.php

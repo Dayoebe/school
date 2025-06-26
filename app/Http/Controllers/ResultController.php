@@ -14,6 +14,176 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ResultController extends Controller
 {
+
+    public function viewResults(Request $request)
+    {
+        // Initialize base data
+        $academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
+        $classes = MyClass::orderBy('name')->get();
+        
+        // Get filter parameters
+        $academicYearId = $request->input('academicYearId');
+        $semesterId = $request->input('semesterId');
+        $classId = $request->input('classId');
+        $subjectId = $request->input('subjectId');
+        $mode = $request->input('mode', 'subject');
+        
+        // Initialize all variables with default values
+        $subjectResults = collect();
+        $classResults = collect();
+        $subjects = collect();
+        $semesters = collect();
+        $selectedSubject = null;
+        $selectedClass = null;
+        $academicYearName = 'Not Selected';
+        $semesterName = 'Not Selected';
+        
+        // Load dependent data
+        if ($academicYearId) {
+            $semesters = Semester::where('academic_year_id', $academicYearId)->get();
+        }
+        
+        if ($classId) {
+            $subjects = Subject::where('my_class_id', $classId)->get();
+        }
+        
+        // Process results when all filters are selected
+        if ($academicYearId && $semesterId && $classId) {
+            $academicYear = AcademicYear::find($academicYearId);
+            $semester = Semester::find($semesterId);
+            $class = MyClass::find($classId);
+            
+            $academicYearName = $academicYear->name ?? 'Unknown Academic Year';
+            $semesterName = $semester->name ?? 'Unknown Term';
+            $selectedClass = $class;
+            
+            if ($mode === 'subject' && $subjectId) {
+                // SUBJECT VIEW LOGIC
+                $selectedSubject = Subject::find($subjectId);
+                
+                $subjectResults = Result::with([
+                    'student.user', 
+                    'subject'
+                ])
+                ->where('subject_id', $subjectId)
+                ->where('academic_year_id', $academicYearId)
+                ->where('semester_id', $semesterId)
+                ->whereHas('student', function($q) use ($classId) {
+                    $q->where('my_class_id', $classId)
+                      ->where('is_graduated', false)
+                      ->whereHas('user', function($q) {
+                          $q->whereNull('deleted_at');
+                      });
+                })
+                ->get()
+                ->each(function ($result) {
+                    // Calculate total if not set
+                    if (!isset($result->total_score)) {
+                        $result->setAttribute('total_score',
+                            ($result->ca1_score ?? 0) + 
+                            ($result->ca2_score ?? 0) + 
+                            ($result->ca3_score ?? 0) + 
+                            ($result->ca4_score ?? 0) + 
+                            ($result->exam_score ?? 0)
+                        );
+                    }
+                    
+                    // Calculate grade if not set
+                    if (!isset($result->grade)) {
+                        $result->setAttribute('grade', $this->calculateGrade($result->total_score));
+                    }
+                });
+                
+            } else {
+                // CLASS VIEW LOGIC
+                $students = StudentRecord::with([
+                    'user',
+                    'results' => function($query) use ($academicYearId, $semesterId) {
+                        $query->where('academic_year_id', $academicYearId)
+                              ->where('semester_id', $semesterId)
+                              ->with('subject');
+                    }
+                ])
+                ->where('my_class_id', $classId)
+                ->where('is_graduated', false)
+                ->whereHas('user', function($q) {
+                    $q->whereNull('deleted_at');
+                })
+                ->get()
+                ->each(function ($student) {
+                    // Calculate totals and averages
+                    $student->setAttribute('total_score', $student->results->sum('total_score'));
+                    $student->setAttribute('average_score', $student->results->avg('total_score'));
+                    
+                    // Ensure all results have grades
+                    $student->results->each(function ($result) {
+                        if (!isset($result->grade) && isset($result->total_score)) {
+                            $result->setAttribute('grade', $this->calculateGrade($result->total_score));
+                        }
+                    });
+                })
+                ->sortByDesc('total_score')
+                ->values();
+                
+                // Calculate positions with tie handling
+                $position = 1;
+                $prevScore = null;
+                $actualPosition = 1;
+                
+                foreach ($students as $student) {
+                    if ($prevScore !== null && $student->total_score == $prevScore) {
+                        $student->setAttribute('position', $position);
+                    } else {
+                        $student->setAttribute('position', $actualPosition);
+                        $position = $actualPosition;
+                    }
+                    $prevScore = $student->total_score;
+                    $actualPosition++;
+                }
+                
+                $classResults = $students;
+            }
+        }
+        
+        return view('pages.result.view-result', compact(
+            'academicYears', 'classes',
+            'academicYearId', 'semesterId', 'classId', 'subjectId', 'mode',
+            'subjectResults', 'classResults',
+            'subjects', 'semesters',
+            'selectedSubject', 'selectedClass',
+            'academicYearName', 'semesterName'
+        ));
+    }
+    protected function calculateGrade($score)
+    {
+        return match (true) {
+            $score >= 75 => 'A1',
+            $score >= 70 => 'B2',
+            $score >= 65 => 'B3',
+            $score >= 60 => 'C4',
+            $score >= 55 => 'C5',
+            $score >= 50 => 'C6',
+            $score >= 45 => 'D7',
+            $score >= 40 => 'E8',
+            default => 'F9',
+        };
+    }
+
+    public function getSemesters(Request $request)
+    {
+        $academicYearId = $request->input('academic_year_id');
+        $semesters = Semester::where('academic_year_id', $academicYearId)->get();
+        return response()->json($semesters);
+    }
+
+    public function getSubjects(Request $request)
+    {
+        $classId = $request->input('class_id');
+        $subjects = Subject::where('my_class_id', $classId)->get();
+        return response()->json($subjects);
+    }
+
+
     public function print(Request $request, $studentId)
     {
         $studentRecord = StudentRecord::with(['user', 'myClass', 'section'])->find($studentId);
@@ -172,16 +342,20 @@ class ResultController extends Controller
             return null;
         }
 
-        $students = StudentRecord::where('my_class_id', $studentRecord->myClass->id)
-            ->with(['user', 'results' => function ($query) use ($academicYearId, $semesterId) {
+        // Eager load necessary relationships to prevent N+1 queries
+        $students = StudentRecord::with([
+            'user',
+            'results' => function ($query) use ($academicYearId, $semesterId) {
                 $query->where('academic_year_id', $academicYearId)
                     ->where('semester_id', $semesterId);
-            }])->get();
+            }
+        ])->where('my_class_id', $studentRecord->myClass->id)->get();
 
         $scores = $students->map(function ($record) {
             return [
                 'id' => $record->id,
-                'name' => $record->user->name,
+                // Use null-safe operator and provide fallback
+                'name' => $record->user?->name ?? 'Deleted User',
                 'total_score' => $record->results->sum('total_score'),
             ];
         })->sortByDesc('total_score')->values();
@@ -784,20 +958,20 @@ class ResultController extends Controller
         ]);
     }
 
-    private function calculateGrade($score)
-    {
-        return match (true) {
-            $score >= 75 => 'A1',
-            $score >= 70 => 'B2',
-            $score >= 65 => 'B3',
-            $score >= 60 => 'C4',
-            $score >= 55 => 'C5',
-            $score >= 50 => 'C6',
-            $score >= 45 => 'D7',
-            $score >= 40 => 'E8',
-            default => 'F9',
-        };
-    }
+    // private function calculateGrade($score)
+    // {
+    //     return match (true) {
+    //         $score >= 75 => 'A1',
+    //         $score >= 70 => 'B2',
+    //         $score >= 65 => 'B3',
+    //         $score >= 60 => 'C4',
+    //         $score >= 55 => 'C5',
+    //         $score >= 50 => 'C6',
+    //         $score >= 45 => 'D7',
+    //         $score >= 40 => 'E8',
+    //         default => 'F9',
+    //     };
+    // }
 
     private function getDefaultComment($score)
     {
