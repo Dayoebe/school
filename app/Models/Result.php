@@ -52,6 +52,12 @@ class Result extends Model
         }
         return true;
     }
+    public function student()
+    {
+        return $this->belongsTo(StudentRecord::class, 'student_record_id');
+    }
+
+   
     public static function calculateClassPositions($academicYearId, $semesterId, $classId)
     {
         $results = self::whereHas('studentRecord', function ($query) use ($classId) {

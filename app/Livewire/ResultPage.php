@@ -12,7 +12,8 @@ use App\Models\{
     Semester,
     Result,
     Section,
-    TermReport
+    TermReport,
+    MyClass
 };
 
 class ResultPage extends Component
@@ -31,6 +32,12 @@ class ResultPage extends Component
     public $selectedSubject = '';
     public $studentRecord;
     public $academicYearId;
+    public $showResults = false;
+    public $subjectResults = [];
+    public $classResults = [];
+    public $academicYears;
+    public $semesters;
+    public $classes;
     public $semesterId;
     public $positions = [];
     public $grandTotal = 0;
@@ -63,47 +70,50 @@ class ResultPage extends Component
         return $rules;
     }
 
+
+
     public function openSubjectBulkEdit($subjectId)
-{  $this->selectedSubjectForBulkEdit = $subjectId;
-    
-    $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function ($q) use ($subjectId) {
+    {
+        $this->selectedSubjectForBulkEdit = $subjectId;
+
+        $this->bulkStudents = StudentRecord::whereHas('studentSubjects', function ($q) use ($subjectId) {
             $q->where('subject_id', $subjectId);
         })
-        ->whereHas('user', function ($q) { // Add this filter
-            $q->whereNull('deleted_at'); // Hide deleted users
-        })
-        ->when($this->selectedClass, function ($query) {
-            $query->where('my_class_id', $this->selectedClass);
-        })
-        ->when($this->selectedSection, function ($query) {
-            $query->where('section_id', $this->selectedSection);
-        })
-        ->with(['user', 'myClass', 'section', 'results' => function ($q) use ($subjectId) {
-            $q->where('subject_id', $subjectId)
-                ->where('academic_year_id', $this->academicYearId)
-                ->where('semester_id', $this->semesterId);
-        }])
-        ->get();
+            ->whereHas('user', function ($q) {
+                $q->whereNull('deleted_at'); // Hide deleted users
+            })
+            ->when($this->selectedClass, function ($query) {
+                $query->where('my_class_id', $this->selectedClass);
+            })
+            ->when($this->selectedSection, function ($query) {
+                $query->where('section_id', $this->selectedSection);
+            })
+            ->with(['user', 'myClass', 'section', 'results' => function ($q) use ($subjectId) {
+                $q->where('subject_id', $subjectId)
+                    ->where('academic_year_id', $this->academicYearId)
+                    ->where('semester_id', $this->semesterId);
+            }])
+            ->get();
 
-    $this->bulkResults = [];
-    foreach ($this->bulkStudents as $student) {
-        $existing = $student->results->first();
-        $this->bulkResults[$student->id] = [
-            'ca1_score' => $existing?->ca1_score ?? null,
-            'ca2_score' => $existing?->ca2_score ?? null,
-            'ca3_score' => $existing?->ca3_score ?? null,
-            'ca4_score' => $existing?->ca4_score ?? null,
-            'exam_score' => $existing?->exam_score ?? null,
-            'comment' => $existing?->teacher_comment ?? '',
-        ];
+        $this->bulkResults = [];
+        foreach ($this->bulkStudents as $student) {
+            $existing = $student->results->first();
+            $this->bulkResults[$student->id] = [
+                'ca1_score' => $existing?->ca1_score ?? null,
+                'ca2_score' => $existing?->ca2_score ?? null,
+                'ca3_score' => $existing?->ca3_score ?? null,
+                'ca4_score' => $existing?->ca4_score ?? null,
+                'exam_score' => $existing?->exam_score ?? null,
+                'comment' => $existing?->teacher_comment ?? '',
+            ];
+        }
+
+        $this->showSubjectModal = false;
+        $this->dispatch('show-loading');
+
+        $this->bulkEditMode = true;
+        $this->dispatch('hide-loading');
     }
-
-    $this->showSubjectModal = false;
-    $this->dispatch('show-loading');
-
-    $this->bulkEditMode = true;
-    $this->dispatch('hide-loading');
-}
     public function saveBulkResults()
     {
         $this->validate([
@@ -158,6 +168,10 @@ class ResultPage extends Component
 
     public function mount($studentId = null)
     {
+        $this->academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
+        $this->classes = MyClass::all();
+        $this->setDefaultAcademicYearAndSemester();
+        
         $this->recentActivities = [
             ['icon' => 'upload', 'action' => 'Bulk upload initiated', 'time' => now()->subMinutes(5)->diffForHumans()],
             ['icon' => 'user-edit', 'action' => 'Individual result updated', 'time' => now()->subHours(2)->diffForHumans()],
@@ -205,7 +219,13 @@ class ResultPage extends Component
 
     public function getFilteredStudentsProperty()
     {
-        $query = StudentRecord::query()->with('user')->where('is_graduated', false);
+        $query = StudentRecord::query()
+            ->with('user')
+            ->where('is_graduated', false)
+            ->whereHas('user', function ($q) {
+                $q->whereNull('deleted_at');
+            });
+
 
         if ($this->selectedClass) {
             $query->where('my_class_id', $this->selectedClass);
@@ -267,10 +287,12 @@ class ResultPage extends Component
 
         $this->dispatch('show-overview-alert', message: $message);
     }
-
     public function updatedAcademicYearId()
     {
         $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)->first()?->id;
+        $this->semesters = Semester::where('academic_year_id', $this->academicYearId)->get();
+        $this->semesterId = $this->semesters->first()?->id;
+        $this->reset(['selectedClass', 'selectedSubject', 'showResults']);
     }
 
     public function showFilteredStudents()
@@ -296,7 +318,7 @@ class ResultPage extends Component
         $this->reset(['selectedSubject', 'showStudents']);
         $this->subjects = $this->getSubjectsProperty();
     }
-   
+
     public function goToUpload($studentId)
     {
         $this->mode = 'upload';
@@ -544,32 +566,32 @@ class ResultPage extends Component
     }
 
     public function deleteResult($subjectId)
-{
-    try {
-        Result::where([
-            'student_record_id' => $this->studentRecord->id,
-            'subject_id' => $subjectId,
-            'academic_year_id' => $this->academicYearId,
-            'semester_id' => $this->semesterId,
-        ])->delete();
+    {
+        try {
+            Result::where([
+                'student_record_id' => $this->studentRecord->id,
+                'subject_id' => $subjectId,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ])->delete();
 
-        // Reset to empty values instead of zeros
-        $this->results[$subjectId] = [
-            'ca1_score' => null,
-            'ca2_score' => null,
-            'ca3_score' => null,
-            'ca4_score' => null,
-            'exam_score' => null,
-            'comment' => '',
-            'grade' => '',
-        ];
+            // Reset to empty values instead of zeros
+            $this->results[$subjectId] = [
+                'ca1_score' => null,
+                'ca2_score' => null,
+                'ca3_score' => null,
+                'ca4_score' => null,
+                'exam_score' => null,
+                'comment' => '',
+                'grade' => '',
+            ];
 
-        session()->flash('success', 'Result deleted successfully!');
-    } catch (\Exception $e) {
-        session()->flash('error', 'Failed to delete result: ' . $e->getMessage());
+            session()->flash('success', 'Result deleted successfully!');
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to delete result: ' . $e->getMessage());
+        }
     }
-}
- 
+
     public function deleteBulkResult($studentId)
     {
         try {
@@ -595,7 +617,7 @@ class ResultPage extends Component
             $this->dispatch('showSuccess', 'Failed to delete result: ' . $e->getMessage());
         }
     }
-    
+
     public function clearFilters()
     {
         $this->reset(['selectedClass', 'selectedSection', 'studentSearch', 'selectedSubject']);

@@ -20,6 +20,11 @@ class MyClassPolicy
         }
     }
 
+    
+// public function update(User $user, MyClass $class)
+// {
+//     return $user->isAdmin() || $user->isTeacher();
+// }
     /**
      * Determine whether the user can view the model.
      */

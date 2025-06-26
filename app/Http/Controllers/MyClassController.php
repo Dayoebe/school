@@ -70,6 +70,28 @@ class MyClassController extends Controller
         return view('pages.class.edit', $data);
     }
 
+    public function assignSubjects(MyClass $class)
+{
+    $this->authorize('update', $class);
+    
+    $subjects = $class->subjects;
+    $students = $class->studentRecords()->with('studentSubjects')->get();
+
+    foreach ($students as $student) {
+        $syncData = [];
+        foreach ($subjects as $subject) {
+            $syncData[$subject->id] = [
+                'my_class_id' => $class->id,
+                'section_id' => $student->section_id,
+            ];
+        }
+        $student->studentSubjects()->syncWithoutDetaching($syncData);
+    }
+
+    return back()->with('success', 'Subjects assigned to students successfully!');
+}
+
+
     /**
      * Update the specified resource in storage.
      *

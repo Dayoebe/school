@@ -225,7 +225,7 @@ class Menu extends Component
                     [
                         'type'  => 'menu-item',
                         'text'  => 'View Individual Result',
-                        'route' => 'result',
+                        'route' => 'view-results',
                         'can'   => 'upload result',
                     ],
                     [

@@ -17,7 +17,7 @@
                 <h3 class="text-lg">To</h3>
                 <p class="font-bold">{{$feeInvoice->user->name}}</p>
                 <p>{{$feeInvoice->name}}</p>
-                <p> Class: {{$feeInvoice->user->studentRecord->myClass->name}}</p>
+                <p> Class: {{$feeInvoice->user->studentRecord->myClass->name ?? 'N/A'}}</p>
                 <p> Student Admission Number: {{$feeInvoice->user->studentRecord->admission_number}}</p>
             </div>
         </div>

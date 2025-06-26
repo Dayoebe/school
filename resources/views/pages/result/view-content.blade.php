@@ -42,7 +42,7 @@
                 <div class="mb-4">
                     <h2 class="text-2xl font-bold">Result for {{ $studentRecord->user->name }}</h2>
                     <p class="text-gray-600">
-                        Class: <strong>{{ $studentRecord->myClass->name }}</strong> |
+                        Class: <strong>{{ $studentRecord->myClass->name ?? 'N/A' }}</strong> |
                         Section: <strong>{{ $studentRecord->section->name }}</strong> |
                         Academic Year:
                         <strong>{{ \App\Models\AcademicYear::find($academicYearId)->name ?? 'N/A' }}</strong>

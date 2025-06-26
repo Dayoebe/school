@@ -53,7 +53,7 @@
                                 <td class="p-4 text-center border">{{$loop->iteration}}</td>
                                 <td class="p-4 text-center border">{{ $student->name}}</td>
                                 <td class="p-4 text-center border">@isset ($student->studentRecord->myClass)
-                                    {{$student->studentRecord->myClass->name}}
+                                    {{$student->studentRecord->myClass->name ?? 'N/A'}}
                                 @endisset</td>
                                 <td class="p-4 text-center border">@isset($student->studentRecord->section)
                                     {{$student->studentRecord->section->name}}

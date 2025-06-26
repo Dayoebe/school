@@ -42,6 +42,24 @@ class Subject extends Model
     {
         return $this->morphOne(TimetableRecord::class, 'timetable_time_slot_weekdayable');
     }
+public function assignToClassStudents($classId, $sectionId = null)
+{
+    $students = StudentRecord::where('my_class_id', $classId)
+        ->when($sectionId, function ($query) use ($sectionId) {
+            $query->where('section_id', $sectionId);
+        })
+        ->get();
+
+    $syncData = [];
+    foreach ($students as $student) {
+        $syncData[$student->id] = [
+            'my_class_id' => $classId,
+            'section_id' => $sectionId,
+        ];
+    }
+
+    $this->studentRecords()->syncWithoutDetaching($syncData);
+}
     public function studentRecords()
     {
         return $this->belongsToMany(

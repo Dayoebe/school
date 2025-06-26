@@ -30,7 +30,7 @@
                     <tr>
                         <td class="border p-4 text-center">{{$feeInvoice->user->name}}</td>
                         <td class="border p-4 text-center">{{$feeInvoice->user->studentRecord->admission_number}}</td>
-                        <td class="border p-4 text-center">{{$feeInvoice->user->studentRecord->myClass->name}}</td>
+                        <td class="border p-4 text-center">{{$feeInvoice->user->studentRecord->myClass->name ?? 'N/A'}}</td>
                     </tr>
                 </tbody>
             </table>

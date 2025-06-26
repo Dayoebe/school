@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class StudentRecord extends Model
 {
+    protected $appends = ['student_subjects_count'];
     use HasFactory;
 
     protected $fillable = ['admission_number', 'admission_date', 'my_class_id', 'section_id', 'user_id'];
@@ -19,26 +20,41 @@ class StudentRecord extends Model
         'admission_date' => 'datetime:Y-m-d',
     ];
 
-    public function assignSubjectsAutomatically()
-    {
-        if (!$this->section_id) {
-            $subjects = Subject::where('my_class_id', $this->my_class_id)
-                ->pluck('id');
-        } 
-        else {
-            $subjects = $this->section->subjects->pluck('id');
-        }
+public function assignSubjectsAutomatically()
+{
+    $subjects = Subject::where('my_class_id', $this->my_class_id)
+        ->when($this->section_id, function ($query) {
+            $query->where(function ($q) {
+                $q->where('is_general', true)
+                  ->orWhereHas('sections', function ($q) {
+                      $q->where('sections.id', $this->section_id);
+                  });
+            });
+        })
+        ->get();
 
-        $syncData = [];
-        foreach ($subjects as $subjectId) {
-            $syncData[$subjectId] = [
-                'my_class_id' => $this->my_class_id,
-                'section_id' => $this->section_id,
-            ];
-        }
-
-        $this->studentSubjects()->syncWithoutDetaching($syncData);
+    $syncData = [];
+    foreach ($subjects as $subject) {
+        $syncData[$subject->id] = [
+            'my_class_id' => $this->my_class_id,
+            'section_id' => $this->section_id,
+        ];
     }
+
+    $this->studentSubjects()->syncWithoutDetaching($syncData);
+}
+
+
+public function getStudentSubjectsCountAttribute()
+{
+    return $this->studentSubjects->count();
+}
+public function getSubjectsListAttribute()
+{
+    return $this->studentSubjects
+        ->pluck('name')
+        ->join(', ');
+}
 
     public function studentSubjects()
     {

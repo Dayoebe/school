@@ -19,7 +19,7 @@
                 <img class="h-16 w-16 rounded-full mr-4" src="{{ $studentRecord->user->profile_photo_url }}" alt="Student Photo">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">{{ $studentRecord->user->name }}</h2>
-                    <p class="text-gray-600">{{ $studentRecord->myClass->name }} - {{ $academicYear->name }}</p>
+                    <p class="text-gray-600">{{ $studentRecord->myClass->name ?? 'N/A' }} - {{ $academicYear->name }}</p>
                 </div>
             </div>
             <div class="flex gap-2">
