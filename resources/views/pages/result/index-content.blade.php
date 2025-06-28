@@ -595,11 +595,12 @@
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="flex items-center">
-                                                    @if($student->user && $student->user->profile_photo_url)
-                                                        <div class="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden mr-3">
-                                                            <img class="h-10 w-10 object-cover" 
-                                                                 src="{{ $student->user->profile_photo_url }}" 
-                                                                 alt="{{ $student->user->name }}">
+                                                    @if ($student->user && $student->user->profile_photo_url)
+                                                        <div
+                                                            class="flex-shrink-0 h-10 w-10 rounded-full overflow-hidden mr-3">
+                                                            <img class="h-10 w-10 object-cover"
+                                                                src="{{ $student->user->profile_photo_url }}"
+                                                                alt="{{ $student->user->name }}">
                                                         </div>
                                                     @endif
                                                     <div>
@@ -613,40 +614,66 @@
                                                 </div>
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input wire:model.defer="bulkResults.{{ $student->id }}.ca1_score"
-                                                    type="number" min="0" max="10" step="0.5"
-                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <input wire:model.live="bulkResults.{{ $student->id }}.ca1_score"
+                                                    type="number" min="0" max="10" step="1.0"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    x-on:input.debounce.500ms="
+                                                let val = parseFloat($event.target.value);
+                                                if (isNaN(val)) val = '';
+                                                $event.target.value = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+                                            ">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input wire:model.defer="bulkResults.{{ $student->id }}.ca2_score"
-                                                    type="number" min="0" max="10" step="0.5"
-                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <input wire:model.live="bulkResults.{{ $student->id }}.ca2_score"
+                                                    type="number" min="0" max="10" step="1.0"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    x-on:input.debounce.500ms="
+                                                let val = parseFloat($event.target.value);
+                                                if (isNaN(val)) val = '';
+                                                $event.target.value = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+                                            ">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input wire:model.defer="bulkResults.{{ $student->id }}.ca3_score"
-                                                    type="number" min="0" max="10" step="0.5"
-                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <input wire:model.live="bulkResults.{{ $student->id }}.ca3_score"
+                                                    type="number" min="0" max="10" step="1.0"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    x-on:input.debounce.500ms="
+                                                let val = parseFloat($event.target.value);
+                                                if (isNaN(val)) val = '';
+                                                $event.target.value = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+                                            ">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input wire:model.defer="bulkResults.{{ $student->id }}.ca4_score"
-                                                    type="number" min="0" max="10" step="0.5"
-                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <input wire:model.live="bulkResults.{{ $student->id }}.ca4_score"
+                                                    type="number" min="0" max="10" step="1.0"
+                                                    class="w-16 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    x-on:input.debounce.500ms="
+                                                let val = parseFloat($event.target.value);
+                                                if (isNaN(val)) val = '';
+                                                $event.target.value = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+                                            ">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input wire:model.defer="bulkResults.{{ $student->id }}.exam_score"
-                                                    type="number" min="0" max="60" step="0.5"
-                                                    class="w-20 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <input wire:model.live="bulkResults.{{ $student->id }}.exam_score"
+                                                    type="number" min="0" max="60" step="1.0"
+                                                    class="w-20 border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500"
+                                                    x-on:input.debounce.500ms="
+                                                let val = parseFloat($event.target.value);
+                                                if (isNaN(val)) val = '';
+                                                $event.target.value = val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+                                            ">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center font-medium">
-                                                {{ ($bulkResults[$student->id]['ca1_score'] ?? 0) +
-                                                   ($bulkResults[$student->id]['ca2_score'] ?? 0) +
-                                                   ($bulkResults[$student->id]['ca3_score'] ?? 0) +
-                                                   ($bulkResults[$student->id]['ca4_score'] ?? 0) +
-                                                   ($bulkResults[$student->id]['exam_score'] ?? 0) }}
+                                                {{ (int) ($bulkResults[$student->id]['ca1_score'] ?? 0) +
+                                                    (int) ($bulkResults[$student->id]['ca2_score'] ?? 0) +
+                                                    (int) ($bulkResults[$student->id]['ca3_score'] ?? 0) +
+                                                    (int) ($bulkResults[$student->id]['ca4_score'] ?? 0) +
+                                                    (int) ($bulkResults[$student->id]['exam_score'] ?? 0) }}
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input wire:model.defer="bulkResults.{{ $student->id }}.comment"
-                                                    type="text" 
+                                                <input
+                                                    wire:model.live.debounce.500ms="bulkResults.{{ $student->id }}.comment"
+                                                    type="text"
                                                     class="w-full border rounded px-2 py-1 focus:ring-indigo-500 focus:border-indigo-500">
                                             </td>
                                             <td class="px-6 py-4 whitespace-nowrap text-center">
@@ -663,9 +690,10 @@
                                             <td colspan="9" class="px-6 py-8 text-center">
                                                 <div class="text-gray-500">
                                                     <i class="fas fa-user-slash text-4xl text-gray-300 mb-3"></i>
-                                                    <h3 class="text-lg font-medium text-gray-700">No students found</h3>
+                                                    <h3 class="text-lg font-medium text-gray-700">No students found
+                                                    </h3>
                                                     <p class="mt-1 text-sm">
-                                                        No students are assigned to this subject for 
+                                                        No students are assigned to this subject for
                                                         {{ \App\Models\MyClass::find($selectedClass)?->name ?? 'selected class' }}
                                                     </p>
                                                     <p class="mt-2 text-xs text-gray-500">
@@ -698,82 +726,82 @@
     </div>
 
 
-@push('styles')
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
-    <style>
-        [x-cloak] {
-            display: none !important;
-        }
-
-        .animate-slide-up {
-            animation: slideUp 0.5s ease-out;
-        }
-
-        .animate-fade-in {
-            animation: fadeIn 0.8s ease-in;
-        }
-
-        .animate-fade-in-up {
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
+    @push('styles')
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+        <style>
+            [x-cloak] {
+                display: none !important;
             }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
+            .animate-slide-up {
+                animation: slideUp 0.5s ease-out;
             }
 
-            to {
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
+            .animate-fade-in {
+                animation: fadeIn 0.8s ease-in;
             }
 
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .animate-bounce {
-            animation: bounce 2s infinite;
-        }
-
-        @keyframes bounce {
-
-            0%,
-            20%,
-            50%,
-            80%,
-            100% {
-                transform: translateY(0);
+            .animate-fade-in-up {
+                animation: fadeInUp 0.5s ease-out;
             }
 
-            40% {
-                transform: translateY(-15px);
+            @keyframes slideUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
             }
 
-            60% {
-                transform: translateY(-10px);
+            @keyframes fadeIn {
+                from {
+                    opacity: 0;
+                }
+
+                to {
+                    opacity: 1;
+                }
             }
-        }
-    </style>
-@endpush
+
+            @keyframes fadeInUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(20px);
+                }
+
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .animate-bounce {
+                animation: bounce 2s infinite;
+            }
+
+            @keyframes bounce {
+
+                0%,
+                20%,
+                50%,
+                80%,
+                100% {
+                    transform: translateY(0);
+                }
+
+                40% {
+                    transform: translateY(-15px);
+                }
+
+                60% {
+                    transform: translateY(-10px);
+                }
+            }
+        </style>
+    @endpush
 </div>

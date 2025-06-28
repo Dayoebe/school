@@ -574,11 +574,11 @@ class ResultController extends Controller
     $academicYear = AcademicYear::findOrFail($request->academicYearId);
     $semesters = Semester::where('academic_year_id', $academicYear->id)->get();
 
-    // Eager load all necessary data with only non-deleted students
     $students = StudentRecord::with([
         'user' => function($query) {
             $query->whereNull('deleted_at');
         },
+        'studentSubjects', // Add this line to eager load studentSubjects
         'results' => function ($query) use ($academicYear, $semesters) {
             $query->where('academic_year_id', $academicYear->id)
                 ->whereIn('semester_id', $semesters->pluck('id'))
