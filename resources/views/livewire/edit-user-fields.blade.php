@@ -30,7 +30,7 @@
     <x-input id="phone" name="phone" label="Phone number" placeholder="{{$role}}'s phone number" group-class="col-span-3"  value="{{$user->phone}}"/>
     <x-input id="address" name="address" placeholder="{{$role}}'s address" group-class="col-span-9 no-resize" label="Address *"  value="{{$user->address}}"/>
     <x-select id="religion" name="religion" label="Religion *" group-class="col-span-3" >
-        @php ($religions = ['Christianity', 'Islam', 'Hinduism', 'Buddhism', 'Other'])
+        @php ($religions = ['Christianity', 'Islam', 'Traditionalist', 'Buddhism', 'Other'])
         @foreach ($religions as $religion)
             <option value="{{$religion}}" @selected(Str::lower($religion) == str::lower($user->religion)) >{{$religion}}</option>
         @endforeach

@@ -83,7 +83,7 @@
             <x-input id="phone" name="phone" label="Phone number" placeholder="Your phone number" group-class="col-span-6" wire:model.live="state.phone"/>
             <x-textarea id="address" name="address" placeholder="Your Address" group-class="col-span-12" label="Address *" wire:model.live="state.address"/>
             <x-select id="religion" name="religion" label="Religion *" group-class="col-span-6" wire:model.live="state.religion">
-                @php ($religions = ['Christianity', 'Islam', 'Hinduism', 'Buddhism', 'Other'])
+                @php ($religions = ['Christianity', 'Islam', 'Traditionalist', 'Buddhism', 'Other'])
                 @foreach ($religions as $religion)
                     <option value="{{$religion}}">{{$religion}}</option>
                 @endforeach
