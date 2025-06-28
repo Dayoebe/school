@@ -224,7 +224,7 @@ class Menu extends Component
                     ],
                     [
                         'type'  => 'menu-item',
-                        'text'  => 'View Individual Result',
+                        'text'  => 'View Class Result',
                         'route' => 'view-results',
                         'can'   => 'upload result',
                     ],
@@ -238,12 +238,6 @@ class Menu extends Component
                         'type'  => 'menu-item',
                         'text'  => 'Old Annual Class Result',
                         'route' => 'result.class',
-                        'can'   => 'upload result',
-                    ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Annual result',
-                        'route' => 'result.annual',
                         'can'   => 'upload result',
                     ],
                 ],
