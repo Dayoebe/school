@@ -684,86 +684,243 @@
 
 
 
-                    <!-- Detailed Annual Results -->
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h2 class="text-xl font-bold text-blue-800 mb-4">Detailed Annual Results</h2>
+     <!-- Detailed Annual Results - Enhanced Version -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+    <h2 class="text-xl font-bold text-blue-800 mb-4">Detailed Annual Results</h2>
 
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-blue-50">
-                                    <tr>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                            Rank</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                            Student</th>
-                                        @foreach ($semesters as $semester)
-                                            <th
-                                                class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                                {{ $semester->name }} Total
-                                            </th>
-                                        @endforeach
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                            Annual Total</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                            Average</th>
-                                        <th
-                                            class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider">
-                                            Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach ($annualReports as $report)
-                                        <tr class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                                {{ $report['rank'] }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="flex items-center">
-                                                    <div class="flex-shrink-0 h-10 w-10">
-                                                        <img class="h-10 w-10 rounded-full"
-                                                            src="{{ $report['student']->user->profile_photo_url }}"
-                                                            alt="{{ $report['student']->user->name }}">
-                                                    </div>
-                                                    <div class="ml-4">
-                                                        <div class="text-sm font-medium text-gray-900">
-                                                            {{ $report['student']->user->name }}
-                                                        </div>
-                                                        <div class="text-sm text-gray-500">
-                                                            {{ $report['student']->admission_number }}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            @foreach ($semesters as $semester)
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                                    {{ $report['term_totals'][$semester->id] ?? '-' }}
-                                                </td>
-                                            @endforeach
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center">
-                                                {{ $report['grand_total'] }}
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center">
-                                                {{ $report['average_percentage'] }}%
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                                                @if ($report['average_percentage'] >= 50)
-                                                    <span
-                                                        class="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">Passed</span>
-                                                @else
-                                                    <span
-                                                        class="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">Failed</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+    <!-- Export Buttons -->
+    <div class="flex justify-end gap-3 mb-4 no-print">
+        <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">
+            <i class="fas fa-print"></i> Print Report
+        </button>
+        <button @click="exportToPDF()" class="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg text-sm">
+            <i class="fas fa-file-pdf"></i> Export PDF
+        </button>
+    </div>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-blue-50">
+                <tr>
+                    <!-- Student Column (Sticky) -->
+                    <th class="px-6 py-3 text-left text-xs font-medium text-blue-800 uppercase tracking-wider sticky left-0 bg-blue-50 z-10 min-w-[220px]">
+                        Student
+                    </th>
+                    
+                    <!-- Subject Headers -->
+                    @foreach ($subjects as $subject)
+                        <th colspan="{{ count($semesters) + 2 }}" class="px-4 py-3 text-center text-xs font-medium text-blue-800 uppercase tracking-wider border-b border-blue-200 group">
+                            <div class="flex items-center justify-center">
+                                {{ $subject->name }}
+                                <span class="ml-2 text-xs text-blue-600 font-normal">
+                                    (Max: {{ $subject->max_score ?? 100 }})
+                                </span>
+                            </div>
+                            <div class="text-[10px] text-blue-600 mt-1 flex">
+                                @foreach ($semesters as $semester)
+                                    <span class="inline-block w-16">{{ $semester->name }}</span>
+                                @endforeach
+                                <span class="inline-block w-16">Avg</span>
+                                <span class="inline-block w-16">Trend</span>
+                            </div>
+                        </th>
+                    @endforeach
+                    
+                    <!-- Summary Columns -->
+                    <th class="px-4 py-3 text-center text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        Total
+                    </th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        Average
+                    </th>
+                    <th class="px-4 py-3 text-center text-xs font-medium text-blue-800 uppercase tracking-wider">
+                        Rank
+                    </th>
+                </tr>
+            </thead>
+            
+            <tbody class="bg-white divide-y divide-gray-200">
+                @foreach ($annualReports as $report)
+                    @php
+                        // Pre-calculate all scores for performance
+                        $studentScores = [];
+                        $subjectAverages = [];
+                        $grandTotal = 0;
+                        
+                        foreach ($subjects as $subject) {
+                            $scores = [];
+                            $total = 0;
+                            $count = 0;
+                            
+                            foreach ($semesters as $semester) {
+                                $result = collect($termReports[$semester->id] ?? [])
+                                    ->firstWhere('student.id', $report['student']->id)['results'][$subject->id] ?? null;
+                                
+                                $score = $result['total_score'] ?? null;
+                                $scores[$semester->id] = [
+                                    'score' => $score,
+                                    'details' => $result ? [
+                                        'ca1' => $result['ca1_score'] ?? '-',
+                                        'ca2' => $result['ca2_score'] ?? '-',
+                                        'exam' => $result['exam_score'] ?? '-'
+                                    ] : null
+                                ];
+                                
+                                if (!is_null($score)) {
+                                    $total += $score;
+                                    $count++;
+                                }
+                            }
+                            
+                            $average = $count > 0 ? round($total / $count, 1) : null;
+                            $studentScores[$subject->id] = $scores;
+                            $subjectAverages[$subject->id] = $average;
+                            $grandTotal += $average ?? 0;
+                        }
+                        
+                        // Color coding function
+                        $scoreColor = function($score, $max = 100) {
+                            if (is_null($score)) return '';
+                            $percentage = ($score / $max) * 100;
+                            return match(true) {
+                                $percentage >= 75 => 'bg-green-100 text-green-800',
+                                $percentage >= 60 => 'bg-blue-100 text-blue-800',
+                                $percentage >= 50 => 'bg-yellow-100 text-yellow-800',
+                                $percentage >= 40 => 'bg-orange-100 text-orange-800',
+                                default => 'bg-red-100 text-red-800',
+                            };
+                        };
+                        
+                        $overallPercentage = count($subjects) > 0 ? round($grandTotal / (count($subjects) * 100), 1) : 0;
+                    @endphp
+                    
+                    <tr class="hover:bg-gray-50">
+                        <!-- Student Column -->
+                        <td class="px-6 py-4 whitespace-nowrap sticky left-0 bg-white z-10">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 h-10 w-10">
+                                    <img class="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                        src="{{ $report['student']->user->profile_photo_url }}"
+                                        alt="{{ $report['student']->user->name }}"
+                                        onerror="this.src='{{ asset('img/logo.png') }}'">
+                                </div>
+                                <div class="ml-4">
+                                    <div class="font-medium text-gray-900">
+                                        {{ $report['student']->user->name }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ $report['student']->admission_number }}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Subject Data -->
+                        @foreach ($subjects as $subject)
+                            @php
+                                $maxScore = $subject->max_score ?? 100;
+                                $scores = $studentScores[$subject->id] ?? [];
+                                $average = $subjectAverages[$subject->id] ?? null;
+                                $trendScores = array_filter(array_column($scores, 'score'), fn($s) => !is_null($s));
+                            @endphp
+                            
+                            <!-- Term Scores -->
+                            @foreach ($semesters as $semester)
+                                @php
+                                    $scoreData = $scores[$semester->id] ?? null;
+                                    $score = $scoreData['score'] ?? null;
+                                    $details = $scoreData['details'] ?? null;
+                                @endphp
+                                
+                                <td class="px-3 py-2 text-center relative group"
+                                    x-data="{ showTooltip: false }"
+                                    @mouseover="showTooltip = true"
+                                    @mouseleave="showTooltip = false">
+                                    
+                                    @if(!is_null($score))
+                                        <span class="inline-block px-2 py-1 rounded-full text-xs font-medium {{ $scoreColor($score, $maxScore) }}">
+                                            {{ $score }}
+                                        </span>
+                                        
+                                        <!-- Score Breakdown Tooltip -->
+                                        <div x-show="showTooltip" 
+                                             x-transition
+                                             class="absolute z-20 w-48 p-2 text-xs bg-gray-900 text-white rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2">
+                                            <div class="font-bold mb-1">{{ $subject->name }} - {{ $semester->name }}</div>
+                                            <div>CA1: {{ $details['ca1'] }}</div>
+                                            <div>CA2: {{ $details['ca2'] }}</div>
+                                            <div>Exam: {{ $details['exam'] }}</div>
+                                            <div class="mt-1 pt-1 border-t border-gray-700">Total: {{ $score }}</div>
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400">-</span>
+                                    @endif
+                                </td>
+                            @endforeach
+                            
+                            <!-- Subject Average -->
+                            <td class="px-3 py-2 text-center font-bold bg-gray-50 {{ $scoreColor($average, $maxScore) }}">
+                                {{ $average ?? '-' }}
+                            </td>
+                            
+                            <!-- Trend Indicator -->
+                            <td class="px-3 py-2 text-center">
+                                @if(count($trendScores) > 1)
+                                    @php
+                                        $first = reset($trendScores);
+                                        $last = end($trendScores);
+                                        $trend = $last - $first;
+                                    @endphp
+                                    <span class="inline-flex items-center">
+                                        @if($trend > 0)
+                                            <span class="text-green-600 text-sm">↑</span>
+                                            <span class="text-green-600 text-xs ml-1">{{ abs($trend) }}</span>
+                                        @elseif($trend < 0)
+                                            <span class="text-red-600 text-sm">↓</span>
+                                            <span class="text-red-600 text-xs ml-1">{{ abs($trend) }}</span>
+                                        @else
+                                            <span class="text-gray-400 text-sm">→</span>
+                                        @endif
+                                    </span>
+                                @else
+                                    <span class="text-gray-400">-</span>
+                                @endif
+                            </td>
+                        @endforeach
+                        
+                        <!-- Grand Total -->
+                        <td class="px-4 py-2 text-center font-bold bg-blue-50">
+                            {{ $grandTotal }}
+                        </td>
+                        
+                        <!-- Overall Average -->
+                        <td class="px-4 py-2 text-center font-bold">
+                            <span @class([
+                                'px-2 py-1 rounded-full text-xs',
+                                'bg-green-100 text-green-800' => $overallPercentage >= 75,
+                                'bg-blue-100 text-blue-800' => $overallPercentage >= 60 && $overallPercentage < 75,
+                                'bg-yellow-100 text-yellow-800' => $overallPercentage >= 50 && $overallPercentage < 60,
+                                'bg-orange-100 text-orange-800' => $overallPercentage >= 40 && $overallPercentage < 50,
+                                'bg-red-100 text-red-800' => $overallPercentage < 40,
+                            ])>
+                                {{ $overallPercentage }}%
+                            </span>
+                        </td>
+                        
+                        <!-- Class Rank -->
+                        <td class="px-4 py-2 text-center font-bold">
+                            {{ $report['rank'] }}/{{ count($annualReports) }}
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+
+                    
                 </div>
             </template>
         @endif
