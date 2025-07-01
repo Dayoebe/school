@@ -74,7 +74,7 @@
     </div>
 
     <div class="print-container mx-auto p-4 print-border">
-        <div class="absolute inset-0 flex items-center justify-center opacity-10 -z-10">
+        <div class="absolute inset-0 flex items-center justify-center opacity-10 -z-100">
             <img src="{{ asset('img/logo.png') }}" alt="Watermark" class="h-auto w-auto rotate-0">
         </div>
 
