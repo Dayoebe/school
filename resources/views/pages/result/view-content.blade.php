@@ -2,9 +2,7 @@
     @if ($mode === 'view')
         @php
             $hasResult = collect($results)
-                ->filter(function ($r) {
-                    return !empty($r['test_score']) || !empty($r['exam_score']);
-                })
+                ->filter(fn($r) => !empty($r['test_score']) || !empty($r['exam_score']))
                 ->isNotEmpty();
 
             $academicYearName = \App\Models\AcademicYear::find($academicYearId)?->name ?? 'N/A';
@@ -43,7 +41,7 @@
                     <h2 class="text-2xl font-bold">Result for {{ $studentRecord->user->name }}</h2>
                     <p class="text-gray-600">
                         Class: <strong>{{ $studentRecord->myClass->name ?? 'N/A' }}</strong> |
-                        Section: <strong>{{ $studentRecord->section->name }}</strong> |
+                        Section: <strong>{{ $studentRecord->section->name ?? 'N/A' }}</strong> |
                         Academic Year:
                         <strong>{{ \App\Models\AcademicYear::find($academicYearId)->name ?? 'N/A' }}</strong>
                         |
