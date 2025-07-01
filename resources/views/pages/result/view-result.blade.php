@@ -36,7 +36,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <!-- Academic Year Selector -->
                     <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-700 flex items-center">
+                        <label class="flex text-sm font-medium text-gray-700 items-center">
                             <i class="fas fa-calendar mr-2 text-indigo-500"></i> Academic Year
                         </label>
                         <select name="academicYearId" id="academicYearId"
@@ -265,7 +265,7 @@
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                                     <div class="flex space-x-2 justify-center">
                                                         <!-- View Button -->
-                                                        <button wire:click="goToView({{ $student->id }})"
+                                                        <button wire:click="goToView({{ $result->student->id }})"
                                                             class="text-white bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 px-3 py-1.5 rounded-xl transition-all duration-300 transform hover:scale-105 flex items-center shadow text-xs">
                                                             <i class="fas fa-eye mr-1"></i> View
                                                         </button>
