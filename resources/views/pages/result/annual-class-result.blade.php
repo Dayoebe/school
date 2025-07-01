@@ -824,39 +824,55 @@
                                 $trendScores = array_filter(array_column($scores, 'score'), fn($s) => !is_null($s));
                             @endphp
                             
-                            <!-- Term Scores -->
-                            @foreach ($semesters as $semester)
-                                @php
-                                    $scoreData = $scores[$semester->id] ?? null;
-                                    $score = $scoreData['score'] ?? null;
-                                    $details = $scoreData['details'] ?? null;
-                                @endphp
-                                
-                                <td class="px-3 py-2 text-center relative group"
-                                    x-data="{ showTooltip: false }"
-                                    @mouseover="showTooltip = true"
-                                    @mouseleave="showTooltip = false">
-                                    
-                                    @if(!is_null($score))
-                                        <span class="inline-block px-2 py-1 rounded-full text-xs font-medium {{ $scoreColor($score, $maxScore) }}">
-                                            {{ $score }}
-                                        </span>
-                                        
-                                        <!-- Score Breakdown Tooltip -->
-                                        <div x-show="showTooltip" 
-                                             x-transition
-                                             class="absolute z-20 w-48 p-2 text-xs bg-gray-900 text-white rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2">
-                                            <div class="font-bold mb-1">{{ $subject->name }} - {{ $semester->name }}</div>
-                                            <div>CA1: {{ $details['ca1'] }}</div>
-                                            <div>CA2: {{ $details['ca2'] }}</div>
-                                            <div>Exam: {{ $details['exam'] }}</div>
-                                            <div class="mt-1 pt-1 border-t border-gray-700">Total: {{ $score }}</div>
-                                        </div>
-                                    @else
-                                        <span class="text-gray-400">-</span>
-                                    @endif
-                                </td>
-                            @endforeach
+                           <!-- Term Scores -->
+@foreach ($semesters as $semester)
+@php
+    $scoreData = $scores[$semester->id] ?? null;
+    $score = $scoreData['score'] ?? null;
+    $details = $scoreData['details'] ?? null;
+@endphp
+
+<td class="px-3 py-2 text-center relative group"
+    x-data="{ showTooltip: false }"
+    @mouseover="showTooltip = true"
+    @mouseleave="showTooltip = false">
+    
+    @if(!is_null($score))
+        <span class="inline-block px-2 py-1 rounded-full text-xs font-medium {{ $scoreColor($score, $maxScore) }}">
+            {{ $score }}
+        </span>
+        
+        <!-- Score Breakdown Tooltip -->
+        <div x-show="showTooltip" 
+             x-transition
+             class="absolute z-20 w-56 p-2 text-xs bg-gray-900 text-white rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2">
+            <div class="font-bold mb-1">{{ $subject->name }} - {{ $semester->name }}</div>
+            <div class="grid grid-cols-2 gap-1">
+                <div>CA1:</div>
+                <div class="text-right">{{ $details['ca1'] ?? '-' }}</div>
+                <div>CA2:</div>
+                <div class="text-right">{{ $details['ca2'] ?? '-' }}</div>
+                <div>CA3:</div>
+                <div class="text-right">{{ $details['ca3'] ?? '-' }}</div>
+                <div>CA4:</div>
+                <div class="text-right">{{ $details['ca4'] ?? '-' }}</div>
+                <div class="col-span-2 border-t border-gray-700 mt-1 pt-1">
+                    <div class="flex justify-between">
+                        <span>Exam:</span>
+                        <span>{{ $details['exam'] ?? '-' }}</span>
+                    </div>
+                    <div class="flex justify-between font-bold">
+                        <span>Total:</span>
+                        <span>{{ $score }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @else
+        <span class="text-gray-400">-</span>
+    @endif
+</td>
+@endforeach
                             
                             <!-- Subject Average -->
                             <td class="px-3 py-2 text-center font-bold bg-gray-50 {{ $scoreColor($average, $maxScore) }}">
