@@ -59,21 +59,30 @@ Route::get('/results/view', [ResultController::class, 'viewResults'])->name('vie
 Route::get('/get-semesters', [ResultController::class, 'getSemesters']);
 Route::get('/get-subjects', [ResultController::class, 'getSubjects']);
 
-Route::get('/results/class', [ResultController::class, 'classResult'])->name('result.class');
-Route::get('/results/class/print', [ResultController::class, 'printClassResult'])->name('result.class.print');
 Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])->name('result.print');
-
-Route::get('/results/class/export', [ResultController::class, 'exportClassResult'])->name('result.class.export');
-
-Route::get('/results/annual', [ResultController::class, 'annualResult'])->name('result.annual');
 Route::get('/results/annual/export', [ResultController::class, 'exportAnnualResult'])->name('result.annual.export');
-Route::get('/results/annual/export/pdf', [ResultController::class, 'exportAnnualResultPdf'])
-    ->name('result.annual.export.pdf');
+Route::get('/results/class/export', [ResultController::class, 'exportClassResult'])->name('result.class.export');
 
 
 
 Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])
     ->name('result.student.annual');
+
+
+
+
+Route::get(
+    '/result/print-class/{academicYearId}/{semesterId}/{classId}',
+    [ResultController::class, 'printClassResults']
+)
+    ->name('result.print-class');
+
+
+// result.annual.export
+
+Route::get('/result/annual/export/pdf', [App\Http\Controllers\ResultController::class, 'exportAnnualPdf'])
+    ->name('result.annual.export.pdf');
+
 
 
 // Add this to your existing routes
