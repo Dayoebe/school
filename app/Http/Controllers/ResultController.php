@@ -154,6 +154,7 @@ class ResultController extends Controller
             'academicYearName', 'semesterName'
         ));
     }
+    
     protected function calculateGrade($score)
     {
         return match (true) {
@@ -183,33 +184,77 @@ class ResultController extends Controller
         return response()->json($subjects);
     }
 
-
     public function print(Request $request, $studentId)
     {
-        $studentRecord = StudentRecord::with(['user', 'myClass', 'section'])->find($studentId);
-        if (!$studentRecord) {
-            abort(404, 'Student record not found');
-        }
-
-        if (!$studentRecord->myClass) {
-            abort(404, 'Student class information not found');
-        }
-
         $academicYearId = $request->academicYearId ?? $request->input('academicYearId');
         $semesterId = $request->semesterId ?? $request->input('semesterId');
+        
+        $studentRecord = StudentRecord::with([
+                'user',
+                'myClass',
+                'section',
+                'results' => function ($query) use ($academicYearId, $semesterId) {
+                    $query->where('academic_year_id', $academicYearId)
+                        ->where('semester_id', $semesterId)
+                        ->with('subject');
+                }
+            ])
+            ->findOrFail($studentId);
 
-        $studentRecord = StudentRecord::with(['user', 'myClass', 'section'])->findOrFail($studentId);
+        $data = $this->prepareReportData($studentRecord, $academicYearId, $semesterId);
 
-        $rawResults = Result::where([
-            'student_record_id' => $studentId,
-            'academic_year_id' => $academicYearId,
-            'semester_id' => $semesterId,
-        ])->get();
+        return view('pages.result.print', $data);
+    }
+    
+    public function printClassResults($academicYearId, $semesterId, $classId)
+    {
+        $academicYear = AcademicYear::findOrFail($academicYearId);
+        $semester = Semester::findOrFail($semesterId);
+        $class = MyClass::findOrFail($classId);
 
-        $classResults = Result::where([
-            'academic_year_id' => $academicYearId,
-            'semester_id' => $semesterId
-        ])
+        $students = StudentRecord::with([
+                'user',
+                'myClass',
+                'section',
+                'results' => function ($query) use ($academicYearId, $semesterId) {
+                    $query->where('academic_year_id', $academicYearId)
+                        ->where('semester_id', $semesterId)
+                        ->with('subject');
+                }
+            ])
+            ->where('my_class_id', $classId)
+            ->where('is_graduated', false)
+            ->whereHas('user', function ($q) {
+                $q->whereNull('deleted_at');
+            })
+            ->get();
+
+        $studentsData = [];
+        
+        foreach ($students as $student) {
+            $studentsData[] = $this->prepareReportData($student, $academicYearId, $semesterId);
+        }
+
+        return view('pages.result.print-class', [
+            'academicYear' => $academicYear,
+            'semester' => $semester,
+            'class' => $class,
+            'studentsData' => $studentsData,
+        ]);
+    }
+
+    protected function prepareReportData($studentRecord, $academicYearId, $semesterId)
+    {
+        // Get the raw results for this student
+        $rawResults = $studentRecord->results->filter(function ($result) use ($academicYearId, $semesterId) {
+            return $result->academic_year_id == $academicYearId && 
+                   $result->semester_id == $semesterId;
+        });
+
+        // Get class results for statistics
+        $classResults = Result::with('subject')
+            ->where('academic_year_id', $academicYearId)
+            ->where('semester_id', $semesterId)
             ->whereIn(
                 'student_record_id',
                 StudentRecord::where('my_class_id', $studentRecord->my_class_id)->pluck('id')
@@ -225,6 +270,7 @@ class ResultController extends Controller
             ];
         }
 
+        // Process results
         $results = $rawResults->keyBy('subject_id')->map(function ($result) {
             $ca1 = (int) $result->ca1_score;
             $ca2 = (int) $result->ca2_score;
@@ -246,15 +292,15 @@ class ResultController extends Controller
             };
 
             $comment = match ($grade) {
-                'A1' => 'Distinction ✨',
-                'B2' => 'Very good 💪',
-                'B3' => 'Good 🔥',
-                'C4' => 'Credit 👍',
-                'C5' => 'Credit 🌱',
-                'C6' => 'Credit 📈',
-                'D7' => 'Pass ⏳',
-                'E8' => 'Pass ⚠️',
-                default => 'Fail 🚨',
+                'A1' => 'Distinction',
+                'B2' => 'Very good',
+                'B3' => 'Good',
+                'C4' => 'Credit',
+                'C5' => 'Credit',
+                'C6' => 'Credit',
+                'D7' => 'Pass',
+                'E8' => 'Pass',
+                default => 'Fail',
             };
 
             return [
@@ -269,7 +315,9 @@ class ResultController extends Controller
             ];
         });
 
-        $subjects = Subject::whereIn('id', array_keys($results->toArray()))
+        // Get subjects from eager-loaded relationships
+        $subjectIds = $rawResults->pluck('subject_id')->unique()->toArray();
+        $subjects = Subject::whereIn('id', $subjectIds)
             ->orderBy('name')
             ->get();
 
@@ -277,9 +325,11 @@ class ResultController extends Controller
         $maxTotalScore = $totalSubjects * 100;
 
         $grandTotal = $rawResults->sum('total_score');
-        $grandTotalTest = $rawResults->sum('test_score');
+        $grandTotalTest = $rawResults->sum(function($result) {
+            return $result->ca1_score + $result->ca2_score + $result->ca3_score + $result->ca4_score;
+        });
         $grandTotalExam = $rawResults->sum('exam_score');
-        $percentage = $results->count() ? round($grandTotal / $results->count(), 2) : 0;
+        $percentage = $totalSubjects ? round($grandTotal / $totalSubjects, 2) : 0;
         $principalComment = 'Keep up the good work';
 
         $academicYearName = optional(AcademicYear::find($academicYearId))->name ?? 'Unknown Academic Year';
@@ -312,28 +362,28 @@ class ResultController extends Controller
             'position' => $classPosition,
         ]);
 
-        return view('pages.result.print', compact(
-            'studentRecord',
-            'subjects',
-            'results',
-            'grandTotal',
-            'grandTotalTest',
-            'grandTotalExam',
-            'subjectsPassed',
-            'totalScore',
-            'subjectStats',
-            'percentage',
-            'principalComment',
-            'totalStudents',
-            'classPosition',
-            'academicYearId',
-            'semesterId',
-            'academicYearName',
-            'semesterName',
-            'termReport',
-            'maxTotalScore',
-            'totalSubjects'
-        ));
+        return [
+            'studentRecord' => $studentRecord,
+            'subjects' => $subjects,
+            'results' => $results,
+            'grandTotal' => $grandTotal,
+            'grandTotalTest' => $grandTotalTest,
+            'grandTotalExam' => $grandTotalExam,
+            'subjectsPassed' => $subjectsPassed,
+            'totalScore' => $totalScore,    
+            'subjectStats' => $subjectStats,
+            'percentage' => $percentage,
+            'principalComment' => $principalComment,
+            'totalStudents' => $totalStudents,
+            'classPosition' => $classPosition,
+            'academicYearId' => $academicYearId,
+            'semesterId' => $semesterId,
+            'academicYearName' => $academicYearName,
+            'semesterName' => $semesterName,
+            'termReport' => $termReport,
+            'maxTotalScore' => $maxTotalScore,
+            'totalSubjects' => $totalSubjects,
+        ];
     }
 
     protected function calculatePosition($studentRecord, $academicYearId, $semesterId)
@@ -354,7 +404,6 @@ class ResultController extends Controller
         $scores = $students->map(function ($record) {
             return [
                 'id' => $record->id,
-                // Use null-safe operator and provide fallback
                 'name' => $record->user?->name ?? 'Deleted User',
                 'total_score' => $record->results->sum('total_score'),
             ];
@@ -371,399 +420,47 @@ class ResultController extends Controller
 
     public function generatePdf($studentId)
     {
-        $data = $this->prepareReportData($studentId);
+        $studentRecord = StudentRecord::with([
+            'user',
+            'myClass',
+            'section',
+            'results' => function ($query) {
+                $query->with('subject');
+            }
+        ])->findOrFail($studentId);
+        
+        $academicYearId = AcademicYear::latest()->first()->id;
+        $semesterId = Semester::latest()->first()->id;
+        
+        $data = $this->prepareReportData($studentRecord, $academicYearId, $semesterId);
+        
         $pdf = PDF::loadView('pages.result.official-report', $data);
         $pdf->setPaper('A4', 'portrait');
         return $pdf->download("report-{$data['studentRecord']->user->name}-{$data['semesterName']}.pdf");
     }
+    
 
-    public function classResult(Request $request)
-    {
-        $academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
-        $allSemesters = Semester::orderBy('name')->get();
-        $classes = MyClass::orderBy('name')->get();
-        $studentReports = [];
-        $subjectStats = [];
-        $classStats = [
-            'total_students' => 0,
-            'subjects_count' => 0,
-            'max_total_score' => 0,
-        ];
-        $subjects = collect();
-        $students = collect();
-        $academicYear = $request->filled('academicYearId')
-            ? AcademicYear::find($request->academicYearId)
-            : AcademicYear::latest()->first();
-        $semesters = $academicYear
-            ? Semester::where('academic_year_id', $academicYear->id)->orderBy('name')->get()
-            : $allSemesters;
-        $semester = $request->filled('semesterId')
-            ? Semester::find($request->semesterId)
-            : ($semesters->first() ?? $allSemesters->first());
-        $class = $request->filled('classId')
-            ? MyClass::find($request->classId)
-            : null;
-        if (!$request->filled('classId') || !$class) {
-            return view('pages.result.class-result', [
-                'academicYears' => $academicYears,
-                'semesters' => $semesters,
-                'classes' => $classes,
-                'studentReports' => $studentReports,
-                'subjectStats' => $subjectStats,
-                'classStats' => $classStats,
-                'academicYear' => $academicYear,
-                'semester' => $semester,
-                'class' => $class,
-                'subjects' => $subjects,
-                'students' => $students,
-                'showResults' => false
-            ]);
-        }
-        $students = StudentRecord::with([
-            'user' => function ($query) {
-                $query->orderBy('name');
-            },
-            'results' => function ($query) use ($academicYear, $semester) {
-                $query->where('academic_year_id', $academicYear->id)
-                    ->where('semester_id', $semester->id)
-                    ->with('subject');
-            },
-            'myClass'
-        ])
-            ->where('my_class_id', $class->id)
-            ->whereHas('user')
-            ->join('users', 'users.id', '=', 'student_records.user_id')
-            ->orderBy('users.name')
-            ->select('student_records.*')
-            ->paginate(20);
-        $subjects = Subject::where('my_class_id', $class->id)
-            ->orderBy('name')
-            ->get();
-        if ($students->count() > 0) {
-            $classStats = [
-                'total_students' => $students->total(),
-                'subjects_count' => $subjects->count(),
-                'max_total_score' => $subjects->count() * 100,
-            ];
-            foreach ($students as $student) {
-                if (!$student->user) {
-                    continue;
-                }
-                $results = $student->results ? $student->results->keyBy('subject_id') : collect();
-                $totalScore = $results->sum('total_score');
-                $percentage = $classStats['subjects_count'] > 0
-                    ? round(($totalScore / $classStats['max_total_score']) * 100, 2)
-                    : 0;
-                $studentReports[] = [
-                    'student' => $student,
-                    'results' => $results,
-                    'total_score' => $totalScore,
-                    'percentage' => $percentage,
-                    'position' => $this->calculatePosition($student, $academicYear->id, $semester->id),
-                ];
-            }
-            if (!empty($studentReports)) {
-                usort($studentReports, fn($a, $b) => $b['total_score'] <=> $a['total_score']);
-                foreach ($studentReports as $index => &$report) {
-                    $report['rank'] = $index + 1;
-                }
-            }
-            if ($subjects->count() > 0) {
-                foreach ($subjects as $subject) {
-                    $subjectScores = collect($studentReports)->map(function ($report) use ($subject) {
-                        return $report['results'][$subject->id]->total_score ?? 0;
-                    });
-                    $subjectStats[] = [
-                        'subject' => $subject,
-                        'average' => $subjectScores->avg(),
-                        'highest' => $subjectScores->max(),
-                        'lowest' => $subjectScores->min(),
-                        'pass_rate' => ($subjectScores->filter(fn($s) => $s >= 40)->count() / max(1, $subjectScores->count())) * 100
-                    ];
-                }
-            }
-        }
-        return view('pages.result.class-result', [
-            'academicYears' => $academicYears,
-            'semesters' => $semesters,
-            'classes' => $classes,
-            'class' => $class,
-            'academicYear' => $academicYear,
-            'semester' => $semester,
-            'subjects' => $subjects,
-            'students' => $students,
-            'studentReports' => $studentReports,
-            'subjectStats' => $subjectStats,
-            'classStats' => $classStats,
-            'showResults' => true
-        ]);
-    }
 
-    public function printClassResult(Request $request)
-    {
-        $data = $this->classResult($request)->getData();
-        $pdf = PDF::loadView('pages.result.class-result-print', $data);
-        $pdf->setPaper('A4', 'portrait');
-        return $pdf->download("class-result-{$data['class']->name}-{$data['semester']->name}.pdf");
-    }
 
-    public function exportClassResult(Request $request)
-    {
-        $data = $this->classResult($request)->getData();
-        $filename = "class-results-{$data['class']->name}-{$data['semester']->name}-" . now()->format('Y-m-d') . ".csv";
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ];
-        $callback = function () use ($data) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, [
-                'Rank',
-                'Student Name',
-                'Admission Number',
-                ...$data['subjects']->pluck('name')->toArray(),
-                'Total Score',
-                'Percentage',
-                'Position'
-            ]);
-            foreach ($data['studentReports'] as $report) {
-                $row = [
-                    $report['rank'],
-                    $report['student']->user->name,
-                    $report['student']->admission_number,
-                ];
-                foreach ($data['subjects'] as $subject) {
-                    $result = $report['results'][$subject->id] ?? null;
-                    $row[] = $result ? $result->total_score : '-';
-                }
-                $row[] = $report['total_score'];
-                $row[] = $report['percentage'] . '%';
-                $row[] = $report['position'];
-                fputcsv($file, $row);
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    }
 
+
+
+
+
+
+
+
+
+
+
+    
     public function annualClassResult(Request $request)
-{
-    $classes = MyClass::orderBy('name')->get();
-    $academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
-
-    if (!$request->has('classId') || !$request->has('academicYearId')) {
-        return view('pages.result.annual-class-result', [
-            'classes' => $classes,
-            'academicYears' => $academicYears,
-            'class' => null,
-            'academicYear' => null,
-            'students' => collect(),
-            'subjects' => collect(),
-            'annualReports' => [],
-            'termReports' => [],
-            'termStats' => [],
-            'stats' => [
-                'total_students' => 0,
-                'subjects_count' => 0,
-                'max_total_score' => 0,
-            ],
-        ]);
-    }
-
-    $class = MyClass::findOrFail($request->classId);
-    $academicYear = AcademicYear::findOrFail($request->academicYearId);
-    $semesters = Semester::where('academic_year_id', $academicYear->id)->get();
-
-    $students = StudentRecord::with([
-        'user' => function($query) {
-            $query->whereNull('deleted_at');
-        },
-        'studentSubjects', // Add this line to eager load studentSubjects
-        'results' => function ($query) use ($academicYear, $semesters) {
-            $query->where('academic_year_id', $academicYear->id)
-                ->whereIn('semester_id', $semesters->pluck('id'))
-                ->with('subject');
-        }
-    ])
-        ->where('my_class_id', $class->id)
-        ->join('users', 'users.id', '=', 'student_records.user_id')
-        ->whereNull('users.deleted_at') // Only include students with non-deleted users
-        ->orderBy('users.name')
-        ->select('student_records.*')
-        ->get();
-
-    $subjects = Subject::where('my_class_id', $class->id)
-        ->orderBy('name')
-        ->get();
-
-    $stats = [
-        'total_students' => $students->count(),
-        'subjects_count' => $subjects->count(),
-        'max_total_score' => $subjects->count() * 100 * $semesters->count(),
-    ];
-
-    $termReports = [];
-    $termStats = [];
-    $annualReports = [];
-
-    // Preload all results for all students and semesters
-    $allResults = Result::whereIn('student_record_id', $students->pluck('id'))
-        ->where('academic_year_id', $academicYear->id)
-        ->whereIn('semester_id', $semesters->pluck('id'))
-        ->with('subject')
-        ->get()
-        ->groupBy(['student_record_id', 'semester_id']);
-
-    foreach ($semesters as $semester) {
-        $termReports[$semester->id] = [];
-        $termTotals = [];
-        $subjectScores = [];
-
-        foreach ($students as $student) {
-            // Skip if user is deleted (shouldn't happen due to our query, but just in case)
-            if (!$student->user) {
-                continue;
-            }
-
-            $semesterResults = $allResults[$student->id][$semester->id] ?? collect();
-            $results = $semesterResults->keyBy('subject_id');
-
-            $formattedResults = [];
-            foreach ($results as $subjectId => $result) {
-                $formattedResults[$subjectId] = [
-                    'test_score' => $result->test_score,
-                    'exam_score' => $result->exam_score,
-                    'total_score' => $result->total_score,
-                    'grade' => $this->calculateGrade($result->total_score),
-                    'comment' => $result->teacher_comment ?: $this->getDefaultComment($result->total_score)
-                ];
-            }
-
-            $totalScore = $results->sum('total_score');
-            $percentage = $stats['subjects_count'] > 0
-                ? round(($totalScore / ($stats['subjects_count'] * 100)) * 100, 2)
-                : 0;
-
-            $termReports[$semester->id][] = [
-                'student' => $student,
-                'results' => $formattedResults,
-                'total_score' => $totalScore,
-                'percentage' => $percentage,
-                'rank' => 0
-            ];
-
-            $termTotals[$student->id] = $totalScore;
-        }
-
-        // Sort and rank students for this term
-        usort($termReports[$semester->id], function ($a, $b) {
-            return $b['total_score'] <=> $a['total_score'];
-        });
-
-        foreach ($termReports[$semester->id] as $index => &$report) {
-            $report['rank'] = $index + 1;
-        }
-
-        // Calculate term statistics
-        if (!empty($termReports[$semester->id])) {
-            $termStats[$semester->id] = [
-                'average_percentage' => collect($termReports[$semester->id])->avg('percentage'),
-                'pass_rate' => (collect($termReports[$semester->id])->filter(fn($r) => $r['percentage'] >= 50)->count() / max(1, count($termReports[$semester->id]))) * 100,
-                'top_student' => $termReports[$semester->id][0]['student']->user->name ?? 'N/A',
-                'top_score' => $termReports[$semester->id][0]['percentage'] ?? 0,
-            ];
-        } else {
-            $termStats[$semester->id] = [
-                'average_percentage' => 0,
-                'pass_rate' => 0,
-                'top_student' => 'N/A',
-                'top_score' => 0,
-            ];
-        }
-    }
-
-    // Process annual reports
-    foreach ($students as $student) {
-        // Skip if user is deleted
-        if (!$student->user) {
-            continue;
-        }
-
-        $annualResult = [
-            'student' => $student,
-            'term_totals' => [],
-            'subject_totals' => [],
-            'grand_total' => 0,
-            'average_percentage' => 0,
-        ];
-
-        // Calculate totals for each semester
-        foreach ($semesters as $semester) {
-            $termTotal = collect($termReports[$semester->id])
-                ->firstWhere('student.id', $student->id)['total_score'] ?? 0;
-
-            $annualResult['term_totals'][$semester->id] = $termTotal;
-            $annualResult['grand_total'] += $termTotal;
-        }
-
-        // Calculate subject totals across all semesters
-        foreach ($subjects as $subject) {
-            $subjectTotal = 0;
-            foreach ($semesters as $semester) {
-                $termReport = collect($termReports[$semester->id])
-                    ->firstWhere('student.id', $student->id);
-
-                if ($termReport && isset($termReport['results'][$subject->id])) {
-                    $subjectTotal += $termReport['results'][$subject->id]['total_score'];
-                }
-            }
-
-            $annualResult['subject_totals'][$subject->id] = [
-                'subject' => $subject,
-                'total' => $subjectTotal,
-                'average' => $semesters->count() > 0 ? round($subjectTotal / $semesters->count(), 2) : 0
-            ];
-        }
-
-        // Calculate overall average
-        $annualResult['average_percentage'] = $stats['max_total_score'] > 0
-            ? round(($annualResult['grand_total'] / $stats['max_total_score']) * 100, 2)
-            : 0;
-
-        $annualReports[] = $annualResult;
-    }
-
-    // Sort annual reports by grand total
-    usort($annualReports, function ($a, $b) {
-        return $b['grand_total'] <=> $a['grand_total'];
-    });
-
-    // Assign ranks
-    foreach ($annualReports as $index => &$report) {
-        $report['rank'] = $index + 1;
-    }
-
-    return view('pages.result.annual-class-result', [
-        'classes' => $classes,
-        'academicYears' => $academicYears,
-        'class' => $class,
-        'academicYear' => $academicYear,
-        'semesters' => $semesters,
-        'subjects' => $subjects,
-        'students' => $students,
-        'termReports' => $termReports,
-        'termStats' => $termStats,
-        'annualReports' => $annualReports,
-        'stats' => $stats
-    ]);
-}
-
-    public function annualResult(Request $request)
     {
-        $classes = \App\Models\MyClass::orderBy('name')->get();
+        $classes = MyClass::orderBy('name')->get();
         $academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
+
         if (!$request->has('classId') || !$request->has('academicYearId')) {
-            return view('pages.result.annual-result', [
+            return view('pages.result.annual-class-result', [
                 'classes' => $classes,
                 'academicYears' => $academicYears,
                 'class' => null,
@@ -771,149 +468,239 @@ class ResultController extends Controller
                 'students' => collect(),
                 'subjects' => collect(),
                 'annualReports' => [],
+                'termReports' => [],
+                'termStats' => [],
                 'stats' => [
                     'total_students' => 0,
                     'subjects_count' => 0,
-                    'max_total_score' => 0
-                ]
+                    'max_total_score' => 0,
+                ],
             ]);
         }
-        $class = \App\Models\MyClass::find($request->classId);
-        if (!$class) {
-            return back()->with('error', 'Class not found');
-        }
-        $academicYear = AcademicYear::find($request->academicYearId);
-        if (!$academicYear) {
-            return back()->with('error', 'Academic year not found');
-        }
+
+        $class = MyClass::findOrFail($request->classId);
+        $academicYear = AcademicYear::findOrFail($request->academicYearId);
         $semesters = Semester::where('academic_year_id', $academicYear->id)->get();
-        if ($semesters->isEmpty()) {
-            return back()->with('error', 'No semesters found for selected academic year');
-        }
+
         $students = StudentRecord::with([
-            'user',
-            'results' => function ($q) use ($request, $semesters) {
-                $q->where('academic_year_id', $request->academicYearId)
+            'user' => function($query) {
+                $query->whereNull('deleted_at');
+            },
+            'studentSubjects',
+            'results' => function ($query) use ($academicYear, $semesters) {
+                $query->where('academic_year_id', $academicYear->id)
                     ->whereIn('semester_id', $semesters->pluck('id'))
                     ->with('subject');
             }
         ])
-            ->where('my_class_id', $request->classId)
-            ->join('users', 'users.id', '=', 'student_records.user_id')
-            ->orderBy('users.name')
-            ->select('student_records.*')
-            ->get();
+        ->where('my_class_id', $class->id)
+        ->join('users', 'users.id', '=', 'student_records.user_id')
+        ->whereNull('users.deleted_at')
+        ->orderBy('users.name')
+        ->select('student_records.*')
+        ->get();
+
         $subjects = Subject::where('my_class_id', $class->id)
             ->orderBy('name')
             ->get();
-        $annualReports = [];
+
         $stats = [
             'total_students' => $students->count(),
             'subjects_count' => $subjects->count(),
             'max_total_score' => $subjects->count() * 100 * $semesters->count(),
         ];
+
+        $termReports = [];
+        $termStats = [];
+        $annualReports = [];
+
+        // Preload all results for all students and semesters
+        $allResults = Result::whereIn('student_record_id', $students->pluck('id'))
+            ->where('academic_year_id', $academicYear->id)
+            ->whereIn('semester_id', $semesters->pluck('id'))
+            ->with('subject')
+            ->get()
+            ->groupBy(['student_record_id', 'semester_id']);
+
+        foreach ($semesters as $semester) {
+            $termReports[$semester->id] = [];
+            $termTotals = [];
+            $subjectScores = [];
+
+            foreach ($students as $student) {
+                if (!$student->user) {
+                    continue;
+                }
+
+                $semesterResults = $allResults[$student->id][$semester->id] ?? collect();
+                $results = $semesterResults->keyBy('subject_id');
+
+                $formattedResults = [];
+                foreach ($results as $subjectId => $result) {
+                    // Calculate test score as sum of all CAs
+                    $testScore = ($result->ca1_score ?? 0) + 
+                                ($result->ca2_score ?? 0) + 
+                                ($result->ca3_score ?? 0) + 
+                                ($result->ca4_score ?? 0);
+
+                    $formattedResults[$subjectId] = [
+                        'ca1_score' => $result->ca1_score,
+                        'ca2_score' => $result->ca2_score,
+                        'ca3_score' => $result->ca3_score,
+                        'ca4_score' => $result->ca4_score,
+                        'test_score' => $testScore,
+                        'exam_score' => $result->exam_score,
+                        'total_score' => $result->total_score,
+                        'grade' => $this->calculateGrade($result->total_score),
+                        'comment' => $result->teacher_comment ?: $this->getDefaultComment($result->total_score)
+                    ];
+                }
+
+                $totalScore = $results->sum('total_score');
+                $percentage = $stats['subjects_count'] > 0
+                    ? round(($totalScore / ($stats['subjects_count'] * 100)) * 100, 2)
+                    : 0;
+
+                $termReports[$semester->id][] = [
+                    'student' => $student,
+                    'results' => $formattedResults,
+                    'total_score' => $totalScore,
+                    'percentage' => $percentage,
+                    'rank' => 0
+                ];
+
+                $termTotals[$student->id] = $totalScore;
+            }
+
+            // Sort and rank students for this term
+            usort($termReports[$semester->id], function ($a, $b) {
+                return $b['total_score'] <=> $a['total_score'];
+            });
+
+            foreach ($termReports[$semester->id] as $index => &$report) {
+                $report['rank'] = $index + 1;
+            }
+
+            // Calculate term statistics
+            if (!empty($termReports[$semester->id])) {
+                $termStats[$semester->id] = [
+                    'average_percentage' => collect($termReports[$semester->id])->avg('percentage'),
+                    'pass_rate' => (collect($termReports[$semester->id])->filter(fn($r) => $r['percentage'] >= 50)->count() / max(1, count($termReports[$semester->id]))) * 100,
+                    'top_student' => $termReports[$semester->id][0]['student']->user->name ?? 'N/A',
+                    'top_score' => $termReports[$semester->id][0]['percentage'] ?? 0,
+                ];
+            }
+        }
+
+        // Process annual reports
         foreach ($students as $student) {
+            if (!$student->user) {
+                continue;
+            }
+
             $annualResult = [
                 'student' => $student,
-                'terms' => [],
+                'term_totals' => [],
                 'subject_totals' => [],
                 'grand_total' => 0,
                 'average_percentage' => 0,
             ];
-            $subjectResults = [];
-            foreach ($student->results as $result) {
-                $subjectId = $result->subject_id;
-                if (!isset($subjectResults[$subjectId])) {
-                    $subjectResults[$subjectId] = [
-                        'subject' => $result->subject,
-                        'terms' => [],
-                        'total' => 0,
-                    ];
-                }
-                $termScore = $result->total_score;
-                $subjectResults[$subjectId]['terms'][$result->semester_id] = $termScore;
-                $subjectResults[$subjectId]['total'] += $termScore;
+
+            // Calculate totals for each semester
+            foreach ($semesters as $semester) {
+                $termTotal = collect($termReports[$semester->id])
+                    ->firstWhere('student.id', $student->id)['total_score'] ?? 0;
+                $annualResult['term_totals'][$semester->id] = $termTotal;
+                $annualResult['grand_total'] += $termTotal;
             }
-            $grandTotal = 0;
-            foreach ($subjectResults as $subjectId => $subjectData) {
-                $grandTotal += $subjectData['total'];
-                $annualResult['subject_totals'][$subjectId] = [
-                    'subject' => $subjectData['subject'],
-                    'total' => $subjectData['total'],
-                    'average' => $subjectData['total'] / $semesters->count(),
+
+            // Calculate subject totals across all semesters
+            foreach ($subjects as $subject) {
+                $subjectTotal = 0;
+                foreach ($semesters as $semester) {
+                    $termReport = collect($termReports[$semester->id])
+                        ->firstWhere('student.id', $student->id);
+
+                    if ($termReport && isset($termReport['results'][$subject->id])) {
+                        $subjectTotal += $termReport['results'][$subject->id]['total_score'];
+                    }
+                }
+
+                $annualResult['subject_totals'][$subject->id] = [
+                    'subject' => $subject,
+                    'total' => $subjectTotal,
+                    'average' => $semesters->count() > 0 ? round($subjectTotal / $semesters->count(), 2) : 0
                 ];
             }
-            $annualResult['grand_total'] = $grandTotal;
-            $annualResult['average_percentage'] = $stats['subjects_count'] > 0
-                ? round(($grandTotal / ($stats['subjects_count'] * 100 * $semesters->count())) * 100, 2)
+
+            // Calculate overall average
+            $annualResult['average_percentage'] = $stats['max_total_score'] > 0
+                ? round(($annualResult['grand_total'] / $stats['max_total_score']) * 100, 2)
                 : 0;
+
             $annualReports[] = $annualResult;
         }
+
+        // Sort annual reports by grand total
         usort($annualReports, function ($a, $b) {
             return $b['grand_total'] <=> $a['grand_total'];
         });
+
+        // Assign ranks
         foreach ($annualReports as $index => &$report) {
             $report['rank'] = $index + 1;
         }
-        return view('pages.result.annual-result', compact(
-            'classes',
-            'academicYears',
-            'class',
-            'academicYear',
-            'semesters',
-            'subjects',
-            'annualReports',
-            'stats'
-        ));
-    }
 
-    public function exportAnnualResult(Request $request)
-    {
-        $data = $this->annualResult($request)->getData();
-        $filename = "annual-results-{$data['class']->name}-{$data['academicYear']->name}.csv";
-        $headers = [
-            'Content-Type' => 'text/csv',
-            'Content-Disposition' => "attachment; filename=\"$filename\"",
-        ];
-        $callback = function () use ($data) {
-            $file = fopen('php://output', 'w');
-            $headers = ['Rank', 'Student Name', 'Admission Number'];
-            foreach ($data['subjects'] as $subject) {
-                $headers[] = $subject->name;
-            }
-            $headers[] = 'Total Score';
-            $headers[] = 'Average Percentage';
-            fputcsv($file, $headers);
-            foreach ($data['annualReports'] as $report) {
-                $row = [
-                    $report['rank'],
-                    $report['student']->user->name,
-                    $report['student']->admission_number,
-                ];
-                foreach ($data['subjects'] as $subject) {
-                    $row[] = $report['subject_totals'][$subject->id]['total'] ?? '-';
+        // Calculate top subject
+        $topSubject = collect($subjects)->map(function($subject) use ($termReports, $semesters) {
+            $scores = [];
+            foreach ($termReports as $semesterId => $reports) {
+                foreach ($reports as $report) {
+                    if (isset($report['results'][$subject->id])) {
+                        $scores[] = $report['results'][$subject->id]['total_score'];
+                    }
                 }
-                $row[] = $report['grand_total'];
-                $row[] = $report['average_percentage'] . '%';
-                fputcsv($file, $row);
             }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    }
+            return [
+                'name' => $subject->name,
+                'avg' => count($scores) ? round(array_sum($scores) / count($scores), 1) : 0
+            ];
+        })->sortByDesc('avg')->first();
 
-    public function exportAnnualResultPdf(Request $request)
-    {
-        $request->validate([
-            'classId' => 'required|exists:my_classes,id',
-            'academicYearId' => 'required|exists:academic_years,id'
+        // Subject performance for the chart
+        $subjectPerformance = collect($subjects)->map(function($subject) use ($termReports) {
+            $scores = [];
+            foreach ($termReports as $semesterId => $reports) {
+                foreach ($reports as $report) {
+                    if (isset($report['results'][$subject->id])) {
+                        $scores[] = $report['results'][$subject->id]['total_score'];
+                    }
+                }
+            }
+            return [
+                'name' => $subject->name,
+                'avg' => count($scores) ? round(array_sum($scores) / count($scores), 1) : 0,
+                'max' => count($scores) ? max($scores) : 0,
+                'min' => count($scores) ? min($scores) : 0,
+                'pass_rate' => count($scores) ? round(count(array_filter($scores, fn($s) => $s >= 50)) / count($scores) * 100, 1) : 0
+            ];
+        });
+
+        return view('pages.result.annual-class-result', [
+            'classes' => $classes,
+            'academicYears' => $academicYears,
+            'class' => $class,
+            'academicYear' => $academicYear,
+            'semesters' => $semesters,
+            'subjects' => $subjects,
+            'students' => $students,
+            'termReports' => $termReports,
+            'termStats' => $termStats,
+            'annualReports' => $annualReports,
+            'stats' => $stats,
+            'topSubject' => $topSubject,
+            'subjectPerformance' => $subjectPerformance
         ]);
-        $data = $this->annualResult($request)->getData();
-        $pdf = Pdf::loadView('pages.result.annual-result-pdf', [
-            'data' => $data,
-            'title' => "Annual Results - {$data['class']->name} ({$data['academicYear']->name})"
-        ])->setPaper('a4', 'portrait');
-        return $pdf->download("annual-results-{$data['class']->name}-{$data['academicYear']->name}.pdf");
     }
 
     public function showStudentAnnualResult($studentId, $academicYearId)
@@ -977,18 +764,19 @@ class ResultController extends Controller
         $totalStudents = count($rankings);
         return $position . '/' . $totalStudents;
     }
-    private function getDefaultComment($score)
-    {
-        return match (true) {
-            $score >= 75 => 'Distinction ✨',
-            $score >= 70 => 'Very good 💪',
-            $score >= 65 => 'Good 🔥',
-            $score >= 60 => 'Credit 👍',
-            $score >= 55 => 'Credit 🌱',
-            $score >= 50 => 'Credit 📈',
-            $score >= 45 => 'Pass ⏳',
-            $score >= 40 => 'Pass ⚠️',
-            default => 'Fail 🚨',
-        };
+    
+        private function getDefaultComment($score)
+        {
+            return match (true) {
+                $score >= 75 => 'Distinction',
+                $score >= 70 => 'Very good',
+                $score >= 65 => 'Good',
+                $score >= 60 => 'Credit',
+                $score >= 55 => 'Credit',
+                $score >= 50 => 'Credit',
+                $score >= 45 => 'Pass',
+                $score >= 40 => 'Pass',
+                default => 'Fail',
+            };
+        }
     }
-}
