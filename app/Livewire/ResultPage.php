@@ -159,15 +159,15 @@ public function saveBulkResults()
 protected function getDefaultComment($score)
 {
     return match (true) {
-        $score >= 75 => 'Distinction ✨',
-        $score >= 70 => 'Very good 💪',
-        $score >= 65 => 'Good 🔥',
-        $score >= 60 => 'Credit 👍',
-        $score >= 55 => 'Credit 🌱',
-        $score >= 50 => 'Credit 📈',
-        $score >= 45 => 'Pass ⏳',
-        $score >= 40 => 'Pass ⚠️',
-        default => 'Fail 🚨',
+        $score >= 75 => 'Distinction',
+        $score >= 70 => 'Very good',
+        $score >= 65 => 'Good',
+        $score >= 60 => 'Credit',
+        $score >= 55 => 'Credit',
+        $score >= 50 => 'Credit',
+        $score >= 45 => 'Pass',
+        $score >= 40 => 'Pass',
+        default => 'Fail',
     };
 }
 
@@ -231,57 +231,6 @@ public function updatedBulkResults($value, $key)
         $this->bulkEditMode = true;
         $this->dispatch('hide-loading');
     }
-    // public function saveBulkResults()
-    // {
-    //     $this->validate([
-    //         'bulkResults.*.ca1_score' => 'nullable|numeric|min:0|max:10',
-    //         'bulkResults.*.ca2_score' => 'nullable|numeric|min:0|max:10',
-    //         'bulkResults.*.ca3_score' => 'nullable|numeric|min:0|max:10',
-    //         'bulkResults.*.ca4_score' => 'nullable|numeric|min:0|max:10',
-    //         'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
-    //         'bulkResults.*.comment' => 'nullable|string|max:255',
-    //     ]);
-
-    //     try {
-    //         DB::transaction(function () {
-    //             foreach ($this->bulkResults as $studentId => $data) {
-    //                 if (
-    //                     !is_null($data['ca1_score']) || !is_null($data['ca2_score']) ||
-    //                     !is_null($data['ca3_score']) || !is_null($data['ca4_score']) ||
-    //                     !is_null($data['exam_score'])
-    //                 ) {
-
-    //                     $total = ($data['ca1_score'] ?? 0) + ($data['ca2_score'] ?? 0) +
-    //                         ($data['ca3_score'] ?? 0) + ($data['ca4_score'] ?? 0) +
-    //                         ($data['exam_score'] ?? 0);
-
-    //                     Result::updateOrCreate(
-    //                         [
-    //                             'student_record_id' => $studentId,
-    //                             'subject_id' => $this->selectedSubjectForBulkEdit,
-    //                             'academic_year_id' => $this->academicYearId,
-    //                             'semester_id' => $this->semesterId,
-    //                         ],
-    //                         [
-    //                             'ca1_score' => $data['ca1_score'],
-    //                             'ca2_score' => $data['ca2_score'],
-    //                             'ca3_score' => $data['ca3_score'],
-    //                             'ca4_score' => $data['ca4_score'],
-    //                             'exam_score' => $data['exam_score'],
-    //                             'teacher_comment' => $data['comment'],
-    //                             'total_score' => $total,
-    //                         ]
-    //                     );
-    //                 }
-    //             }
-    //         });
-
-    //         $this->dispatch('showSuccess', 'Bulk results saved successfully!');
-    //         $this->bulkEditMode = false;
-    //     } catch (\Exception $e) {
-    //         $this->dispatch('showSuccess', 'Error saving results: ' . $e->getMessage());
-    //     }
-    // }
 
     public function mount($studentId = null)
     {
@@ -554,15 +503,15 @@ public function updatedBulkResults($value, $key)
         $grade = $this->calculateGrade($total);
 
         $comment = match ($grade) {
-            'A1' => 'Distinction ✨',
-            'B2' => 'Very good 💪',
-            'B3' => 'Good 🔥',
-            'C4' => 'Credit 👍',
-            'C5' => 'Credit 🌱',
-            'C6' => 'Credit 📈',
-            'D7' => 'Pass ⏳',
-            'E8' => 'Pass ⚠️',
-            'F9' => 'Fail 🚨',
+            'A1' => 'Distinction',
+            'B2' => 'Very good',
+            'B3' => 'Good',
+            'C4' => 'Credit',
+            'C5' => 'Credit',
+            'C6' => 'Credit',
+            'D7' => 'Pass',
+            'E8' => 'Pass',
+            'F9' => 'Fail',
             default => '',
         };
 
