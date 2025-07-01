@@ -234,12 +234,7 @@ class Menu extends Component
                         'route' => 'result.annual',
                         'can'   => 'upload result',
                     ],
-                    [
-                        'type'  => 'menu-item',
-                        'text'  => 'Old Annual Class Result',
-                        'route' => 'result.class',
-                        'can'   => 'upload result',
-                    ],
+                  
                 ],
             ],
             [
