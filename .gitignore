@@ -15,4 +15,5 @@ yarn-error.log
 /.idea
 /.vscode
 .htaccess
+.log
 /tmp
