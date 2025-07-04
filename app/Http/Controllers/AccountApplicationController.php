@@ -69,7 +69,7 @@ class AccountApplicationController extends Controller
     {
         $this->userService->verifyUserIsOfRoleElseNotFound($applicant, 'applicant');
         $this->authorize('update', [$applicant, 'applicant']);
-        $data = $request->except('_method', '_token');
+        $data = $request->safe()->except(['_method', '_token']);
         $this->accountApplicationService->updateAccountApplication($applicant, $data);
 
         return back()->with('success', 'Application records updated successfully');
