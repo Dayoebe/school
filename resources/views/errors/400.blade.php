@@ -12,15 +12,15 @@
             <div class="absolute top-0 right-0 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
             
             <div class="relative space-y-8 z-10">
-                <!-- Animated 404 number -->
+                <!-- Animated 400 number -->
                 <div class="text-9xl font-extrabold text-gray-800 mb-4 animate__animated animate__bounceIn">
                     <span class="text-blue-600">4</span>
                     <span class="text-indigo-600">0</span>
-                    <span class="text-purple-600">4</span>
+                    <span class="text-purple-600">0</span>
                 </div>
                 
                 <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-6 animate__animated animate__fadeInUp animate__delay-1s">
-                    404 Page Not Found
+                    400 -  Bad Request
                 </h1>
                 
                 <p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10 animate__animated animate__fadeInUp animate__delay-1s">

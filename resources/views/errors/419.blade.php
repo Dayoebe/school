@@ -2,6 +2,10 @@
 
 @section('title', 'Elites International College')
 
+@push('styles')
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+@endpush
+
 @section('content')
 <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 py-12 bg-gradient-to-br from-blue-50 to-indigo-100">
     <div class="max-w-4xl w-full text-center">
@@ -12,19 +16,19 @@
             <div class="absolute top-0 right-0 w-64 h-64 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
             
             <div class="relative space-y-8 z-10">
-                <!-- Animated 404 number -->
+                <!-- Animated 419 number -->
                 <div class="text-9xl font-extrabold text-gray-800 mb-4 animate__animated animate__bounceIn">
                     <span class="text-blue-600">4</span>
-                    <span class="text-indigo-600">0</span>
-                    <span class="text-purple-600">4</span>
+                    <span class="text-indigo-600">1</span>
+                    <span class="text-purple-600">9</span>
                 </div>
                 
                 <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-6 animate__animated animate__fadeInUp animate__delay-1s">
-                    404 Page Not Found
+                    419 - Page Expired (CSRF token mismatch)
                 </h1>
                 
                 <p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10 animate__animated animate__fadeInUp animate__delay-1s">
-                    The page you're looking for might have been removed, had its name changed, or is temporarily unavailable.
+                    Sorry, your session has expired due to inactivity or a security issue (CSRF token mismatch). Please refresh the page and try again.
                 </p>
                 
                 <div class="flex flex-col sm:flex-row justify-center gap-4 animate__animated animate__fadeInUp animate__delay-2s">

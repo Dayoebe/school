@@ -1,6 +1,7 @@
+{{-- resources/views/errors/503.blade.php --}}
 @extends('layouts.pages')
 
-@section('title', 'Elites International College')
+@section('title', 'Service Unavailable')
 
 @section('content')
 <div class="min-h-screen flex items-center justify-center px-4 sm:px-6 py-12 bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -20,11 +21,11 @@
                 </div>
                 
                 <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-6 animate__animated animate__fadeInUp animate__delay-1s">
-                    404 Page Not Found
+                    503 - Service Unavailable (Maintenance Mode)
                 </h1>
                 
                 <p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10 animate__animated animate__fadeInUp animate__delay-1s">
-                    The page you're looking for might have been removed, had its name changed, or is temporarily unavailable.
+                    Sorry, the service is temporarily unavailable due to maintenance. Please try again later.
                 </p>
                 
                 <div class="flex flex-col sm:flex-row justify-center gap-4 animate__animated animate__fadeInUp animate__delay-2s">

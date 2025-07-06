@@ -20,11 +20,11 @@
                 </div>
                 
                 <h1 class="text-4xl md:text-5xl font-bold text-gray-800 mb-6 animate__animated animate__fadeInUp animate__delay-1s">
-                    404 Page Not Found
+                    429 - Too Many Requests
                 </h1>
                 
                 <p class="text-xl text-gray-600 max-w-2xl mx-auto mb-10 animate__animated animate__fadeInUp animate__delay-1s">
-                    The page you're looking for might have been removed, had its name changed, or is temporarily unavailable.
+                    You have sent too many requests in a given amount of time. Please wait a moment and try again.
                 </p>
                 
                 <div class="flex flex-col sm:flex-row justify-center gap-4 animate__animated animate__fadeInUp animate__delay-2s">
