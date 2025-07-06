@@ -124,6 +124,7 @@ class ResultPage extends Component
                 $ca4 = isset($data['ca4_score']) ? (float)$data['ca4_score'] : null;
                 $exam = isset($data['exam_score']) ? (float)$data['exam_score'] : null;
 
+                
                 $total = ($ca1 ?? 0) + ($ca2 ?? 0) + ($ca3 ?? 0) + ($ca4 ?? 0) + ($exam ?? 0);
                 $comment = $data['comment'] ?? $this->getDefaultComment($total);
 
