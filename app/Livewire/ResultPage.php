@@ -50,8 +50,9 @@ class ResultPage extends Component
     public $selectedSubjectForBulkEdit = null;
     public $bulkResults = [];
     public $bulkStudents = [];
-    public $principalComment = 'Keep up the good work!';
-    public $overallTeacherComment = 'Impressive';
+    // CHANGE 1: Set default principalComment to empty string
+    public $principalComment = ''; 
+    public $overallTeacherComment = ''; // Also set teacher comment to empty string
     public $isSaving = false;
     public $showSubjectModal = false; // Added for subject modal
     protected $paginationTheme = 'tailwind';
@@ -93,75 +94,74 @@ class ResultPage extends Component
     }
 
     public function saveBulkResults()
-    {
-        $this->validate([
-            'bulkResults.*.ca1_score' => 'nullable|numeric|min:0|max:10',
-            'bulkResults.*.ca2_score' => 'nullable|numeric|min:0|max:10',
-            'bulkResults.*.ca3_score' => 'nullable|numeric|min:0|max:10',
-            'bulkResults.*.ca4_score' => 'nullable|numeric|min:0|max:10',
-            'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
-            'bulkResults.*.comment' => 'nullable|string|max:255',
-        ]);
+{
+    $this->validate([
+        'bulkResults.*.ca1_score' => 'nullable|numeric|min:0|max:10',
+        'bulkResults.*.ca2_score' => 'nullable|numeric|min:0|max:10',
+        'bulkResults.*.ca3_score' => 'nullable|numeric|min:0|max:10',
+        'bulkResults.*.ca4_score' => 'nullable|numeric|min:0|max:10',
+        'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
+        'bulkResults.*.comment' => 'nullable|string|max:255',
+    ]);
 
-        $this->isSaving = true;
-        try {
-            DB::beginTransaction();
+    $this->isSaving = true;
+    try {
+        DB::beginTransaction();
 
-            $savedCount = 0;
-            foreach ($this->bulkResults as $studentId => $data) {
-                // Skip if no scores provided
-                if (
-                    empty($data['ca1_score']) && empty($data['ca2_score']) &&
-                    empty($data['ca3_score']) && empty($data['ca4_score']) &&
-                    empty($data['exam_score'])
-                ) {
-                    continue;
-                }
-
-                $ca1 = isset($data['ca1_score']) ? (float)$data['ca1_score'] : null;
-                $ca2 = isset($data['ca2_score']) ? (float)$data['ca2_score'] : null;
-                $ca3 = isset($data['ca3_score']) ? (float)$data['ca3_score'] : null;
-                $ca4 = isset($data['ca4_score']) ? (float)$data['ca4_score'] : null;
-                $exam = isset($data['exam_score']) ? (float)$data['exam_score'] : null;
-
-                
-                $total = ($ca1 ?? 0) + ($ca2 ?? 0) + ($ca3 ?? 0) + ($ca4 ?? 0) + ($exam ?? 0);
-                $comment = $data['comment'] ?? $this->getDefaultComment($total);
-
-                Result::updateOrCreate(
-                    [
-                        'student_record_id' => $studentId,
-                        'subject_id' => $this->selectedSubjectForBulkEdit,
-                        'academic_year_id' => $this->academicYearId,
-                        'semester_id' => $this->semesterId,
-                    ],
-                    [
-                        'ca1_score' => $ca1,
-                        'ca2_score' => $ca2,
-                        'ca3_score' => $ca3,
-                        'ca4_score' => $ca4,
-                        'exam_score' => $exam,
-                        'teacher_comment' => $comment,
-                        'total_score' => $total,
-                        'approved' => false,
-                    ]
-                );
-
-                $savedCount++;
+        $savedCount = 0;
+        foreach ($this->bulkResults as $studentId => $data) {
+            // Skip if no scores provided
+            if (
+                empty($data['ca1_score']) && empty($data['ca2_score']) &&
+                empty($data['ca3_score']) && empty($data['ca4_score']) &&
+                empty($data['exam_score'])
+            ) {
+                continue;
             }
 
-            DB::commit();
+            $ca1 = isset($data['ca1_score']) ? (float)$data['ca1_score'] : 0;
+            $ca2 = isset($data['ca2_score']) ? (float)$data['ca2_score'] : 0;
+            $ca3 = isset($data['ca3_score']) ? (float)$data['ca3_score'] : 0;
+            $ca4 = isset($data['ca4_score']) ? (float)$data['ca4_score'] : 0;
+            $exam = isset($data['exam_score']) ? (float)$data['exam_score'] : 0; 
 
-            $this->dispatch('showSuccess', "Successfully saved results for {$savedCount} students!");
-            $this->bulkEditMode = false;
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $this->dispatch('showSuccess', 'Error saving results: ' . $e->getMessage());
-            logger()->error('Bulk result save error: ' . $e->getMessage());
-        } finally {
-            $this->isSaving = false;
+            $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
+            $comment = $data['comment'] ?? $this->getDefaultComment($total);
+
+            Result::updateOrCreate(
+                [
+                    'student_record_id' => $studentId,
+                    'subject_id' => $this->selectedSubjectForBulkEdit,
+                    'academic_year_id' => $this->academicYearId,
+                    'semester_id' => $this->semesterId,
+                ],
+                [
+                    'ca1_score' => $ca1,
+                    'ca2_score' => $ca2,
+                    'ca3_score' => $ca3,
+                    'ca4_score' => $ca4,
+                    'exam_score' => $exam,
+                    'teacher_comment' => $comment,
+                    'total_score' => $total,
+                    'approved' => false,
+                ]
+            );
+
+            $savedCount++;
         }
+
+        DB::commit();
+
+        $this->dispatch('showSuccess', "Successfully saved results for {$savedCount} students!");
+        $this->bulkEditMode = false;
+    } catch (\Exception $e) {
+        DB::rollBack();
+        $this->dispatch('showSuccess', 'Error saving results: ' . $e->getMessage());
+        logger()->error('Bulk result save error: ' . $e->getMessage());
+    } finally {
+        $this->isSaving = false;
     }
+}
 
 
     protected function getDefaultComment($score)
@@ -259,7 +259,7 @@ class ResultPage extends Component
 
         if ($studentId) {
             $this->studentRecord = StudentRecord::findOrFail($studentId);
-            $this->results = $this->initializeResults();
+            $this->results = $this->initializeResults(); // Assuming initializeResults exists and is appropriate
             $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
             $this->academicYearId = AcademicYear::latest()->first()?->id;
             $this->semesterId = Semester::latest()->first()?->id;
@@ -293,6 +293,13 @@ class ResultPage extends Component
             }
         }
     }
+
+    // Add this method if it doesn't exist, or ensure it returns an array
+    private function initializeResults()
+    {
+        return [];
+    }
+
 
     public function getFilteredStudentsProperty()
     {
@@ -460,8 +467,8 @@ class ResultPage extends Component
         ])->first();
 
         if ($termReport) {
-            $this->overallTeacherComment = $termReport->class_teacher_comment;
-            $this->principalComment = $termReport->principal_comment;
+            $this->overallTeacherComment = $termReport->class_teacher_comment ?? '';
+            $this->principalComment = $termReport->principal_comment ?? '';
         }
 
         $this->totalPossibleMarks = count($this->subjects) * 100;
@@ -592,6 +599,11 @@ class ResultPage extends Component
                     );
                 }
 
+                // CHANGE 2: Conditionally set principal_comment to null if it's the default empty string
+                $principalCommentToSave = empty($this->principalComment) ? null : $this->principalComment;
+                $teacherCommentToSave = empty($this->overallTeacherComment) ? null : $this->overallTeacherComment;
+
+
                 TermReport::updateOrCreate(
                     [
                         'student_record_id' => $this->studentRecord->id,
@@ -599,8 +611,8 @@ class ResultPage extends Component
                         'semester_id' => $this->semesterId,
                     ],
                     [
-                        'class_teacher_comment' => $this->overallTeacherComment,
-                        'principal_comment' => $this->principalComment,
+                        'class_teacher_comment' => $teacherCommentToSave,
+                        'principal_comment' => $principalCommentToSave,
                     ]
                 );
             });
