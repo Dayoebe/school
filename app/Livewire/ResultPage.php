@@ -45,21 +45,45 @@ class ResultPage extends Component
     public $grandTotalExam = 0;
     public $totalPossibleMarks = 0;
     public $percentage = 0;
-    public $recentActivities = [];
+    public $recentActivities = []; // This property is not used in the current Blade, but kept for consistency
     public $bulkEditMode = false;
     public $selectedSubjectForBulkEdit = null;
     public $bulkResults = [];
     public $bulkStudents = [];
-    // CHANGE 1: Set default principalComment to empty string
-    public $principalComment = ''; 
-    public $overallTeacherComment = ''; // Also set teacher comment to empty string
+    public $principalComment = '';
+    public $overallTeacherComment = '';
     public $isSaving = false;
-    public $showSubjectModal = false; // Added for subject modal
+    public $showSubjectModal = false;
+
+    // New properties for attendance and detailed extra-curricular activities
+    public $presentDays = null;
+    public $absentDays = null;
+    public $psychomotorScores = [
+        'Handwriting' => null,
+        'Verbal Fluency' => null,
+        'Game/Sports' => null,
+        'Handling Tools' => null,
+    ];
+    public $affectiveScores = [
+        'Punctuality' => null,
+        'Neatness' => null,
+        'Politeness' => null,
+        'Leadership' => null,
+    ];
+    public $coCurricularScores = [
+        'Athletics' => null,
+        'Football' => null,
+        'Volley Ball' => null,
+        'Table Tennis' => null,
+    ];
+
     protected $paginationTheme = 'tailwind';
 
     public function rules()
     {
         $rules = [];
+        
+        // Subject results validation
         foreach ($this->subjects as $subject) {
             $id = $subject->id;
             $rules["results.$id.ca1_score"] = 'nullable|numeric|min:0|max:10';
@@ -69,11 +93,30 @@ class ResultPage extends Component
             $rules["results.$id.exam_score"] = 'nullable|numeric|min:0|max:60';
             $rules["results.$id.comment"] = 'nullable|string|max:255';
         }
+
+        // Attendance validation
+        $rules['presentDays'] = 'nullable|integer|min:0';
+        $rules['absentDays'] = 'nullable|integer|min:0';
+        
+        // Extra-curricular activities validation
+        foreach ($this->psychomotorScores as $trait => $value) {
+            $rules["psychomotorScores.$trait"] = 'nullable|integer|min:0|max:5';
+        }
+        
+        foreach ($this->affectiveScores as $trait => $value) {
+            $rules["affectiveScores.$trait"] = 'nullable|integer|min:0|max:5';
+        }
+        
+        foreach ($this->coCurricularScores as $activity => $value) {
+            $rules["coCurricularScores.$activity"] = 'nullable|integer|min:0|max:5';
+        }
+
+        // Comments validation
+        $rules['overallTeacherComment'] = 'nullable|string|max:1000';
+        $rules['principalComment'] = 'nullable|string|max:1000';
+
         return $rules;
     }
-
-
-    // Fix for Selection Reset Problem
     public function goToAcademicOverview()
     {
         $this->validate([
@@ -82,7 +125,6 @@ class ResultPage extends Component
             'selectedClass' => 'required|exists:my_classes,id',
         ]);
 
-        // Store the selections in session
         session([
             'results_academic_year_id' => $this->academicYearId,
             'results_semester_id' => $this->semesterId,
@@ -94,75 +136,82 @@ class ResultPage extends Component
     }
 
     public function saveBulkResults()
-{
-    $this->validate([
-        'bulkResults.*.ca1_score' => 'nullable|numeric|min:0|max:10',
-        'bulkResults.*.ca2_score' => 'nullable|numeric|min:0|max:10',
-        'bulkResults.*.ca3_score' => 'nullable|numeric|min:0|max:10',
-        'bulkResults.*.ca4_score' => 'nullable|numeric|min:0|max:10',
-        'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
-        'bulkResults.*.comment' => 'nullable|string|max:255',
-    ]);
+    {
+        $this->validate([
+            'bulkResults.*.ca1_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.ca2_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.ca3_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.ca4_score' => 'nullable|numeric|min:0|max:10',
+            'bulkResults.*.exam_score' => 'nullable|numeric|min:0|max:60',
+            'bulkResults.*.comment' => 'nullable|string|max:255',
+        ]);
 
-    $this->isSaving = true;
-    try {
-        DB::beginTransaction();
+        $this->isSaving = true;
+        try {
+            DB::beginTransaction();
 
-        $savedCount = 0;
-        foreach ($this->bulkResults as $studentId => $data) {
-            // Skip if no scores provided
-            if (
-                empty($data['ca1_score']) && empty($data['ca2_score']) &&
-                empty($data['ca3_score']) && empty($data['ca4_score']) &&
-                empty($data['exam_score'])
-            ) {
-                continue;
+            $savedCount = 0;
+            foreach ($this->bulkResults as $studentId => $data) {
+                // Convert to integer, default to 0 if null or empty string
+                $ca1 = filter_var($data['ca1_score'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+                $ca2 = filter_var($data['ca2_score'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+                $ca3 = filter_var($data['ca3_score'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+                $ca4 = filter_var($data['ca4_score'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+                $exam = filter_var($data['exam_score'], FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+
+                // If all scores are empty, consider it a deletion or no entry
+                if ($ca1 === 0 && $ca2 === 0 && $ca3 === 0 && $ca4 === 0 && $exam === 0 && empty($data['comment'])) {
+                    Result::where([
+                        'student_record_id' => $studentId,
+                        'subject_id' => $this->selectedSubjectForBulkEdit,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ])->delete();
+                    // Also clear from local bulkResults array to reflect deletion
+                    $this->bulkResults[$studentId] = [
+                        'ca1_score' => null, 'ca2_score' => null, 'ca3_score' => null,
+                        'ca4_score' => null, 'exam_score' => null, 'comment' => ''
+                    ];
+                    continue;
+                }
+
+                $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
+                $comment = $data['comment'] ?? $this->getDefaultComment($total);
+
+                Result::updateOrCreate(
+                    [
+                        'student_record_id' => $studentId,
+                        'subject_id' => $this->selectedSubjectForBulkEdit,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ],
+                    [
+                        'ca1_score' => $ca1,
+                        'ca2_score' => $ca2,
+                        'ca3_score' => $ca3,
+                        'ca4_score' => $ca4,
+                        'exam_score' => $exam,
+                        'teacher_comment' => $comment,
+                        'total_score' => $total,
+                        'approved' => false,
+                    ]
+                );
+
+                $savedCount++;
             }
 
-            $ca1 = isset($data['ca1_score']) ? (float)$data['ca1_score'] : 0;
-            $ca2 = isset($data['ca2_score']) ? (float)$data['ca2_score'] : 0;
-            $ca3 = isset($data['ca3_score']) ? (float)$data['ca3_score'] : 0;
-            $ca4 = isset($data['ca4_score']) ? (float)$data['ca4_score'] : 0;
-            $exam = isset($data['exam_score']) ? (float)$data['exam_score'] : 0; 
+            DB::commit();
 
-            $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
-            $comment = $data['comment'] ?? $this->getDefaultComment($total);
-
-            Result::updateOrCreate(
-                [
-                    'student_record_id' => $studentId,
-                    'subject_id' => $this->selectedSubjectForBulkEdit,
-                    'academic_year_id' => $this->academicYearId,
-                    'semester_id' => $this->semesterId,
-                ],
-                [
-                    'ca1_score' => $ca1,
-                    'ca2_score' => $ca2,
-                    'ca3_score' => $ca3,
-                    'ca4_score' => $ca4,
-                    'exam_score' => $exam,
-                    'teacher_comment' => $comment,
-                    'total_score' => $total,
-                    'approved' => false,
-                ]
-            );
-
-            $savedCount++;
+            $this->dispatch('showSuccess', "Successfully saved results for {$savedCount} students!");
+            $this->bulkEditMode = false;
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->dispatch('showError', 'Error saving results: ' . $e->getMessage());
+            logger()->error('Bulk result save error: ' . $e->getMessage());
+        } finally {
+            $this->isSaving = false;
         }
-
-        DB::commit();
-
-        $this->dispatch('showSuccess', "Successfully saved results for {$savedCount} students!");
-        $this->bulkEditMode = false;
-    } catch (\Exception $e) {
-        DB::rollBack();
-        $this->dispatch('showSuccess', 'Error saving results: ' . $e->getMessage());
-        logger()->error('Bulk result save error: ' . $e->getMessage());
-    } finally {
-        $this->isSaving = false;
     }
-}
-
 
     protected function getDefaultComment($score)
     {
@@ -179,18 +228,82 @@ class ResultPage extends Component
         };
     }
 
-    // Add this method for real-time updates (optional)
     public function updatedBulkResults($value, $key)
     {
-        // Parse the key to get student ID and field
         $parts = explode('.', $key);
         if (count($parts) === 3) {
-            [, $studentId, $field] = $parts;
+            [$prefix, $studentId, $field] = $parts;
 
-            // Ensure the value is properly formatted as a number
+            // Validate and convert to integer
             if (in_array($field, ['ca1_score', 'ca2_score', 'ca3_score', 'ca4_score', 'exam_score'])) {
-                $this->bulkResults[$studentId][$field] = is_numeric($value) ? (float)$value : null;
+                $validatedValue = filter_var($value, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+                if ($validatedValue === null && $value !== '') { // If not a valid integer and not empty string
+                    $this->addError("bulkResults.$studentId.$field", 'Score must be a whole number.');
+                    return;
+                }
+
+                // Max value validation
+                $max = ($field === 'exam_score') ? 60 : 10;
+                if ($validatedValue !== null && $validatedValue > $max) {
+                    $this->addError("bulkResults.$studentId.$field", "Max score is {$max}.");
+                    return;
+                }
+
+                $this->bulkResults[$studentId][$field] = $validatedValue;
+                $this->removePropertyError("bulkResults.$studentId.$field"); // Corrected: Clear previous errors
             }
+
+            // Perform real-time save for individual field update
+            $this->saveIndividualBulkResult($studentId, $field, $value);
+        }
+    }
+
+    protected function saveIndividualBulkResult($studentId, $field, $value)
+    {
+        try {
+            // Ensure all scores are integers for calculation
+            $ca1 = filter_var($this->bulkResults[$studentId]['ca1_score'] ?? 0, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+            $ca2 = filter_var($this->bulkResults[$studentId]['ca2_score'] ?? 0, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+            $ca3 = filter_var($this->bulkResults[$studentId]['ca3_score'] ?? 0, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+            $ca4 = filter_var($this->bulkResults[$studentId]['ca4_score'] ?? 0, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+            $exam = filter_var($this->bulkResults[$studentId]['exam_score'] ?? 0, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE) ?? 0;
+
+            $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
+            $comment = $this->bulkResults[$studentId]['comment'] ?? $this->getDefaultComment($total);
+
+            // If all scores are empty, delete the result
+            if ($ca1 === 0 && $ca2 === 0 && $ca3 === 0 && $ca4 === 0 && $exam === 0 && empty($comment)) {
+                Result::where([
+                    'student_record_id' => $studentId,
+                    'subject_id' => $this->selectedSubjectForBulkEdit,
+                    'academic_year_id' => $this->academicYearId,
+                    'semester_id' => $this->semesterId,
+                ])->delete();
+                $this->dispatch('showSuccess', 'Result cleared for ' . StudentRecord::find($studentId)->user->name);
+            } else {
+                Result::updateOrCreate(
+                    [
+                        'student_record_id' => $studentId,
+                        'subject_id' => $this->selectedSubjectForBulkEdit,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ],
+                    [
+                        'ca1_score' => $ca1,
+                        'ca2_score' => $ca2,
+                        'ca3_score' => $ca3,
+                        'ca4_score' => $ca4,
+                        'exam_score' => $exam,
+                        'teacher_comment' => $comment,
+                        'total_score' => $total,
+                        'approved' => false,
+                    ]
+                );
+                $this->dispatch('showSuccess', 'Score updated for ' . StudentRecord::find($studentId)->user->name);
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('showError', 'Error updating score: ' . $e->getMessage());
+            logger()->error('Individual bulk score save error: ' . $e->getMessage());
         }
     }
 
@@ -203,7 +316,7 @@ class ResultPage extends Component
             $q->where('subject_id', $subjectId);
         })
             ->whereHas('user', function ($q) {
-                $q->whereNull('deleted_at'); // Hide deleted users
+                $q->whereNull('deleted_at');
             })
             ->when($this->selectedClass, function ($query) {
                 $query->where('my_class_id', $this->selectedClass);
@@ -216,9 +329,9 @@ class ResultPage extends Component
                     ->where('academic_year_id', $this->academicYearId)
                     ->where('semester_id', $this->semesterId);
             }])
-            ->join('users', 'student_records.user_id', '=', 'users.id') // Join with users table
-            ->orderBy('users.name') // Order by student name
-            ->select('student_records.*') // Ensure we select student records
+            ->join('users', 'student_records.user_id', '=', 'users.id')
+            ->orderBy('users.name')
+            ->select('student_records.*')
             ->get();
 
         $this->bulkResults = [];
@@ -235,32 +348,40 @@ class ResultPage extends Component
         }
 
         $this->showSubjectModal = false;
-        $this->dispatch('show-loading');
+        $this->dispatch('show-loading'); // This event is not defined in the provided blade, but kept.
 
         $this->bulkEditMode = true;
-        $this->dispatch('hide-loading');
+        $this->dispatch('hide-loading'); // This event is not defined in the provided blade, but kept.
     }
-
-
 
     public function mount($studentId = null)
     {
         $this->academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
         $this->classes = MyClass::all();
+        $this->semesters = collect(); 
         $this->setDefaultAcademicYearAndSemester();
 
+        // This property is not used in the current Blade, but kept for consistency
         $this->recentActivities = [
             ['icon' => 'upload', 'action' => 'Bulk upload initiated', 'time' => now()->subMinutes(5)->diffForHumans()],
             ['icon' => 'user-edit', 'action' => 'Individual result updated', 'time' => now()->subHours(2)->diffForHumans()],
             ['icon' => 'eye', 'action' => 'Results viewed', 'time' => now()->subDays(1)->diffForHumans()],
         ];
-        $this->subjects = auth()->user()->isAdmin() ? Subject::all() : auth()->user()->assignedSubjects;
-        $this->setDefaultAcademicYearAndSemester();
+        
+        // Ensure subjects are loaded for the initial form, if no studentId is present
+        // If a studentId is present, subjects will be loaded in goToUpload
+        if (auth()->user()->isAdmin()) {
+            $this->subjects = Subject::all();
+        } else {
+            // Assuming assignedSubjects is a relation or method on the User model
+            $this->subjects = auth()->user()->assignedSubjects ?? collect();
+        }
 
         if ($studentId) {
             $this->studentRecord = StudentRecord::findOrFail($studentId);
-            $this->results = $this->initializeResults(); // Assuming initializeResults exists and is appropriate
+            $this->results = $this->initializeResults();
             $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
+
             $this->academicYearId = AcademicYear::latest()->first()?->id;
             $this->semesterId = Semester::latest()->first()?->id;
 
@@ -273,11 +394,11 @@ class ResultPage extends Component
                 ])->first();
 
                 $this->results[$subject->id] = [
-                    'ca1_score' => $existing?->ca1_score ?? '',
-                    'ca2_score' => $existing?->ca2_score ?? '',
-                    'ca3_score' => $existing?->ca3_score ?? '',
-                    'ca4_score' => $existing?->ca4_score ?? '',
-                    'exam_score' => $existing?->exam_score ?? '',
+                    'ca1_score' => $existing?->ca1_score ?? null, // Use null for empty to prevent 0.00
+                    'ca2_score' => $existing?->ca2_score ?? null,
+                    'ca3_score' => $existing?->ca3_score ?? null,
+                    'ca4_score' => $existing?->ca4_score ?? null,
+                    'exam_score' => $existing?->exam_score ?? null,
                     'comment' => $existing?->teacher_comment ?? '',
                 ];
             }
@@ -290,26 +411,41 @@ class ResultPage extends Component
             if ($termReport) {
                 $this->overallTeacherComment = $termReport->class_teacher_comment ?? '';
                 $this->principalComment = $termReport->principal_comment ?? '';
+                // Populate new fields from TermReport
+                $this->presentDays = $termReport->present_days ?? null;
+                $this->absentDays = $termReport->absent_days ?? null;
+                // Directly assign, as accessors handle decoding
+                $this->psychomotorScores = $termReport->psychomotor_traits;
+                $this->affectiveScores = $termReport->affective_traits;
+                $this->coCurricularScores = $termReport->co_curricular_activities;
+            } else {
+                // Initialize to null or default arrays if no term report exists
+                $this->overallTeacherComment = '';
+                $this->principalComment = '';
+                $this->presentDays = null;
+                $this->absentDays = null;
+                $this->psychomotorScores = $this->getDefaultPsychomotorScores();
+                $this->affectiveScores = $this->getDefaultAffectiveScores();
+                $this->coCurricularScores = $this->getDefaultCoCurricularScores();
             }
         }
     }
 
-    // Add this method if it doesn't exist, or ensure it returns an array
     private function initializeResults()
     {
         return [];
     }
 
+  
 
     public function getFilteredStudentsProperty()
     {
         $query = StudentRecord::query()
-            ->with('user')
+            ->with(['user', 'myClass', 'section']) // Eager load user, myClass, and section to prevent N+1
             ->where('is_graduated', false)
             ->whereHas('user', function ($q) {
                 $q->whereNull('deleted_at');
             });
-
 
         if ($this->selectedClass) {
             $query->where('my_class_id', $this->selectedClass);
@@ -325,6 +461,7 @@ class ResultPage extends Component
             });
         }
 
+        // Removed filter by subject as per user request
         if ($this->selectedSubject) {
             $query->whereHas('studentSubjects', function ($q) {
                 $q->where('subject_id', $this->selectedSubject);
@@ -347,7 +484,7 @@ class ResultPage extends Component
 
     public function updated($property)
     {
-        if (in_array($property, ['selectedClass', 'selectedSection', 'studentSearch'])) {
+        if (in_array($property, ['selectedClass', 'selectedSection', 'studentSearch', 'perPage'])) { // Added perPage here
             $this->resetPage();
         }
 
@@ -359,13 +496,13 @@ class ResultPage extends Component
     public function setDefaultAcademicYearAndSemester()
     {
         $this->academicYearId = AcademicYear::orderByDesc('start_year')->first()?->id;
-        $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)->first()?->id;
+        $this->semesters = $this->academicYearId ? Semester::where('academic_year_id', $this->academicYearId)->get() : collect();
+        $this->semesterId = $this->semesters->first()?->id;
     }
 
     public function updatedAcademicYearId()
     {
-        $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)->first()?->id;
-        $this->semesters = Semester::where('academic_year_id', $this->academicYearId)->get();
+        $this->semesters = $this->academicYearId ? Semester::where('academic_year_id', $this->academicYearId)->get() : collect();
         $this->semesterId = $this->semesters->first()?->id;
         $this->reset(['selectedClass', 'selectedSubject', 'showResults']);
     }
@@ -382,7 +519,8 @@ class ResultPage extends Component
         }
 
         return Subject::where('my_class_id', $this->selectedClass)
-            ->when($this->selectedSection, fn($query) => $query->where('section_id', $this->selectedSection))
+            // ->when($this->selectedSection, fn($query) => $query->where('section_id', $this->selectedSection)) // Removed section filter for subjects
+            ->orderBy('name')
             ->get();
     }
 
@@ -398,9 +536,8 @@ class ResultPage extends Component
         $this->currentStudentId = $studentId;
         $this->studentRecord = StudentRecord::findOrFail($studentId);
 
-        $this->subjects = $this->selectedSubject
-            ? Subject::where('id', $this->selectedSubject)->where('my_class_id', $this->studentRecord->my_class_id)->get()
-            : Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
+        // Subjects for the current student's class
+        $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->orderBy('name')->get();
 
         foreach ($this->subjects as $subject) {
             $existing = Result::where([
@@ -411,13 +548,37 @@ class ResultPage extends Component
             ])->first();
 
             $this->results[$subject->id] = [
-                'ca1_score' => $existing?->ca1_score,
-                'ca2_score' => $existing?->ca2_score,
-                'ca3_score' => $existing?->ca3_score,
-                'ca4_score' => $existing?->ca4_score,
-                'exam_score' => $existing?->exam_score,
+                'ca1_score' => $existing?->ca1_score ?? null, // Use null for empty to prevent 0.00
+                'ca2_score' => $existing?->ca2_score ?? null,
+                'ca3_score' => $existing?->ca3_score ?? null,
+                'ca4_score' => $existing?->ca4_score ?? null,
+                'exam_score' => $existing?->exam_score ?? null,
                 'comment' => $existing?->teacher_comment ?? '',
             ];
+        }
+
+        $termReport = TermReport::where('student_record_id', $this->studentRecord->id)
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('semester_id', $this->semesterId)
+            ->first();
+
+        if ($termReport) {
+            $this->overallTeacherComment = $termReport->class_teacher_comment ?? '';
+            $this->principalComment = $termReport->principal_comment ?? '';
+            $this->presentDays = $termReport->present_days ?? null;
+            $this->absentDays = $termReport->absent_days ?? null;
+            // Directly assign, as accessors handle decoding
+            $this->psychomotorScores = $termReport->psychomotor_traits;
+            $this->affectiveScores = $termReport->affective_traits;
+            $this->coCurricularScores = $termReport->co_curricular_activities;
+        } else {
+            $this->overallTeacherComment = '';
+            $this->principalComment = '';
+            $this->presentDays = null;
+            $this->absentDays = null;
+            $this->psychomotorScores = $this->getDefaultPsychomotorScores();
+            $this->affectiveScores = $this->getDefaultAffectiveScores();
+            $this->coCurricularScores = $this->getDefaultCoCurricularScores();
         }
     }
 
@@ -425,10 +586,33 @@ class ResultPage extends Component
     {
         $this->currentStudentId = $studentId;
         $this->studentRecord = StudentRecord::findOrFail($studentId);
-        $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)->get();
+
+        if (empty($this->academicYearId)) {
+            $this->academicYearId = AcademicYear::latest()->first()?->id;
+        }
+        if (empty($this->semesterId)) {
+            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)->first()?->id;
+        }
+
+        $this->positions[$this->studentRecord->id] = $this->calculateStudentAndClassPositions(
+            $this->studentRecord->id,
+            $this->academicYearId,
+            $this->semesterId,
+            $this->studentRecord->my_class_id
+        );
+
+        $this->subjects = Subject::whereIn('id',
+            Result::where('student_record_id', $this->studentRecord->id)
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('semester_id', $this->semesterId)
+                ->pluck('subject_id')
+        )->orderBy('name')->get();
 
         $this->grandTotalTest = 0;
         $this->grandTotalExam = 0;
+        $this->grandTotal = 0;
+
+        $this->results = [];
 
         foreach ($this->subjects as $subject) {
             $existing = Result::where([
@@ -438,12 +622,22 @@ class ResultPage extends Component
                 'semester_id' => $this->semesterId,
             ])->first();
 
-            $ca1 = (int) ($existing?->ca1_score ?? 0);
-            $ca2 = (int) ($existing?->ca2_score ?? 0);
-            $ca3 = (int) ($existing?->ca3_score ?? 0);
-            $ca4 = (int) ($existing?->ca4_score ?? 0);
-            $exam = (int) ($existing?->exam_score ?? 0);
+            if (!$existing) {
+                continue;
+            }
+
+            $ca1 = (int) ($existing->ca1_score ?? 0);
+            $ca2 = (int) ($existing->ca2_score ?? 0);
+            $ca3 = (int) ($existing->ca3_score ?? 0);
+            $ca4 = (int) ($existing->ca4_score ?? 0);
+            $exam = (int) ($existing->exam_score ?? 0);
             $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
+            $grade = $this->calculateGrade($total);
+
+            $teacherComment = $existing->teacher_comment;
+            if (empty($teacherComment) || $teacherComment === 'Impressive') {
+                $teacherComment = $this->getDefaultComment($total);
+            }
 
             $this->results[$subject->id] = [
                 'ca1_score' => $ca1,
@@ -451,8 +645,9 @@ class ResultPage extends Component
                 'ca3_score' => $ca3,
                 'ca4_score' => $ca4,
                 'exam_score' => $exam,
-                'total_score' => $total,
-                'comment' => $existing?->teacher_comment ?? '',
+                'total_score' => $total, // Ensure total is stored as int
+                'grade' => $grade,
+                'comment' => $teacherComment,
             ];
 
             $this->grandTotalTest += $ca1 + $ca2 + $ca3 + $ca4;
@@ -469,6 +664,20 @@ class ResultPage extends Component
         if ($termReport) {
             $this->overallTeacherComment = $termReport->class_teacher_comment ?? '';
             $this->principalComment = $termReport->principal_comment ?? '';
+            $this->presentDays = $termReport->present_days ?? null;
+            $this->absentDays = $termReport->absent_days ?? null;
+            // Directly assign, as accessors handle decoding
+            $this->psychomotorScores = $termReport->psychomotor_traits;
+            $this->affectiveScores = $termReport->affective_traits;
+            $this->coCurricularScores = $termReport->co_curricular_activities;
+        } else {
+            $this->overallTeacherComment = '';
+            $this->principalComment = '';
+            $this->presentDays = null;
+            $this->absentDays = null;
+            $this->psychomotorScores = $this->getDefaultPsychomotorScores();
+            $this->affectiveScores = $this->getDefaultAffectiveScores();
+            $this->coCurricularScores = $this->getDefaultCoCurricularScores();
         }
 
         $this->totalPossibleMarks = count($this->subjects) * 100;
@@ -482,6 +691,21 @@ class ResultPage extends Component
         $this->mode = 'index';
         $this->currentStudentId = null;
         $this->results = [];
+        $this->subjects = [];
+        // Reset new fields when going back
+        $this->reset([
+            'presentDays',
+            'absentDays',
+            'overallTeacherComment',
+            'principalComment',
+            'psychomotorScores', // Reset these arrays too
+            'affectiveScores',
+            'coCurricularScores',
+        ]);
+        // Re-initialize arrays to default structure after reset
+        $this->psychomotorScores = $this->getDefaultPsychomotorScores();
+        $this->affectiveScores = $this->getDefaultAffectiveScores();
+        $this->coCurricularScores = $this->getDefaultCoCurricularScores();
     }
 
     public function calculateGrade($total)
@@ -499,110 +723,206 @@ class ResultPage extends Component
         };
     }
 
+    protected function calculateStudentAndClassPositions($studentId, $academicYearId, $semesterId, $classId)
+    {
+        $classStudents = StudentRecord::with([
+            'user',
+            'results' => function ($query) use ($academicYearId, $semesterId) {
+                $query->where('academic_year_id', $academicYearId)
+                      ->where('semester_id', $semesterId);
+            }
+        ])
+        ->where('my_class_id', $classId)
+        ->where('is_graduated', false)
+        ->whereHas('user', function ($q) {
+            $q->whereNull('deleted_at');
+        })
+        ->get();
+
+        $totalStudentsInClass = $classStudents->count();
+
+        $scores = $classStudents->map(function ($record) {
+            return [
+                'id' => $record->id,
+                'total_score' => (int) $record->results->sum('total_score'), // Ensure integer
+            ];
+        })->sortByDesc('total_score')->values();
+
+        $rank = 1;
+        $prevScore = null;
+        $studentsAtRank = 0;
+        $studentPosition = 'N/A';
+
+        foreach ($scores as $data) {
+            if ($prevScore !== null && $data['total_score'] < $prevScore) {
+                $rank += $studentsAtRank;
+                $studentsAtRank = 1;
+            } else {
+                $studentsAtRank++;
+            }
+
+            if ($data['id'] == $studentId) {
+                $studentPosition = $rank;
+                break;
+            }
+            $prevScore = $data['total_score'];
+        }
+
+        return [
+            'position' => $studentPosition,
+            'total_students' => $totalStudentsInClass
+        ];
+    }
+
     public function updatedResults($value, $key)
     {
         [$subjectId, $field] = explode('.', $key);
-        $this->results[$subjectId][$field] = (int) $value;
 
-        try {
-            $this->validateOnly("results.$key");
-        } catch (\Illuminate\Validation\ValidationException) {
-            // Ignore validation errors for real-time updates
+        // Validate and convert to integer, handling empty string as null
+        $validatedValue = filter_var($value, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+        if ($validatedValue === null && $value !== '') { // If not a valid integer and not empty string
+            $this->addError("results.$subjectId.$field", 'Score must be a whole number.');
+            return;
         }
 
-        $entry = $this->results[$subjectId];
+        // Max value validation
+        $max = 0;
+        if (str_contains($field, 'ca')) {
+            $max = 10;
+        } elseif ($field === 'exam_score') {
+            $max = 60;
+        }
 
-        $ca1 = (int) ($entry['ca1_score'] ?? 0);
-        $ca2 = (int) ($entry['ca2_score'] ?? 0);
-        $ca3 = (int) ($entry['ca3_score'] ?? 0);
-        $ca4 = (int) ($entry['ca4_score'] ?? 0);
-        $exam = (int) ($entry['exam_score'] ?? 0);
+        if ($validatedValue !== null && $validatedValue > $max) {
+            $this->addError("results.$subjectId.$field", "Max score is {$max}.");
+            return;
+        }
+
+        $this->results[$subjectId][$field] = $validatedValue;
+        $this->removePropertyError("results.$subjectId.$field"); // Corrected: Clear previous errors
+
+        // Recalculate total and comment for real-time update
+        $ca1 = (int) ($this->results[$subjectId]['ca1_score'] ?? 0);
+        $ca2 = (int) ($this->results[$subjectId]['ca2_score'] ?? 0);
+        $ca3 = (int) ($this->results[$subjectId]['ca3_score'] ?? 0);
+        $ca4 = (int) ($this->results[$subjectId]['ca4_score'] ?? 0);
+        $exam = (int) ($this->results[$subjectId]['exam_score'] ?? 0);
         $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
-        $grade = $this->calculateGrade($total);
+        $comment = $this->getDefaultComment($total);
 
-        $comment = match ($grade) {
-            'A1' => 'Distinction',
-            'B2' => 'Very good',
-            'B3' => 'Good',
-            'C4' => 'Credit',
-            'C5' => 'Credit',
-            'C6' => 'Credit',
-            'D7' => 'Pass',
-            'E8' => 'Pass',
-            'F9' => 'Fail',
-            default => '',
-        };
-
-        $this->results[$subjectId]['grade'] = $grade;
+        // Update the Livewire component's results array for the comment and total
+        $this->results[$subjectId]['total_score'] = $total;
         $this->results[$subjectId]['comment'] = $comment;
 
-        Result::updateOrCreate([
-            'student_record_id' => $this->studentRecord->id,
-            'subject_id' => $subjectId,
-            'academic_year_id' => $this->academicYearId,
-            'semester_id' => $this->semesterId,
-        ], [
-            'ca1_score' => $ca1,
-            'ca2_score' => $ca2,
-            'ca3_score' => $ca3,
-            'ca4_score' => $ca4,
-            'exam_score' => $exam,
-            'total_score' => $total,
-            'teacher_comment' => $entry['comment'] ?? '',
-            'approved' => false,
-        ]);
+        // Persist to database
+        try {
+            Result::updateOrCreate([
+                'student_record_id' => $this->studentRecord->id,
+                'subject_id' => $subjectId,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ], [
+                'ca1_score' => $ca1,
+                'ca2_score' => $ca2,
+                'ca3_score' => $ca3,
+                'ca4_score' => $ca4,
+                'exam_score' => $exam,
+                'total_score' => $total,
+                'teacher_comment' => $comment,
+                'approved' => false,
+            ]);
+            $this->dispatch('showSuccess', 'Score updated for ' . Subject::find($subjectId)->name);
+        } catch (\Exception $e) {
+            $this->dispatch('showError', 'Error saving score: ' . $e->getMessage());
+            logger()->error('Individual score save error: ' . $e->getMessage());
+        }
     }
+
+    // New updated method for psychomotor, affective, co-curricular scores
+    public function updatedPsychomotorScores($value, $key) {
+        $this->validateOnly("psychomotorScores.$key");
+        // No real-time database save here, will be saved with saveResults()
+    }
+    public function updatedAffectiveScores($value, $key) {
+        $this->validateOnly("affectiveScores.$key");
+        // No real-time database save here, will be saved with saveResults()
+    }
+    public function updatedCoCurricularScores($value, $key) {
+        $this->validateOnly("coCurricularScores.$key");
+        // No real-time database save here, will be saved with saveResults()
+    }
+
 
     public function saveResults()
     {
-        $this->validate([
-            'results.*.ca1_score' => 'nullable|numeric|min:0|max:10',
-            'results.*.ca2_score' => 'nullable|numeric|min:0|max:10',
-            'results.*.ca3_score' => 'nullable|numeric|min:0|max:10',
-            'results.*.ca4_score' => 'nullable|numeric|min:0|max:10',
-            'results.*.exam_score' => 'nullable|numeric|min:0|max:60',
-            'results.*.comment' => 'nullable|string|max:255',
-        ]);
+        $this->validate();
 
         try {
             DB::transaction(function () {
-                foreach ($this->results as $subjectId => $data) {
-                    $ca1 = isset($data['ca1_score']) ? (int) $data['ca1_score'] : null;
-                    $ca2 = isset($data['ca2_score']) ? (int) $data['ca2_score'] : null;
-                    $ca3 = isset($data['ca3_score']) ? (int) $data['ca3_score'] : null;
-                    $ca4 = isset($data['ca4_score']) ? (int) $data['ca4_score'] : null;
-                    $exam = isset($data['exam_score']) ? (int) $data['exam_score'] : null;
-                    $total = ($ca1 ?? 0) + ($ca2 ?? 0) + ($ca3 ?? 0) + ($ca4 ?? 0) + ($exam ?? 0);
+                // Save subject results
+                foreach ($this->subjects as $subject) { // Iterate over all subjects for the class
+                    $subjectId = $subject->id;
+                    $data = $this->results[$subjectId] ?? []; // Get data for this subject, or empty array if not set
+
+                    // Fetch the existing result for this student and subject
+                    $existingResult = Result::where([
+                        'student_record_id' => $this->studentRecord->id,
+                        'subject_id' => $subjectId,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ])->first();
+
+                    // Determine scores: if input is null (meaning field was not touched), use existing score, otherwise use input (default to 0 if input is empty string)
+                    $ca1 = filter_var($data['ca1_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+                    $ca2 = filter_var($data['ca2_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+                    $ca3 = filter_var($data['ca3_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+                    $ca4 = filter_var($data['ca4_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+                    $exam = filter_var($data['exam_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
                     $comment = $data['comment'] ?? null;
 
-                    if ($ca1 === null && $ca2 === null && $ca3 === null && $ca4 === null && $exam === null) {
-                        continue;
-                    }
+                    // Use existing values if the new value is null (meaning the field was not touched in the form)
+                    $finalCa1 = $ca1 ?? ($existingResult->ca1_score ?? 0);
+                    $finalCa2 = $ca2 ?? ($existingResult->ca2_score ?? 0);
+                    $finalCa3 = $ca3 ?? ($existingResult->ca3_score ?? 0);
+                    $finalCa4 = $ca4 ?? ($existingResult->ca4_score ?? 0);
+                    $finalExam = $exam ?? ($existingResult->exam_score ?? 0);
+                    $finalComment = $comment ?? ($existingResult->teacher_comment ?? $this->getDefaultComment($finalCa1 + $finalCa2 + $finalCa3 + $finalCa4 + $finalExam));
 
-                    Result::updateOrCreate(
-                        [
-                            'student_record_id' => $this->studentRecord->id,
-                            'subject_id' => $subjectId,
-                            'academic_year_id' => $this->academicYearId,
-                            'semester_id' => $this->semesterId,
-                        ],
-                        [
-                            'ca1_score' => $ca1,
-                            'ca2_score' => $ca2,
-                            'ca3_score' => $ca3,
-                            'ca4_score' => $ca4,
-                            'exam_score' => $exam,
-                            'total_score' => $total,
-                            'teacher_comment' => $comment,
-                            'approved' => false,
-                        ]
-                    );
+                    $total = $finalCa1 + $finalCa2 + $finalCa3 + $finalCa4 + $finalExam;
+
+                    // Only update if there's an existing result OR if any score/comment is being set
+                    // This prevents creating empty result records if no scores are entered
+                    if ($existingResult || $total > 0 || !empty($finalComment)) {
+                        Result::updateOrCreate(
+                            [
+                                'student_record_id' => $this->studentRecord->id,
+                                'subject_id' => $subjectId,
+                                'academic_year_id' => $this->academicYearId,
+                                'semester_id' => $this->semesterId,
+                            ],
+                            [
+                                'ca1_score' => $finalCa1,
+                                'ca2_score' => $finalCa2,
+                                'ca3_score' => $finalCa3,
+                                'ca4_score' => $finalCa4,
+                                'exam_score' => $finalExam,
+                                'total_score' => $total,
+                                'teacher_comment' => $finalComment,
+                                'approved' => false,
+                            ]
+                        );
+                    }
                 }
 
-                // CHANGE 2: Conditionally set principal_comment to null if it's the default empty string
-                $principalCommentToSave = empty($this->principalComment) ? null : $this->principalComment;
-                $teacherCommentToSave = empty($this->overallTeacherComment) ? null : $this->overallTeacherComment;
-
+                // Prepare data for TermReport
+                $psychomotorJson = !empty(array_filter($this->psychomotorScores, fn($value) => $value !== null)) ? // Check for non-null values
+                    json_encode($this->psychomotorScores) : null;
+                
+                $affectiveJson = !empty(array_filter($this->affectiveScores, fn($value) => $value !== null)) ? // Check for non-null values
+                    json_encode($this->affectiveScores) : null;
+                
+                $coCurricularJson = !empty(array_filter($this->coCurricularScores, fn($value) => $value !== null)) ? // Check for non-null values
+                    json_encode($this->coCurricularScores) : null;
 
                 TermReport::updateOrCreate(
                     [
@@ -611,18 +931,26 @@ class ResultPage extends Component
                         'semester_id' => $this->semesterId,
                     ],
                     [
-                        'class_teacher_comment' => $teacherCommentToSave,
-                        'principal_comment' => $principalCommentToSave,
+                        'class_teacher_comment' => $this->overallTeacherComment ?: null,
+                        'principal_comment' => $this->principalComment ?: null,
+                        'present_days' => $this->presentDays ?: null,
+                        'absent_days' => $this->absentDays ?: null,
+                        'psychomotor_traits' => $psychomotorJson,
+                        'affective_traits' => $affectiveJson,
+                        'co_curricular_activities' => $coCurricularJson,
                     ]
                 );
             });
 
-            session()->flash('success', 'Results saved successfully!');
+            $this->dispatch('showSuccess', 'All data saved successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->dispatch('showError', 'Validation failed: ' . $e->getMessage());
+            throw $e;
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to save results. Error: ' . $e->getMessage());
+            $this->dispatch('showError', 'Failed to save: ' . $e->getMessage());
+            logger()->error('Save error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
         }
     }
-
     public function render()
     {
         $view = match ($this->mode) {
@@ -655,7 +983,7 @@ class ResultPage extends Component
                 'semester_id' => $this->semesterId,
             ])->delete();
 
-            // Reset to empty values instead of zeros
+            // Reset the local state for the deleted subject
             $this->results[$subjectId] = [
                 'ca1_score' => null,
                 'ca2_score' => null,
@@ -663,12 +991,12 @@ class ResultPage extends Component
                 'ca4_score' => null,
                 'exam_score' => null,
                 'comment' => '',
-                'grade' => '',
+                'total_score' => 0, // Reset total score as well
             ];
 
-            session()->flash('success', 'Result deleted successfully!');
+            $this->dispatch('showSuccess', 'Result deleted successfully!');
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to delete result: ' . $e->getMessage());
+            $this->dispatch('showError', 'Failed to delete result: ' . $e->getMessage());
         }
     }
 
@@ -694,9 +1022,53 @@ class ResultPage extends Component
 
             $this->dispatch('showSuccess', 'Result deleted successfully!');
         } catch (\Exception $e) {
-            $this->dispatch('showSuccess', 'Failed to delete result: ' . $e->getMessage());
+            $this->dispatch('showError', 'Failed to delete result: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Clears all scores for a specific subject for the current student.
+     * This method is called from the upload-content.blade.php
+     *
+     * @param int $subjectId The ID of the subject whose scores are to be cleared.
+     * @return void
+     */
+    public function clearSubjectScores($subjectId)
+    {
+        try {
+            Result::where([
+                'student_record_id' => $this->studentRecord->id,
+                'subject_id' => $subjectId,
+                'academic_year_id' => $this->academicYearId,
+                'semester_id' => $this->semesterId,
+            ])->update([
+                'ca1_score' => 0,
+                'ca2_score' => 0,
+                'ca3_score' => 0,
+                'ca4_score' => 0,
+                'exam_score' => 0,
+                'total_score' => 0,
+                'teacher_comment' => $this->getDefaultComment(0), // Set default comment for 0 score
+            ]);
+
+            // Update the Livewire component's local results array
+            $this->results[$subjectId] = [
+                'ca1_score' => 0,
+                'ca2_score' => 0,
+                'ca3_score' => 0,
+                'ca4_score' => 0,
+                'exam_score' => 0,
+                'comment' => $this->getDefaultComment(0),
+                'total_score' => 0,
+            ];
+
+            $this->dispatch('showSuccess', Subject::find($subjectId)->name . ' scores cleared successfully!');
+        } catch (\Exception $e) {
+            $this->dispatch('showError', 'Failed to clear scores: ' . $e->getMessage());
+            logger()->error('Clear subject scores error: ' . $e->getMessage());
+        }
+    }
+
 
     public function clearFilters()
     {
@@ -713,4 +1085,67 @@ class ResultPage extends Component
     {
         $this->resetPage();
     }
+
+// Add these methods to your ResultPage Livewire component
+
+/**
+ * Initialize default score structures
+ */
+private function getDefaultPsychomotorScores() {
+    return [
+        'Handwriting' => null,
+        'Verbal Fluency' => null,
+        'Game/Sports' => null,
+        'Handling Tools' => null,
+    ];
+}
+
+private function getDefaultAffectiveScores() {
+    return [
+        'Punctuality' => null,
+        'Neatness' => null,
+        'Politeness' => null,
+        'Leadership' => null,
+    ];
+}
+
+private function getDefaultCoCurricularScores() {
+    return [
+        'Athletics' => null,
+        'Football' => null,
+        'Volley Ball' => null,
+        'Table Tennis' => null,
+    ];
+}
+
+/**
+ * Load student data including extra-curricular activities
+ */
+public function loadStudentData($studentId) {
+    $this->studentRecord = StudentRecord::findOrFail($studentId);
+    
+    $termReport = TermReport::where([
+        'student_record_id' => $this->studentRecord->id,
+        'academic_year_id' => $this->academicYearId,
+        'semester_id' => $this->semesterId,
+    ])->first();
+
+    if ($termReport) {
+        $this->presentDays = $termReport->present_days;
+        $this->absentDays = $termReport->absent_days;
+        
+        // Directly assign, as accessors handle decoding
+        $this->psychomotorScores = $termReport->psychomotor_traits;
+        $this->affectiveScores = $termReport->affective_traits;
+        $this->coCurricularScores = $termReport->co_curricular_activities;
+    } else {
+        $this->presentDays = null;
+        $this->absentDays = null;
+        $this->psychomotorScores = $this->getDefaultPsychomotorScores();
+        $this->affectiveScores = $this->getDefaultAffectiveScores();
+        $this->coCurricularScores = $this->getDefaultCoCurricularScores();
+    }
+}
+
+
 }
