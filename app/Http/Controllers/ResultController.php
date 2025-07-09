@@ -93,7 +93,7 @@ class ResultController extends Controller
                         $q->whereNull('deleted_at');
                     })
                     ->get()
-                    ->each(function ($student) {
+                    ->each(function ($student) use ($academicYearId, $semesterId, $classId) { // Pass necessary variables
                         $student->setAttribute('total_score', $student->results->sum('total_score'));
                         $student->setAttribute('average_score', $student->results->avg('total_score'));
                         $student->results->each(function ($result) {
@@ -101,22 +101,11 @@ class ResultController extends Controller
                                 $result->setAttribute('grade', $this->calculateGrade($result->total_score));
                             }
                         });
+                        // Use the new semester-specific position calculation
+                        $student->setAttribute('position', $this->calculateSemesterStudentPosition($student->id, $academicYearId, $semesterId, $classId));
                     })
-                    ->sortByDesc('total_score')
+                    ->sortBy('position') // Sort by the calculated position
                     ->values();
-                $position = 1;
-                $prevScore = null;
-                $actualPosition = 1;
-                foreach ($students as $student) {
-                    if ($prevScore !== null && $student->total_score == $prevScore) {
-                        $student->setAttribute('position', $position);
-                    } else {
-                        $student->setAttribute('position', $actualPosition);
-                        $position = $actualPosition;
-                    }
-                    $prevScore = $student->total_score;
-                    $actualPosition++;
-                }
                 $classResults = $students;
             }
         }
@@ -233,17 +222,19 @@ class ResultController extends Controller
             ];
         }
 
-        // Fetch all term reports for the class
+        // Fetch all term reports for the class and key them by student ID
         $allTermReports = TermReport::where('academic_year_id', $academicYearId)
             ->where('semester_id', $semesterId)
             ->whereIn('student_record_id', $students->pluck('id'))
             ->get()
             ->keyBy('student_record_id');
 
-        // Calculate positions once for all students
+        // Calculate positions once for all students for the current semester
         $studentTotalScores = $students->mapWithKeys(function ($student) use ($academicYearId, $semesterId) {
-            // Sum total scores from the already loaded results relationship
-            $totalScore = $student->results->sum('total_score');
+            // Sum total scores from the already loaded results relationship, filtered by semester
+            $totalScore = $student->results->where('academic_year_id', $academicYearId)
+                                         ->where('semester_id', $semesterId)
+                                         ->sum('total_score');
             return [$student->id => $totalScore];
         })->sortDesc();
 
@@ -267,16 +258,31 @@ class ResultController extends Controller
 
         $studentsData = [];
         foreach ($students as $student) {
+            // Get the term report for this student
+            $termReport = $allTermReports->get($student->id);
+            
+            // If no term report exists, create a default one (but don't save it)
+            if (!$termReport) {
+                $termReport = new TermReport([
+                    'student_record_id' => $student->id,
+                    'academic_year_id' => $academicYearId,
+                    'semester_id' => $semesterId,
+                    'psychomotor_traits' => TermReport::getDefaultPsychomotorScores(),
+                    'affective_traits' => TermReport::getDefaultAffectiveScores(),
+                    'co_curricular_activities' => TermReport::getDefaultCoCurricularScores()
+                ]);
+            }
+
             // Pass pre-fetched data to prepareReportData
             $studentsData[] = $this->prepareReportData(
                 $student,
                 $academicYearId,
                 $semesterId,
-                $allSubjects, // Still passing allSubjects, but prepareReportData will filter
-                $allClassResults->where('student_record_id', $student->id), // Filter results for current student
+                $allSubjects,
+                $allClassResults->where('student_record_id', $student->id),
                 $subjectOverallStats,
-                $allTermReports->get($student->id), // Get term report for current student
-                $classPositions[$student->id] ?? 'N/A', // Get pre-calculated position
+                $termReport, // Pass the term report
+                $classPositions[$student->id] ?? 'N/A',
                 $totalStudentsInClass
             );
         }
@@ -289,6 +295,7 @@ class ResultController extends Controller
         ]);
     }
 
+    // This method calculates annual position (across all semesters in an academic year)
     private function calculateStudentPosition($studentId, $academicYearId, $classId)
     {
         $students = StudentRecord::where('my_class_id', $classId)->pluck('user_id');
@@ -305,6 +312,55 @@ class ResultController extends Controller
         return $position . '/' . $totalStudents;
     }
 
+    // New method for semester-specific position calculation
+    private function calculateSemesterStudentPosition($studentId, $academicYearId, $semesterId, $myClassId)
+    {
+        // Fetch all students in the class for the given academic year and semester
+        $classStudents = StudentRecord::with([
+            'user',
+            'results' => function ($query) use ($academicYearId, $semesterId) {
+                $query->where('academic_year_id', $academicYearId)
+                      ->where('semester_id', $semesterId);
+            }
+        ])
+        ->where('my_class_id', $myClassId)
+        ->where('is_graduated', false)
+        ->whereHas('user', function ($q) {
+            $q->whereNull('deleted_at');
+        })
+        ->get();
+
+        $scores = $classStudents->map(function ($record) {
+            return [
+                'id' => $record->id,
+                'total_score' => (int) $record->results->sum('total_score'), // Ensure integer
+            ];
+        })->sortByDesc('total_score')->values();
+
+        $rank = 1;
+        $prevScore = null;
+        $studentsAtRank = 0;
+        $studentPosition = 'N/A';
+
+        foreach ($scores as $data) {
+            if ($prevScore !== null && $data['total_score'] < $prevScore) {
+                $rank += $studentsAtRank;
+                $studentsAtRank = 1;
+            } else {
+                $studentsAtRank++;
+            }
+
+            if ($data['id'] == $studentId) {
+                $studentPosition = $rank;
+                break;
+            }
+            $prevScore = $data['total_score'];
+        }
+
+        return $studentPosition;
+    }
+
+
     private function getDefaultComment($score)
     {
         return match (true) {
@@ -319,15 +375,6 @@ class ResultController extends Controller
             default => 'Fail',
         };
     }
-
-
-
-
-
-
-
-
-
 
     protected function prepareReportData(
         $studentRecord,
@@ -521,16 +568,6 @@ class ResultController extends Controller
             'finalPrincipalComment' => $finalPrincipalComment, // Pass the determined comment
         ];
     }
-
-
-
-
-
-
-
-
-
-
 
     public function generatePdf($studentId)
     {
