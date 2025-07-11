@@ -20,11 +20,13 @@ class ResultController extends Controller
     {
         $academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
         $classes = MyClass::orderBy('name')->get();
+        
         $academicYearId = $request->input('academicYearId');
         $semesterId = $request->input('semesterId');
         $classId = $request->input('classId');
         $subjectId = $request->input('subjectId');
         $mode = $request->input('mode', 'subject');
+    
         $subjectResults = collect();
         $classResults = collect();
         $subjects = collect();
@@ -33,82 +35,114 @@ class ResultController extends Controller
         $selectedClass = null;
         $academicYearName = 'Not Selected';
         $semesterName = 'Not Selected';
+    
         if ($academicYearId) {
             $semesters = Semester::where('academic_year_id', $academicYearId)->get();
         }
+    
         if ($classId) {
             $subjects = Subject::where('my_class_id', $classId)->get();
         }
+    
         if ($academicYearId && $semesterId && $classId) {
             $academicYear = AcademicYear::find($academicYearId);
             $semester = Semester::find($semesterId);
             $class = MyClass::find($classId);
+            
             $academicYearName = $academicYear->name ?? 'Unknown Academic Year';
             $semesterName = $semester->name ?? 'Unknown Term';
             $selectedClass = $class;
+    
             if ($mode === 'subject' && $subjectId) {
                 $selectedSubject = Subject::find($subjectId);
-                $subjectResults = Result::with([
-                    'student.user',
-                    'subject'
-                ])
+                
+                $subjectResults = Result::with(['student.user', 'subject'])
                     ->where('subject_id', $subjectId)
                     ->where('academic_year_id', $academicYearId)
                     ->where('semester_id', $semesterId)
-                    ->whereHas('student', function ($q) use ($classId) {
+                    ->whereHas('student', function($q) use ($classId) {
                         $q->where('my_class_id', $classId)
-                            ->where('is_graduated', false)
-                            ->whereHas('user', function ($q) {
-                                $q->whereNull('deleted_at');
-                            });
+                          ->where('is_graduated', false)
+                          ->whereHas('studentSubjects', function($q) use ($subjectId) {
+                              $q->where('subject_id', $subjectId);
+                          });
                     })
                     ->get()
-                    ->each(function ($result) {
+                    ->each(function($result) {
                         if (!isset($result->total_score)) {
-                            $result->setAttribute(
-                                'total_score',
-                                ($result->ca1_score ?? 0) +
-                                    ($result->ca2_score ?? 0) +
-                                    ($result->ca3_score ?? 0) +
-                                    ($result->ca4_score ?? 0) +
-                                    ($result->exam_score ?? 0)
-                            );
+                            $result->total_score = 
+                                ($result->ca1_score ?? 0) + 
+                                ($result->ca2_score ?? 0) + 
+                                ($result->ca3_score ?? 0) + 
+                                ($result->ca4_score ?? 0) + 
+                                ($result->exam_score ?? 0);
                         }
-                        if (!isset($result->grade)) {
-                            $result->setAttribute('grade', $this->calculateGrade($result->total_score));
-                        }
+                        $result->grade = $this->calculateGrade($result->total_score);
                     });
+    
             } else {
-                $students = StudentRecord::with([
-                    'user',
-                    'results' => function ($query) use ($academicYearId, $semesterId) {
-                        $query->where('academic_year_id', $academicYearId)
-                            ->where('semester_id', $semesterId)
-                            ->with('subject');
-                    }
-                ])
+                // CLASS VIEW MODE
+                $students = StudentRecord::with(['user', 'studentSubjects'])
                     ->where('my_class_id', $classId)
                     ->where('is_graduated', false)
-                    ->whereHas('user', function ($q) {
+                    ->whereHas('user', function($q) {
                         $q->whereNull('deleted_at');
                     })
-                    ->get()
-                    ->each(function ($student) use ($academicYearId, $semesterId, $classId) { // Pass necessary variables
-                        $student->setAttribute('total_score', $student->results->sum('total_score'));
-                        $student->setAttribute('average_score', $student->results->avg('total_score'));
-                        $student->results->each(function ($result) {
-                            if (!isset($result->grade) && isset($result->total_score)) {
-                                $result->setAttribute('grade', $this->calculateGrade($result->total_score));
-                            }
-                        });
-                        // Use the new semester-specific position calculation
-                        $student->setAttribute('position', $this->calculateSemesterStudentPosition($student->id, $academicYearId, $semesterId, $classId));
+                    ->orderByName()
+                    ->get();
+    
+                // Get all valid results (only for subjects the students are actually enrolled in)
+                $allResults = Result::with('subject')
+                    ->whereIn('student_record_id', $students->pluck('id'))
+                    ->where('academic_year_id', $academicYearId)
+                    ->where('semester_id', $semesterId)
+                    ->whereHas('student.studentSubjects', function($q) {
+                        $q->whereColumn('subjects.id', 'results.subject_id');
                     })
-                    ->sortBy('position') // Sort by the calculated position
-                    ->values();
-                $classResults = $students;
+                    ->get()
+                    ->groupBy(['student_record_id', 'subject_id']);
+    
+                // Process each student's results
+                $students->each(function($student) use ($allResults) {
+                    $studentResults = collect($allResults->get($student->id, []))
+                        ->map->first()
+                        ->filter();
+    
+                    $totalScore = $studentResults->sum('total_score');
+                    $subjectsTakenCount = $studentResults->count();
+                    $averageScore = $subjectsTakenCount > 0 
+                        ? round(($totalScore / ($subjectsTakenCount * 100)) * 100, 2)
+                        : 0;
+    
+                    $student->setAttribute('results', $studentResults);
+                    $student->setAttribute('total_score', $totalScore);
+                    $student->setAttribute('average_score', $averageScore);
+                    $student->setAttribute('subjects_taken_count', $subjectsTakenCount);
+                });
+    
+                // Calculate positions
+                $rankedStudents = $students->sortByDesc('total_score')->values();
+                
+                $rank = 1;
+                $prevScore = null;
+                $studentsAtRank = 0;
+    
+                foreach ($rankedStudents as $index => $student) {
+                    if ($prevScore !== null && $student->total_score < $prevScore) {
+                        $rank += $studentsAtRank;
+                        $studentsAtRank = 1;
+                    } else {
+                        $studentsAtRank++;
+                    }
+    
+                    $student->setAttribute('position', $rank);
+                    $prevScore = $student->total_score;
+                }
+    
+                $classResults = $students->sortBy('position');
             }
         }
+    
         return view('pages.result.view-result', compact(
             'academicYears',
             'classes',
@@ -127,7 +161,6 @@ class ResultController extends Controller
             'semesterName'
         ));
     }
-
     protected function calculateGrade($score)
     {
         return match (true) {

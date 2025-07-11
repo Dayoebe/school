@@ -25,6 +25,37 @@ class Result extends Model
         'approved',
     ];
 
+public static function rules(): array
+{
+    return [
+        'student_record_id' => 'required|exists:student_records,id',
+        'subject_id' => 'required|exists:subjects,id',
+        'academic_year_id' => 'required|exists:academic_years,id',
+        'semester_id' => 'required|exists:semesters,id',
+        // ... other fields
+    ];
+
+
+}
+
+// In App\Models\Result.php
+
+public static function validateSubjectAssignment(StudentRecord $student, Subject $subject)
+{
+    // Check if subject exists in student's class
+    $classSubjects = Subject::where('my_class_id', $student->my_class_id)->pluck('id');
+    
+    if (!$classSubjects->contains($subject->id)) {
+        throw new \Exception("Subject {$subject->name} not assigned to class {$student->myClass->name}");
+    }
+
+    // Check if student is enrolled in this subject
+    if (!$student->studentSubjects->contains($subject->id)) {
+        throw new \Exception("Student not enrolled in subject {$subject->name}");
+    }
+    
+    return true;
+}
     public function studentRecord()
     {
         return $this->belongsTo(StudentRecord::class);

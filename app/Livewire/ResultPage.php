@@ -852,47 +852,51 @@ class ResultPage extends Component
         // No real-time database save here, will be saved with saveResults()
     }
 
-
     public function saveResults()
     {
         $this->validate();
-
+    
         try {
             DB::transaction(function () {
-                // Save subject results
-                foreach ($this->subjects as $subject) { // Iterate over all subjects for the class
+                // First validate all subject assignments before saving anything
+                foreach ($this->subjects as $subject) {
                     $subjectId = $subject->id;
-                    $data = $this->results[$subjectId] ?? []; // Get data for this subject, or empty array if not set
-
-                    // Fetch the existing result for this student and subject
-                    $existingResult = Result::where([
-                        'student_record_id' => $this->studentRecord->id,
-                        'subject_id' => $subjectId,
-                        'academic_year_id' => $this->academicYearId,
-                        'semester_id' => $this->semesterId,
-                    ])->first();
-
-                    // Determine scores: if input is null (meaning field was not touched), use existing score, otherwise use input (default to 0 if input is empty string)
-                    $ca1 = filter_var($data['ca1_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
-                    $ca2 = filter_var($data['ca2_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
-                    $ca3 = filter_var($data['ca3_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
-                    $ca4 = filter_var($data['ca4_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
-                    $exam = filter_var($data['exam_score'] ?? null, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+                    
+                    // Skip if no scores entered for this subject
+                    if (!isset($this->results[$subjectId]) || 
+                        empty(array_filter($this->results[$subjectId], fn($val) => $val !== null))) {
+                        continue;
+                    }
+    
+                    // Verify subject is assigned to student
+                    if (!$this->studentRecord->studentSubjects()->where('subject_id', $subjectId)->exists()) {
+                        throw new \Exception("Subject {$subject->name} is not assigned to this student");
+                    }
+                }
+    
+                // Save subject results
+                foreach ($this->subjects as $subject) {
+                    $subjectId = $subject->id;
+                    $data = $this->results[$subjectId] ?? [];
+    
+                    // Skip if no data for this subject
+                    if (empty($data)) {
+                        continue;
+                    }
+    
+                    // Validate scores
+                    $ca1 = $this->validateScore($data['ca1_score'] ?? null, 10);
+                    $ca2 = $this->validateScore($data['ca2_score'] ?? null, 10);
+                    $ca3 = $this->validateScore($data['ca3_score'] ?? null, 10);
+                    $ca4 = $this->validateScore($data['ca4_score'] ?? null, 10);
+                    $exam = $this->validateScore($data['exam_score'] ?? null, 60);
                     $comment = $data['comment'] ?? null;
-
-                    // Use existing values if the new value is null (meaning the field was not touched in the form)
-                    $finalCa1 = $ca1 ?? ($existingResult->ca1_score ?? 0);
-                    $finalCa2 = $ca2 ?? ($existingResult->ca2_score ?? 0);
-                    $finalCa3 = $ca3 ?? ($existingResult->ca3_score ?? 0);
-                    $finalCa4 = $ca4 ?? ($existingResult->ca4_score ?? 0);
-                    $finalExam = $exam ?? ($existingResult->exam_score ?? 0);
-                    $finalComment = $comment ?? ($existingResult->teacher_comment ?? $this->getDefaultComment($finalCa1 + $finalCa2 + $finalCa3 + $finalCa4 + $finalExam));
-
-                    $total = $finalCa1 + $finalCa2 + $finalCa3 + $finalCa4 + $finalExam;
-
-                    // Only update if there's an existing result OR if any score/comment is being set
-                    // This prevents creating empty result records if no scores are entered
-                    if ($existingResult || $total > 0 || !empty($finalComment)) {
+    
+                    $total = $ca1 + $ca2 + $ca3 + $ca4 + $exam;
+                    $finalComment = $comment ?? $this->getDefaultComment($total);
+    
+                    // Only save if there are actual scores or a comment
+                    if ($total > 0 || !empty($finalComment)) {
                         Result::updateOrCreate(
                             [
                                 'student_record_id' => $this->studentRecord->id,
@@ -901,11 +905,11 @@ class ResultPage extends Component
                                 'semester_id' => $this->semesterId,
                             ],
                             [
-                                'ca1_score' => $finalCa1,
-                                'ca2_score' => $finalCa2,
-                                'ca3_score' => $finalCa3,
-                                'ca4_score' => $finalCa4,
-                                'exam_score' => $finalExam,
+                                'ca1_score' => $ca1,
+                                'ca2_score' => $ca2,
+                                'ca3_score' => $ca3,
+                                'ca4_score' => $ca4,
+                                'exam_score' => $exam,
                                 'total_score' => $total,
                                 'teacher_comment' => $finalComment,
                                 'approved' => false,
@@ -913,17 +917,20 @@ class ResultPage extends Component
                         );
                     }
                 }
-
-                // Prepare data for TermReport
-                $psychomotorJson = !empty(array_filter($this->psychomotorScores, fn($value) => $value !== null)) ? // Check for non-null values
-                    json_encode($this->psychomotorScores) : null;
+    
+                // Save term report (unchanged from your original)
+                $psychomotorJson = !empty(array_filter($this->psychomotorScores, fn($value) => $value !== null)) 
+                    ? json_encode($this->psychomotorScores) 
+                    : null;
                 
-                $affectiveJson = !empty(array_filter($this->affectiveScores, fn($value) => $value !== null)) ? // Check for non-null values
-                    json_encode($this->affectiveScores) : null;
+                $affectiveJson = !empty(array_filter($this->affectiveScores, fn($value) => $value !== null))
+                    ? json_encode($this->affectiveScores)
+                    : null;
                 
-                $coCurricularJson = !empty(array_filter($this->coCurricularScores, fn($value) => $value !== null)) ? // Check for non-null values
-                    json_encode($this->coCurricularScores) : null;
-
+                $coCurricularJson = !empty(array_filter($this->coCurricularScores, fn($value) => $value !== null))
+                    ? json_encode($this->coCurricularScores)
+                    : null;
+    
                 TermReport::updateOrCreate(
                     [
                         'student_record_id' => $this->studentRecord->id,
@@ -941,7 +948,7 @@ class ResultPage extends Component
                     ]
                 );
             });
-
+    
             $this->dispatch('showSuccess', 'All data saved successfully!');
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->dispatch('showError', 'Validation failed: ' . $e->getMessage());
@@ -950,6 +957,22 @@ class ResultPage extends Component
             $this->dispatch('showError', 'Failed to save: ' . $e->getMessage());
             logger()->error('Save error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
         }
+    }
+    
+    // Add this helper method to your Livewire component
+    protected function validateScore($value, $max)
+    {
+        $score = filter_var($value, FILTER_VALIDATE_INT, FILTER_NULL_ON_FAILURE);
+        
+        if ($score === null && $value !== null) {
+            throw new \Exception("Score must be a whole number between 0 and $max");
+        }
+        
+        if ($score !== null && ($score < 0 || $score > $max)) {
+            throw new \Exception("Score must be between 0 and $max");
+        }
+        
+        return $score ?? 0;
     }
     public function render()
     {
