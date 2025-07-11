@@ -238,37 +238,7 @@
                     </div>
                 </div>
 
-                <!-- Recent Activity Section -->
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-history mr-2 text-indigo-600"></i>
-                        Recent Activity
-                    </h2>
-
-
-                    <div class="flex flex-wrap gap-4">
-                        @forelse ($recentActivities as $activity)
-                            <div
-                                class="flex items-start p-3 rounded-xl bg-gradient-to-r from-gray-50 to-white hover:from-blue-50 transition-all duration-300 flex-1 min-w-[220px] max-w-xs">
-                                <div class="bg-indigo-100 p-2 rounded-xl mr-3">
-                                    <i class="fas fa-{{ $activity['icon'] }} text-indigo-600 text-sm"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-medium text-gray-800">{{ $activity['action'] }}</p>
-                                    <p class="text-xs text-gray-500 mt-1">{{ $activity['time'] }}</p>
-                                </div>
-                                <div class="text-xs text-gray-400">
-                                    <i class="fas fa-chevron-right"></i>
-                                </div>
-                            </div>
-                        @empty
-                            <div class="text-center py-6 text-gray-500 rounded-xl bg-gray-50 w-full">
-                                <i class="fas fa-info-circle mr-1"></i> No recent activity
-                            </div>
-                        @endforelse
-                    </div>
-
-                </div>
+               
             </div>
 
             <!-- Student Search Tab -->

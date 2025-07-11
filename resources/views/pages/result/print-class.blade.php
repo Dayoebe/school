@@ -3,8 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Class Results - {{ $class->name }} - {{ $academicYear->name }} - {{ $semester->name }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Official Class Results for {{ $class->name }} - {{ $academicYear->name }} - {{ $semester->name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="Official academic report for  {{ $class->name }} - {{ $academicYear->name }} - {{ $semester->name }} at Elites International College, Awka.">
+    <meta name="keywords" content="academic report, student results, Elites International College, Awka, school report, student performance">
+    <meta name="author" content="Elites International College, Awka"> 
+
+    
+    @vite('resources/css/app.css')
+
+
+
     <style>
         /* Base styles for A4 page and print adjustments */
         @page {
@@ -187,9 +198,8 @@
                             <div><span class="font-bold">Class:</span> {{ $data['studentRecord']->myClass->name }}</div>
                             <div><span class="font-bold">Gender:</span>
                                 {{ ucfirst($data['studentRecord']->user->gender) }}</div>
-                            <div><span class="font-bold">Attendance:</span>
-                                Present:__{{ $data['studentRecord']->present }}
-                                Absent:__{{ $data['studentRecord']->absent }}</div>
+                                <div><span class="font-bold">Attendance:</span> Present: {{ $data['termReport']->present_days ?? '-' }}
+                                    Absent: {{ $data['termReport']->absent_days ?? '-' }}</div>
                             <div><span class="font-bold">Number of students in class:</span>
                                 {{ $data['totalStudents'] ?? 'N/A' }}</div>
                         </div>
@@ -278,39 +288,56 @@
                     </div>
                 </div>
 
+                <div class="flex-footer mt-3 flex-shrink-0 grid grid-cols-3 gap-4 text-xs break-inside-avoid">
+                    {{-- Psychomotor Traits --}}
+                    <div class="col-span-1 border border-gray-300 p-2 px-4 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Psychomotor Traits</h3>
+                        <ul class="list-disc list-inside space-y-0.5 mt-1">
+                            @foreach(App\Models\TermReport::getDefaultPsychomotorScores() as $trait => $defaultValue)
+                                <li>
+                                    <span class="font-semibold text-gray-700">{{ $trait }}:</span>
+                                    <span class="text-gray-900">
+                                        {{ isset($data['termReport']->psychomotor_traits[$trait]) ? $data['termReport']->psychomotor_traits[$trait] : 4 }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                
+                    {{-- Affective Traits --}}
+                    <div class="col-span-1 border border-gray-300 p-2 px-4 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Affective Traits</h3>
+                        <ul class="list-disc list-inside space-y-0.5 mt-1">
+                            @foreach(App\Models\TermReport::getDefaultAffectiveScores() as $trait => $defaultValue)
+                                <li>
+                                    <span class="font-semibold text-gray-700">{{ $trait }}:</span>
+                                    <span class="text-gray-900">
+                                        {{ isset($data['termReport']->affective_traits[$trait]) ? $data['termReport']->affective_traits[$trait] : 4 }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                
+                    {{-- Co-Curricular Activities --}}
+                    <div class="col-span-1 border border-gray-300 p-2 px-4 rounded-lg shadow-sm">
+                        <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Co-Curricular Activities</h3>
+                        <ul class="list-disc list-inside space-y-0.5 mt-1">
+                            @foreach(App\Models\TermReport::getDefaultCoCurricularScores() as $activity => $defaultValue)
+                                <li>
+                                    <span class="font-semibold text-gray-700">{{ $activity }}:</span>
+                                    <span class="text-gray-900">
+                                        {{ isset($data['termReport']->co_curricular_activities[$activity]) ? $data['termReport']->co_curricular_activities[$activity] : 4 }}
+                                    </span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+
+                
                 {{-- Footer Section --}}
                 <div class="flex-footer mt-3">
-                    <div class="grid grid-cols-3 gap-2 mb-2 text-xs break-inside-avoid">
-                        <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                            <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">PSYCHOMOTOR</h3>
-                            <ul class="space-y-1">
-                                <li>Handwriting: 4</li>
-                                <li>Verbal Fluency: 4</li>
-                                <li>Game/Sports: 4</li>
-                                <li>Handling Tools: 4</li>
-                            </ul>
-                        </div>
-
-                        <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                            <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">AFFECTIVE</h3>
-                            <ul class="space-y-1">
-                                <li>Punctuality: 4</li>
-                                <li>Neatness: 4</li>
-                                <li>Politeness: 4</li>
-                                <li>Leadership: 4</li>
-                            </ul>
-                        </div>
-
-                        <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                            <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">CO-CURRICULAR</h3>
-                            <ul class="space-y-1">
-                                <li>Athletics: 4</li>
-                                <li>Football: 4</li>
-                                <li>Volley Ball: 4</li>
-                                <li>Table Tennis: 4</li>
-                            </ul>
-                        </div>
-                    </div>
 
                     <div class="grid grid-cols-2 gap-4 mb-2 text-xs break-inside-avoid">
                         <div class="border border-gray-300 p-1 rounded-lg shadow-sm">

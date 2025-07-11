@@ -7,6 +7,34 @@
 @section('page_heading', __('View Results'))
 
 @section('content')
+    <style>
+        /* Custom styles for sticky columns */
+        .sticky-col-header {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: #e0e7ff; /* Light indigo background for sticky header */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+        }
+
+        .sticky-col-cell {
+            position: sticky;
+            left: 0;
+            z-index: 9; /* Slightly lower than header to allow header to overlap */
+            background-color: #ffffff; /* White background for sticky cells */
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+        }
+
+        /* Ensure the background for alternating rows covers the sticky column */
+        .sticky-col-cell.bg-blue-50 {
+            background-color: #eef2ff; /* Tailwind blue-50 */
+        }
+
+        .sticky-col-cell:hover {
+            background-color: #f3f4f6; /* Tailwind gray-50 on hover */
+        }
+    </style>
+
     <div class="space-y-6">
         <!-- Header Section -->
         <div
@@ -153,7 +181,7 @@
                                     <i class="fas fa-inbox text-4xl text-gray-400"></i>
                                 </div>
                                 <h3 class="text-xl font-medium text-gray-600 mb-2">No Results Found</h3>
-                                <p class="text-gray-500">No results available for this subject</p>
+                                <p class="text-gray-500">No results available for this subject in the selected period.</p>
                             </div>
                         @else
                             <div class="overflow-x-auto rounded-xl shadow-inner">
@@ -161,7 +189,7 @@
                                     <thead class="bg-indigo-50">
                                         <tr>
                                             <th scope="col"
-                                                class="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                                                class="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider sticky-col-header">
                                                 Student
                                             </th>
                                             <th scope="col"
@@ -205,7 +233,7 @@
                                     <tbody class="bg-white divide-y divide-gray-200">
                                         @foreach ($subjectResults as $result)
                                             <tr class="hover:bg-gray-50 transition-colors">
-                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                <td class="px-6 py-4 whitespace-nowrap sticky-col-cell">
                                                     <div class="text-sm font-medium text-gray-900">
                                                         {{ optional($result->student)->user->name ?? 'N/A' }}
                                                     </div>
@@ -229,37 +257,37 @@
                                                     {{ $result->exam_score ?? '-' }}
                                                 </td>
                                                 <td
-                                                    class="px-6 py-4 whitespace-nowrap text-sm text-center font-medium 
-                                {{ $result->total_score >= 75
-                                    ? 'text-green-600'
-                                    : ($result->total_score >= 60
-                                        ? 'text-blue-600'
-                                        : ($result->total_score >= 40
-                                            ? 'text-yellow-600'
-                                            : 'text-red-600')) }}">
+                                                    class="px-6 py-4 whitespace-nowrap text-sm text-center font-bold
+                                                    @php
+                                                        $totalScore = $result->total_score ?? 0;
+                                                        if ($totalScore >= 75) echo 'text-green-600';
+                                                        elseif ($totalScore >= 60) echo 'text-blue-600';
+                                                        elseif ($totalScore >= 40) echo 'text-yellow-600';
+                                                        else echo 'text-red-600';
+                                                    @endphp
+                                                ">
                                                     {{ $result->total_score ?? '-' }}
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                                     @php
-                                                        $gradeClass =
-                                                            [
-                                                                'A1' => 'bg-green-100 text-green-800',
-                                                                'B2' => 'bg-blue-100 text-blue-800',
-                                                                'B3' => 'bg-blue-100 text-blue-800',
-                                                                'C4' => 'bg-yellow-100 text-yellow-800',
-                                                                'C5' => 'bg-yellow-100 text-yellow-800',
-                                                                'C6' => 'bg-yellow-100 text-yellow-800',
-                                                                'D7' => 'bg-orange-100 text-orange-800',
-                                                                'E8' => 'bg-orange-100 text-orange-800',
-                                                                'F9' => 'bg-red-100 text-red-800',
-                                                            ][$result->grade ?? ''] ?? 'bg-gray-100 text-gray-800';
+                                                        $gradeClass = [
+                                                            'A1' => 'bg-green-100 text-green-800',
+                                                            'B2' => 'bg-blue-100 text-blue-800',
+                                                            'B3' => 'bg-blue-100 text-blue-800',
+                                                            'C4' => 'bg-yellow-100 text-yellow-800',
+                                                            'C5' => 'bg-yellow-100 text-yellow-800',
+                                                            'C6' => 'bg-yellow-100 text-yellow-800',
+                                                            'D7' => 'bg-orange-100 text-orange-800',
+                                                            'E8' => 'bg-orange-100 text-orange-800',
+                                                            'F9' => 'bg-red-100 text-red-800',
+                                                        ][$result->grade ?? ''] ?? 'bg-gray-100 text-gray-800';
                                                     @endphp
                                                     <span
                                                         class="px-2 py-1 text-xs font-semibold rounded-full {{ $gradeClass }}">
                                                         {{ $result->grade ?? '-' }}
                                                     </span>
                                                 </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-500">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-center text-gray-700">
                                                     {{ $result->teacher_comment ?? '-' }}
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
@@ -329,7 +357,7 @@
                                     <i class="fas fa-inbox text-4xl text-gray-400"></i>
                                 </div>
                                 <h3 class="text-xl font-medium text-gray-600 mb-2">No Results Found</h3>
-                                <p class="text-gray-500">No results available for this class</p>
+                                <p class="text-gray-500">No results available for this class in the selected period.</p>
                             </div>
                         @else
                             <div class="overflow-x-auto rounded-xl shadow-inner">
@@ -337,7 +365,7 @@
                                     <thead class="bg-indigo-50">
                                         <tr>
                                             <th scope="col"
-                                                class="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider">
+                                                class="px-6 py-3 text-left text-xs font-medium text-indigo-700 uppercase tracking-wider sticky-col-header">
                                                 Student
                                             </th>
                                             @foreach ($subjects as $subject)
@@ -368,7 +396,8 @@
                                         @foreach ($classResults as $index => $student)
                                             <tr
                                                 class="hover:bg-gray-50 transition-colors {{ $index % 2 === 0 ? 'bg-blue-50' : '' }}">
-                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                <td
+                                                    class="px-6 py-4 whitespace-nowrap sticky-col-cell {{ $index % 2 === 0 ? 'bg-blue-50' : '' }}">
                                                     <div class="text-sm font-medium text-gray-900">
                                                         {{ $student->user->name ?? 'N/A' }}
                                                     </div>
@@ -383,18 +412,40 @@
                                                             $subject->id,
                                                         );
                                                         $score = $result->total_score ?? null;
-                                                        $textClass =
-                                                            $score >= 75
-                                                                ? 'text-green-600'
-                                                                : ($score >= 60
-                                                                    ? 'text-blue-600'
-                                                                    : ($score >= 40
-                                                                        ? 'text-yellow-600'
-                                                                        : 'text-red-600'));
+                                                        $grade = $result->grade ?? null;
+                                                        $gradeClass = [
+                                                            'A1' => 'bg-green-100 text-green-800',
+                                                            'B2' => 'bg-blue-100 text-blue-800',
+                                                            'B3' => 'bg-blue-100 text-blue-800',
+                                                            'C4' => 'bg-yellow-100 text-yellow-800',
+                                                            'C5' => 'bg-yellow-100 text-yellow-800',
+                                                            'C6' => 'bg-yellow-100 text-yellow-800',
+                                                            'D7' => 'bg-orange-100 text-orange-800',
+                                                            'E8' => 'bg-orange-100 text-orange-800',
+                                                            'F9' => 'bg-red-100 text-red-800',
+                                                        ][$grade ?? ''] ?? 'bg-gray-100 text-gray-800';
                                                     @endphp
                                                     <td
-                                                        class="px-6 py-4 whitespace-nowrap text-sm text-center font-medium {{ $textClass }}">
-                                                        {{ $score ?? '-' }}
+                                                        class="px-6 py-4 whitespace-nowrap text-sm text-center font-medium">
+                                                        @if (!is_null($score))
+                                                            <div class="flex flex-col items-center">
+                                                                <span class="font-bold
+                                                                    @php
+                                                                        if ($score >= 75) echo 'text-green-600';
+                                                                        elseif ($score >= 60) echo 'text-blue-600';
+                                                                        elseif ($score >= 40) echo 'text-yellow-600';
+                                                                        else echo 'text-red-600';
+                                                                    @endphp
+                                                                ">
+                                                                    {{ $score }}
+                                                                </span>
+                                                                <span class="px-1 py-0.5 text-xs font-semibold rounded-full {{ $gradeClass }} mt-1">
+                                                                    {{ $grade }}
+                                                                </span>
+                                                            </div>
+                                                        @else
+                                                            -
+                                                        @endif
                                                     </td>
                                                 @endforeach
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-center">
@@ -402,17 +453,15 @@
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
                                                     @php
-                                                        $avgClass =
-                                                            $student->average_score >= 75
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : ($student->average_score >= 60
-                                                                    ? 'bg-blue-100 text-blue-800'
-                                                                    : ($student->average_score >= 40
-                                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                                        : 'bg-red-100 text-red-800'));
+                                                        $avgClass = match(true) {
+                                                            $student->average_score >= 75 => 'bg-green-100 text-green-800',
+                                                            $student->average_score >= 60 => 'bg-blue-100 text-blue-800',
+                                                            $student->average_score >= 40 => 'bg-yellow-100 text-yellow-800',
+                                                            default => 'bg-red-100 text-red-800'
+                                                        };
                                                     @endphp
                                                     <span class="px-2 py-1 rounded-full font-medium {{ $avgClass }}">
-                                                        {{ $student->average_score ? number_format($student->average_score, 2) : '-' }}
+                                                        {{ $student->average_score ? number_format($student->average_score, 1) : '-' }}%
                                                     </span>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
@@ -454,15 +503,93 @@
                                     </tbody>
                                 </table>
                             </div>
-
-
-                           
-        
-
                         @endif
                     </div>
                 @endif
             </div>
+
+
+
+
+ <!-- Add this section AFTER the existing table -->
+ <div class="mt-8 bg-white rounded-2xl shadow-xl p-6">
+    <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+        <i class="fas fa-chart-bar mr-3 text-indigo-600"></i>
+        Subject Performance Analysis
+    </h3>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        @foreach ($subjects as $subject)
+            @php
+                $scores = [];
+                foreach ($classResults as $student) {
+                    $result = $student->results->firstWhere('subject_id', $subject->id);
+                    if ($result && $result->total_score !== null) {
+                        $scores[] = $result->total_score;
+                    }
+                }
+                $avg = count($scores) ? round(array_sum($scores) / count($scores), 1) : 0;
+                $max = count($scores) ? max($scores) : 0;
+                $min = count($scores) ? min($scores) : 0;
+                
+                $performanceClass = match(true) {
+                    $avg >= 75 => 'border-green-500 bg-green-50',
+                    $avg >= 60 => 'border-blue-500 bg-blue-50',
+                    $avg >= 40 => 'border-yellow-500 bg-yellow-50',
+                    default => 'border-red-500 bg-red-50'
+                };
+            @endphp
+            
+            <div class="border-l-4 {{ $performanceClass }} rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h4 class="font-bold text-gray-800">{{ $subject->name }}</h4>
+                        <div class="mt-2 flex items-center">
+                            <span class="bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full text-xs">
+                                <i class="fas fa-users mr-1"></i> {{ count($scores) }} students
+                            </span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-bold @if($avg >= 75) text-green-600 @elseif($avg >= 60) text-blue-600 @elseif($avg >= 40) text-yellow-600 @else text-red-600 @endif">
+                            {{ $avg }}
+                        </span>
+                        <div class="text-xs text-gray-500">Avg Score</div>
+                    </div>
+                </div>
+                
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                    <div class="bg-white p-2 rounded-lg text-center">
+                        <div class="text-lg font-bold text-green-600">{{ $max }}</div>
+                        <div class="text-xs text-gray-500">Highest</div>
+                    </div>
+                    <div class="bg-white p-2 rounded-lg text-center">
+                        <div class="text-lg font-bold text-red-600">{{ $min }}</div>
+                        <div class="text-xs text-gray-500">Lowest</div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <div class="flex justify-between text-xs text-gray-500 mb-1">
+                        <span>0</span>
+                        <span>100</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="h-2.5 rounded-full @if($avg >= 75) bg-green-500 @elseif($avg >= 60) bg-blue-500 @elseif($avg >= 40) bg-yellow-500 @else bg-red-500 @endif" 
+                             style="width: {{ $avg }}%"></div>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    </div>
+</div>
+
+
+
+
+
+
+
         @endif
     </div>
 

@@ -4,11 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <title>Official Academic Report - {{ $studentRecord->user->name }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="Official academic report for {{ $studentRecord->user->name }} at Elites International College, Awka.">
+    <meta name="keywords" content="academic report, student results, Elites International College, Awka, school report, student performance">
+    <meta name="author" content="Elites International College, Awka"> 
+    
+    @vite('resources/css/app.css')
     <style>
         @page {
             size: A4;
-            margin: 1cm; /* Give a consistent margin on all sides for the page */
+            margin: 1cm;
+            /* Give a consistent margin on all sides for the page */
         }
 
         @media print {
@@ -25,13 +33,15 @@
 
             .print-container {
                 width: 100%;
-                height: 27.7cm; /* A4 height (29.7cm) - 2cm (1cm top + 1cm bottom page margin) */
+                height: 27.7cm;
+                /* A4 height (29.7cm) - 2cm (1cm top + 1cm bottom page margin) */
                 box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
                 position: relative;
                 border: 2px solid #000;
-                padding: 0.5rem; /* Inner padding for the content within the border */
+                padding: 0.5rem;
+                /* Inner padding for the content within the border */
             }
 
             .flex-header,
@@ -55,7 +65,8 @@
             .results-table {
                 height: 100%;
                 /* KEY: Makes the table expand to fill the wrapper */
-                table-layout: fixed; /* Ensures columns are sized correctly */
+                table-layout: fixed;
+                /* Ensures columns are sized correctly */
             }
 
             /* Apply some padding and a reasonable font size for clarity */
@@ -149,7 +160,7 @@
             <div class="flex items-center border-b border-blue-900 pb-2 mb-2">
                 <img src="{{ asset('img/logo.png') }}" alt="School Logo" class="h-20 w-20 object-contain ml-10">
                 <div class="text-center flex-1">
-                    <h1 class="text-3xl font-bold text-blue-900 uppercase leading-tight">ELITES INTERNATIONAL COLLEGE,
+                    <h1 class="text-2xl font-bold text-blue-900 uppercase leading-tight">ELITES INTERNATIONAL COLLEGE,
                         AWKA</h1>
                     <p class="text-sm uppercase tracking-wide text-gray-700">To Create a Brighter Future</p>
                     <p class="text-xs text-gray-600">Email: elitesinternationalcollege@gmail.com | Tel: 08066025508</p>
@@ -165,8 +176,8 @@
                     </div>
                     <div><span class="font-bold">Class:</span> {{ $studentRecord->myClass->name }}</div>
                     <div><span class="font-bold">Gender:</span> {{ ucfirst($studentRecord->user->gender) }}</div>
-                    <div><span class="font-bold">Attendance:</span> Present:____{{ $studentRecord->present }}
-                        Absent:____{{ $studentRecord->absent }}</div>
+                    <div><span class="font-bold">Attendance:</span> Present: {{ $termReport->present_days ?? '-' }}
+                        Absent: {{ $termReport->absent_days ?? '-' }}</div>
                     <div><span class="font-bold">Number of students in class:</span> {{ $totalStudents }}</div>
                 </div>
                 <div class="space-y-1">
@@ -193,6 +204,19 @@
         <div class="flex-content">
             <div class="results-table-wrapper">
                 <table class="w-full border border-gray-300 results-table">
+                    <colgroup>
+                        <col style="width: 23%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 10%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 8%;">
+                        <col style="width: 13%;"> <!-- Make comment column wider -->
+                    </colgroup>
                     <thead class="bg-blue-900 text-white">
                         <tr>
                             <th class="border p-1 text-left">Subject</th>
@@ -224,14 +248,13 @@
                                 <td class="border p-1">{{ $result['ca3_score'] ?? '-' }}</td>
                                 <td class="border p-1">{{ $result['ca4_score'] ?? '-' }}</td>
                                 <td class="border p-1">{{ $result['exam_score'] ?? '-' }}</td>
-                                <td
-                                    class="border p-1 {{ $isHighest ? 'font-bold text-green-600' : '' }} {{ $isLowest ? 'font-bold text-red-600' : '' }}">
+                                <td class="border p-1 {{ $isHighest ? 'font-bold text-green-600' : '' }} {{ $isLowest ? 'font-bold text-red-600' : '' }}">
                                     {{ $result['total_score'] ?? '-' }}
                                 </td>
                                 <td class="border p-1">{{ $result['grade'] ?? '-' }}</td>
                                 <td class="border p-1 bg-green-50">{{ $stats['highest'] ?? '-' }}</td>
                                 <td class="border p-1 bg-red-50">{{ $stats['lowest'] ?? '-' }}</td>
-                                <td class="border p-1">{{ $result['comment'] ?? '-' }}</td>
+                                <td class="border p-1 text-left">{{ $result['comment'] ?? '-' }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -239,42 +262,58 @@
             </div>
         </div>
 
-        <div class="flex-footer mt-3">
-            <div class="grid grid-cols-3 gap-2 mb-2 text-xs break-inside-avoid">
-                <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                    <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">PSYCHOMOTOR</h3>
-                    <ul class="space-y-1">
-                        <li>Handwriting: 4</li>
-                        <li>Verbal Fluency: 4</li>
-                        <li>Game/Sports: 4</li>
-                        <li>Handling Tools: 4</li>
-                    </ul>
-                </div>
 
-                <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                    <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">AFFECTIVE</h3>
-                    <ul class="space-y-1">
-                        <li>Punctuality: 4</li>
-                        <li>Neatness: 4</li>
-                        <li>Politeness: 4</li>
-                        <li>Leadership: 4</li>
-                    </ul>
-                </div>
-
-                <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                    <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">CO-CURRICULAR</h3>
-                    <ul class="space-y-1">
-                        <li>Athletics: 4</li>
-                        <li>Football: 4</li>
-                        <li>Volley Ball: 4</li>
-                        <li>Table Tennis: 4</li>
-                    </ul>
-                </div>
+        <div class="flex-footer mt-2 flex-shrink-0 grid grid-cols-3 gap-4 text-xs break-inside-avoid">
+            {{-- Psychomotor Traits --}}
+            <div class="col-span-1 border border-gray-300 p-2 px-4 rounded-lg shadow-sm">
+                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Psychomotor Traits</h3>
+                <ul class="list-disc list-inside space-y-0.5 mt-1">
+                    @foreach(App\Models\TermReport::getDefaultPsychomotorScores() as $trait => $defaultValue)
+                        <li>
+                            <span class="font-semibold text-gray-700">{{ $trait }}:</span>
+                            <span class="text-gray-900">
+                                {{ ($termReport && isset($termReport->psychomotor_traits[$trait])) ? $termReport->psychomotor_traits[$trait] : 4 }}
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 mb-2 text-xs break-inside-avoid">
+            {{-- Affective Traits --}}
+            <div class="col-span-1 border border-gray-300 p-2 px-4 rounded-lg shadow-sm">
+                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Affective Traits</h3>
+                <ul class="list-disc list-inside space-y-0.5 mt-1">
+                    @foreach(App\Models\TermReport::getDefaultAffectiveScores() as $trait => $defaultValue)
+                        <li>
+                            <span class="font-semibold text-gray-700">{{ $trait }}:</span>
+                            <span class="text-gray-900">
+                                {{ ($termReport && isset($termReport->affective_traits[$trait])) ? $termReport->affective_traits[$trait] : 4 }}
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+
+            {{-- Co-Curricular Activities --}}
+            <div class="col-span-1 border border-gray-300 p-2 px-4 rounded-lg shadow-sm">
+                <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Co-Curricular Activities</h3>
+                <ul class="list-disc list-inside space-y-0.5 mt-1">
+                    @foreach(App\Models\TermReport::getDefaultCoCurricularScores() as $activity => $defaultValue)
+                        <li>
+                            <span class="font-semibold text-gray-700">{{ $activity }}:</span>
+                            <span class="text-gray-900">
+                                {{ ($termReport && isset($termReport->co_curricular_activities[$activity])) ? $termReport->co_curricular_activities[$activity] : 4 }}
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
+
+        <div class="flex-footer mt-2">
+            <div class="grid grid-cols-2 gap-4 text-xs break-inside-avoid">
                 <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                    <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">ACADEMIC SUMMARY</h3>
+                    <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">ACADEMIC SUMMARY</h3>
                     <div class="space-y-1">
                         @php
                             $subjectCount = count($subjects);
@@ -307,7 +346,7 @@
                 </div>
 
                 <div class="border border-gray-300 p-1 rounded-lg shadow-sm">
-                    <h3 class="font-bold text-blue-900 border-b border-gray-300 pb-1 mb-1">GRADING KEY</h3>
+                    <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">GRADING KEY</h3>
                     <div class="grid grid-cols-3 gap-2">
                         <p>75-100 = A1</p>
                         <p>70-74 = B2</p>
@@ -320,12 +359,11 @@
                         <p>0-39 = F9</p>
                     </div>
                 </div>
-            </div>
+            </div> 
 
 
 
-            <div class="grid grid-cols-2 gap-4 p-2 text-sm bg-gray-50">
-                {{-- No need for @php block here, variables are passed from controller --}}
+            <div class="grid grid-cols-2 gap-4 py-2 text-xs">
                 <div class="border border-gray-300 p-2 rounded-lg shadow-sm">
                     <h3 class="font-bold text-blue-800 border-b-2 border-blue-800 pb-1 mb-1 uppercase">Teacher's
                         Comment</h3>
