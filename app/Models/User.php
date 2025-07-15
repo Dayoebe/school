@@ -68,16 +68,44 @@ class User extends Authenticatable implements MustVerifyEmail
         static::addGlobalScope('orderByName', fn(Builder $builder) => $builder->orderBy('name'));
     }
 
+    /**
+     * Get the home route for the user based on their role.
+     * All roles will now redirect to the main 'dashboard' route,
+     * and the DashboardController will handle rendering the specific view.
+     *
+     * @return string
+     */
+    public function getHomeRoute(): string
+    {
+        if ($this->hasRole('super-admin')) {
+            return 'dashboard'; // Super-admin goes to the main dashboard
+        } elseif ($this->hasRole('admin')) {
+            return 'dashboard'; // Admin goes to the main dashboard
+        } elseif ($this->hasRole('teacher')) {
+            return 'dashboard'; // Teacher goes to the main dashboard
+        } elseif ($this->hasRole('student')) {
+            return 'dashboard'; // Student goes to the main dashboard
+        } elseif ($this->hasRole('parent')) {
+            return 'dashboard'; // Parent goes to the main dashboard
+        }
+        // Fallback for any other roles or if no role is assigned
+        return 'dashboard';
+    }
+
+    public function classes()
+    {
+        return $this->belongsToMany(MyClass::class, 'class_teacher', 'teacher_id', 'class_id');
+    }
 
     public function results()
-{
-    return $this->hasMany(Result::class, 'student_id');
-}
+    {
+        return $this->hasMany(Result::class, 'student_id');
+    }
 
-public function studentRecords()
-{
-    return $this->hasMany(StudentRecord::class);
-}
+    public function studentRecords()
+    {
+        return $this->hasMany(StudentRecord::class);
+    }
 
     public function scopeStudents($query)
     {
@@ -197,7 +225,6 @@ public function studentRecords()
             ->withTimestamps()
             ->withPivot('my_class_id', 'section_id');
     }
-
 
     public function assignedSubjects(): BelongsToMany
     {
