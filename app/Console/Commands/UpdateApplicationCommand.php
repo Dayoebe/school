@@ -11,7 +11,7 @@ class UpdateApplicationCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'skuul:update';
+    protected $signature = 'elite:update';
 
     /**
      * The console command description.
@@ -45,19 +45,19 @@ class UpdateApplicationCommand extends Command
 
     private function intro()
     {
-        $this->line('<bg=blue>Welcome to the Skuul update wizard</>');
+        $this->line('<bg=blue>Welcome to the elite update wizard</>');
         $this->warn("it's important to be connected to the internet,  always have a backup of both your codebase and your database before making updates. Review the release notes before updating, and test your system after updating to ensure everything is working correctly. If an issue arises, the community or dedicated support channels can provide help. Also, have a rollback plan in place.");
 
         sleep(2);
 
         //verify user is not root
         if (posix_getuid() == 0) {
-            $this->error('This Command cannot be run by root user, thank you for using Skuul');
+            $this->error('This Command cannot be run by root user, thank you for using elite');
             exit;
         }
 
         if (!$this->confirm('Do you wish to continue?')) {
-            $this->error('Operation cancelled, thank you for using Skuul');
+            $this->error('Operation cancelled, thank you for using elite');
             exit;
         }
     }

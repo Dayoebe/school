@@ -42,23 +42,27 @@ class InitCommand extends Command
     {
         $this->line("
     
-        .----------------. .----------------. .----------------. .----------------. .----------------.
-        | .--------------. | .--------------. | .--------------. | .--------------. | .--------------. |
-        | |   ______     | | |      __      | | |  _______     | | |  _________   | | |   _____      | |
-        | |  |  ____|    | | |     /  \     | | | |_   __ \    | | | |  _   _  |  | | |  |_   _|     | |
-        | |  | |__       | | |    / /\ \    | | |   | |__) |   | | | |_/ | | \_|  | | |    | |       | |
-        | |  |  __|      | | |   / ____ \   | | |   |  __ /    | | |     | |      | | |    | |   _   | |
-        | |  | |____     | | | _/ /    \ \_ | | |  _| |  \ \_  | | |    _| |_     | | |   _| |__/ |  | |
-        | |  |______|    | | ||____|  |____|| | | |____| |___| | | |   |_____|    | | |  |________|  | |
-        | |              | | |              | | |              | | |              | | |              | |
-        | '--------------' | '--------------' | '--------------' | '--------------' | '--------------' |
-        '----------------' '----------------' '----------------' '----------------' '----------------'
+
+
+          __        __   _                            
+  \ \      / /__| | ___ ___  _ __ ___   ___   
+   \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \  
+    \ V  V /  __/ | (_| (_) | | | | | |  __/  
+     \_/\_/ \___|_|\___\___/|_| |_| |_|\___|  
+
+
+        ███████╗██╗     ██╗████████╗███████╗███████╗███████╗
+        ██╔════╝██║     ██║╚══██╔══╝██╔════╝██╔════╝██╔════╝
+        █████╗  ██║     ██║   ██║   █████╗  █████╗  ███████╗
+        ██╔══╝  ██║     ██║   ██║   ██╔══╝  ██╔══╝  ╚════██║
+        ███████╗███████╗██║   ██║   ███████╗███████╗███████║
+        ╚══════╝╚══════╝╚═╝   ╚═╝   ╚══════╝╚══════╝╚══════╝
         ");
         $this->info(
             'The installation would now begin.'
-            .PHP_EOL
+                . PHP_EOL
         );
-    
+
         try {
             $this->clearCaches();
             $this->generateEnv();
@@ -72,9 +76,9 @@ class InitCommand extends Command
             $this->createSuperAdmin();
             $this->finishingTouches();
         } catch (\Throwable $th) {
-            $this->error("Something went wrong!. Try Installing manually. If error persists feel free to open an issue \n Exception -> ".$th);
+            $this->error("Something went wrong!. Try Installing manually. If error persists feel free to open an issue \n Exception -> " . $th);
         }
-    
+
         return 0;
     }
 
@@ -204,7 +208,7 @@ class InitCommand extends Command
 
         //if connection could not be made, max attempts were reached but could not connect to db
         if (false == $successfulConnection) {
-            $this->error('Max db attempts exceeded please retry installation'.PHP_EOL);
+            $this->error('Max db attempts exceeded please retry installation' . PHP_EOL);
 
             throw new \Exception('Max db connections reached.');
         }

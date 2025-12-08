@@ -4,6 +4,21 @@
 
 @section('body')
     <x-partials.authentication-card>
+        <x-slot:header>
+            <h1 class="text-2xl font-bold text-gray-800">Welcome Back!</h1>
+            <p class="text-gray-600 mt-2">Please log in to your account</p>
+        </x-slot:header>
+
+        <div class="py-6 text-center">
+            <p class="text-sm text-gray-500 mt-2">
+                Login as: 
+                <span class="text-blue-600">Admin</span>, 
+                <span class="text-blue-600">Teacher</span>, 
+                <span class="text-blue-600">Student</span>, or 
+                <span class="text-blue-600">Parent</span>
+            </p>
+        </div>
+        
         <form action="{{ route('login') }}" method="POST" class="px-3 md:p-5 w-full border-b-2" x-data="{ 
             showPassword: false,
             emailFocused: false,

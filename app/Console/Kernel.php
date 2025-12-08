@@ -15,7 +15,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->command('results:cleanup')
+        ->weeklyOn(0, '3:00')
+        ->onOneServer(); // If using multiple servers
     }
 
     /**
@@ -35,6 +37,7 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\CleanInvalidResults::class,
         \App\Console\Commands\SetDefaultPassword::class,
         \App\Console\Commands\CleanupDeletedStudents::class,
+        \App\Console\Commands\CleanupInvalidResults::class,  //php artisan results:cleanup --dry-run
     ];
 }
     

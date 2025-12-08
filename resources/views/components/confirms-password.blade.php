@@ -27,7 +27,7 @@
 
         <div class="mt-4 w-11/12 md:w-7/12 " x-data="{}" x-on:confirming-password.window="setTimeout(() => $refs.confirmable_password.focus(), 250)">
             <x-input id="" type="password" name="confirmable_password" placeholder="{{ __('Password') }}"
-            wire:model="confirmablePassword"
+            wire:model.live="confirmablePassword"
             x-ref="confirmable_password"
             x-on:keydown.enter="confirmPassword" />
         </div>
