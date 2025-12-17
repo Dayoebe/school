@@ -7,7 +7,6 @@ use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\ClassGroupController;
 use App\Http\Controllers\SectionController;
 use App\Http\Controllers\AccountApplicationController;
-use App\Http\Controllers\PromotionController;
 use App\Http\Controllers\GraduationController;
 use App\Http\Controllers\SemesterController;
 use App\Http\Controllers\FeeCategoryController;
@@ -31,12 +30,14 @@ use App\Http\Controllers\AcademicYearController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\NoticeController;
 use App\Http\Controllers\RegistrationController;
+use Livewire\Livewire;
 use App\Http\Controllers\ResultController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Auth; // Import Auth facade
 use Illuminate\Support\Facades\Artisan;
+use App\Livewire\StudentDashboard;
 
 
 /*
@@ -50,22 +51,28 @@ use Illuminate\Support\Facades\Artisan;
 |
 */
 
+
+
+Route::get('/student/dashboard', StudentDashboard::class)
+    ->middleware(['auth', 'verified'])
+    ->name('student.dashboard');
+
 // Public Routes (accessible to guests)
 Route::middleware('guest')->group(function () {
     Route::get('login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('login', [AuthController::class, 'login']);
-    
+
     Route::get('register', [AuthController::class, 'showRegistrationForm'])->name('register');
     Route::post('register', [AuthController::class, 'register']);
-    
+
     Route::get('forgot-password', [AuthController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->name('password.email');
-    
-    Route::get('change-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
+
+    // Route::get('change-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
     Route::post('change-password', [AuthController::class, 'resetPassword'])->name('password.update');
 
     // Registration routes (if different from AuthController register)
-    Route::get('/register', [RegistrationController::class, 'registerView'])->name('register');
+    // Route::get('/register', [RegistrationController::class, 'registerView'])->name('register');
     Route::post('/register', [RegistrationController::class, 'register']);
 });
 
@@ -77,10 +84,10 @@ Route::get('/', [PageController::class, 'home'])->name('home');
 // Authenticated Routes (accessible only to logged-in users)
 Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthController::class, 'logout'])->name('logout');
-    
+
     // Main Dashboard Route - All roles redirect here after login
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
+
     // Profile routes
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -90,13 +97,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/change-password', [ProfileController::class, 'changePassword'])->name('password.update');
 
     // Teacher-specific routes (these are accessed once on the teacher dashboard)
-    Route::prefix('teacher')->middleware('role:teacher')->group(function () {
-        // The main dashboard handles the initial teacher view, so no separate teacher.dashboard route needed here
-        Route::get('/classes', [TeacherController::class, 'classes'])->name('teacher.classes');
-        Route::get('/classes/{class}', [TeacherController::class, 'showClass'])->name('teacher.classes.show');
-        Route::get('/results/subject/{subject}', [TeacherController::class, 'subjectResults'])->name('teacher.results.subject');
-        Route::get('/class-students', [TeacherController::class, 'getClassStudents'])->name('teacher.class-students');
-        
+    Route::prefix('teacher')->middleware(['auth', 'role:teacher'])->group(function () {
+        Route::get('/dashboard', \App\Livewire\TeacherDashboard::class)->name('teacher.dashboard');
+
+
+
+        Route::get('/subjects/{subject}/students', [\App\Http\Controllers\Api\TeacherController::class, 'getSubjectStudents'])->name('api.teacher.subject.students');
+        Route::get('/subjects/{subject}/results-for-upload', [\App\Http\Controllers\Api\TeacherController::class, 'getResultsForUpload'])->name('api.teacher.results.for-upload');
+        Route::post('/results/bulk-upload', [\App\Http\Controllers\Api\TeacherController::class, 'bulkUploadResults'])->name('api.teacher.results.bulk-upload');
+
+
+
+
         // Result management
         Route::resource('results', ResultController::class)->except(['show']);
 
@@ -105,12 +117,51 @@ Route::middleware('auth')->group(function () {
         Route::get('/subjects/{subject}/results-for-upload', [\App\Http\Controllers\Api\TeacherController::class, 'getResultsForUpload'])->name('api.teacher.results.for-upload');
         Route::post('/results/bulk-upload', [\App\Http\Controllers\Api\TeacherController::class, 'bulkUploadResults'])->name('api.teacher.results.bulk-upload');
     });
+    // Promotion routes
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::get('/students/promote', \App\Livewire\PromoteStudents::class)
+            ->name('students.promote')
+            ->can('promote student');
+    });
+
+
+
+    // ============================================================================
+// ACADEMIC YEAR & SEMESTER MANAGEMENT (Pure Livewire - No Controllers)
+// ============================================================================
+    Route::middleware([
+        'auth:sanctum',
+        'verified',
+        'App\Http\Middleware\PreventLockAccountAccess',
+        'App\Http\Middleware\EnsureDefaultPasswordIsChanged',
+        'App\Http\Middleware\PreventGraduatedStudent',
+        'App\Http\Middleware\EnsureSuperAdminHasSchoolId'
+    ])->prefix('dashboard')->group(function () {
+
+        // Academic Years Management (All-in-one)
+        Route::get('academic-years', \App\Livewire\ManageAcademicYears::class)
+            ->name('academic-years.index')
+            ->can('viewAny', 'App\Models\AcademicYear');
+
+        // Academic Year Details (Pure Livewire - No Controller)
+        Route::get('academic-years/{academicYear}', \App\Livewire\ShowAcademicYear::class)
+            ->name('academic-years.show')
+            ->can('view', 'academicYear');
+
+        // Semesters/Terms Management (All-in-one)
+        Route::middleware('App\Http\Middleware\EnsureAcademicYearIsSet')->group(function () {
+            Route::get('semesters', \App\Livewire\ManageSemesters::class)
+                ->name('semesters.index')
+                ->can('viewAny', 'App\Models\Semester');
+        });
+    });
+
 
     // Student performance routes (teacher specific)
-    Route::middleware(['role:teacher'])->group(function () {
-        Route::get('/teacher/students-in-subjects', [App\Http\Controllers\Api\TeacherController::class, 'getStudentsInSubjects'])->name('teacher.students-in-subjects');
-        Route::get('/teacher/student/{student}/performance', [App\Http\Controllers\Api\TeacherController::class, 'getStudentPerformance'])->name('teacher.student-performance');
-    });
+    // Route::middleware(['role:teacher'])->group(function () {
+    //     Route::get('/teacher/students-in-subjects', [App\Http\Controllers\Api\TeacherController::class, 'getStudentsInSubjects'])->name('teacher.students-in-subjects');
+    //     Route::get('/teacher/student/{student}/performance', [App\Http\Controllers\Api\TeacherController::class, 'getStudentPerformance'])->name('teacher.student-performance');
+    // });
 
     // Main dashboard prefixed routes for specific roles (if needed, otherwise handled by DashboardController)
     // These routes are redundant if DashboardController handles all role-based views at /dashboard
@@ -133,6 +184,7 @@ Route::middleware('auth')->group(function () {
         'App\Http\Middleware\EnsureDefaultPasswordIsChanged',
         'App\Http\Middleware\PreventGraduatedStudent'
     ])->prefix('dashboard')->namespace('App\Http\Controllers')->group(function () {
+
         // School settings (super admin specific)
         Route::get('schools/settings', ['App\Http\Controllers\SchoolController', 'settings'])
             ->name('schools.settings')
@@ -171,12 +223,6 @@ Route::middleware('auth')->group(function () {
                 Route::get('account-applications/change-status/{applicant}', ['App\Http\Controllers\AccountApplicationController', 'changeStatusView'])->name('account-applications.change-status');
                 Route::post('account-applications/change-status/{applicant}', ['App\Http\Controllers\AccountApplicationController', 'changeStatus']);
 
-                // Promotion routes
-                Route::get('students/promotions', ['App\Http\Controllers\PromotionController', 'index'])->name('students.promotions');
-                Route::get('students/promote', ['App\Http\Controllers\PromotionController', 'promoteView'])->name('students.promote');
-                Route::post('students/promote', ['App\Http\Controllers\PromotionController', 'promote']);
-                Route::get('students/promotions/{promotion}', ['App\Http\Controllers\PromotionController', 'show'])->name('students.promotions.show');
-                Route::delete('students/promotions/{promotion}/reset', ['App\Http\Controllers\PromotionController', 'resetPromotion'])->name('students.promotions.reset');
 
                 // Graduation routes
                 Route::get('students/graduations', ['App\Http\Controllers\GraduationController', 'index'])->name('students.graduations');
@@ -184,9 +230,6 @@ Route::middleware('auth')->group(function () {
                 Route::post('students/graduate', ['App\Http\Controllers\GraduationController', 'graduate']);
                 Route::delete('students/graduations/{student}/reset', ['App\Http\Controllers\GraduationController', 'resetGraduation'])->name('students.graduations.reset');
 
-                // Semester routes
-                Route::resource('semesters', SemesterController::class);
-                Route::post('semesters/set', ['App\Http\Controllers\SemesterController', 'setSemester'])->name('semesters.set-semester');
 
                 Route::middleware(['App\Http\Middleware\EnsureSemesterIsSet'])->group(function () {
                     // Fee categories routes
@@ -270,9 +313,6 @@ Route::middleware('auth')->group(function () {
             // Lock account route
             Route::post('users/lock-account/{user}', 'App\Http\Controllers\LockUserAccountController')->name('user.lock-account');
 
-            // Academic year routes
-            Route::resource('academic-years', AcademicYearController::class);
-            Route::post('academic-years/set', ['App\Http\Controllers\AcademicYearController', 'setAcademicYear'])->name('academic-years.set-academic-year');
 
             // Assign teachers to subject in class
             Route::get('subjects/assign-teacher', ['App\Http\Controllers\SubjectController', 'assignTeacherVIew'])->name('subjects.assign-teacher');
@@ -327,24 +367,103 @@ Route::get('/admission', [PageController::class, 'admission'])->name('admission'
 Route::get('/gallery', [PageController::class, 'gallery'])->name('gallery');
 
 // Result related routes
-Route::get('/result', function () {
-    return view('pages.result.index');
-})->name('result');
-Route::get('/results/print/{student}', [ResultController::class, 'print'])->name('result.print');
-Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])->name('result.print');
-Route::get('/results/view', [ResultController::class, 'viewResults'])->name('view-results');
-Route::get('/get-semesters', [ResultController::class, 'getSemesters']);
-Route::get('/get-subjects', [ResultController::class, 'getSubjects']);
-Route::get('/results/annual/export', [ResultController::class, 'exportAnnualResult'])->name('result.annual.export');
-Route::get('/results/class/export', [ResultController::class, 'exportClassResult'])->name('result.class.export');
-Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])->name('result.student.annual');
-Route::get('/result/print-class/{academicYearId}/{semesterId}/{classId}', [ResultController::class, 'printClassResults'])->name('result.print-class');
-Route::get('/result/annual/export/pdf', [ResultController::class, 'exportAnnualPdf'])->name('result.annual.export.pdf');
-Route::get('/student-result-history/{student}', \App\Livewire\StudentResultHistory::class)->name('student-result-history');
-Route::get('/results/annual', [ResultController::class, 'annualClassResult'])->name('result.annual');
+// Inside Route::middleware(['auth'])->group(function () {
+
+Route::prefix('results')->middleware(['auth', 'verified'])->group(function () {
+
+    // Main Result Management Dashboard (Livewire)
+    Route::get('/', \App\Livewire\Result\Index::class)
+        ->name('result')
+        ->can('upload result');
+
+    // Upload Routes
+    Route::get('/upload/individual', \App\Livewire\Result\Upload\IndividualUpload::class)
+        ->name('result.upload.individual')
+        ->can('upload result');
+
+    Route::get('/upload/bulk', \App\Livewire\Result\Upload\BulkUpload::class)
+        ->name('result.upload.bulk')
+        ->can('upload result');
+
+    // View Routes
+    Route::get('/view/class', \App\Livewire\Result\View\ClassResults::class)
+        ->name('result.view.class')
+        ->can('view result');
+
+    Route::get('/view/subject', \App\Livewire\Result\View\SubjectResults::class)
+        ->name('result.view.subject')
+        ->can('view result');
+
+    Route::get('/view/student', \App\Livewire\Result\View\StudentResults::class)
+        ->name('result.view.student')
+        ->can('view result');
+
+    // Student History
+    Route::get('/history', \App\Livewire\Result\StudentHistory::class)
+        ->name('result.history')
+        ->can('view result');
+
+    // Annual Results
+    Route::get('/annual', [ResultController::class, 'annualClassResult'])
+        ->name('result.annual')
+        ->can('view result');
+
+    // Annual Results Export
+    Route::get('/annual/export', [ResultController::class, 'exportAnnualResult'])
+        ->name('result.annual.export')
+        ->can('view result');
+
+    Route::get('/annual/export/pdf', [ResultController::class, 'exportAnnualPdf'])
+        ->name('result.annual.export.pdf')
+        ->can('view result');
+
+    Route::get('/annual/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])
+        ->name('result.student.annual')
+        ->can('view result');
+
+    // Print Routes (Controller-based)
+    Route::get('/print/{student}', [ResultController::class, 'print'])
+        ->name('result.print')
+        ->can('view result');
+
+    Route::get('/print-class/{academicYearId}/{semesterId}/{classId}', [ResultController::class, 'printClassResults'])
+        ->name('result.print-class')
+        ->can('view result');
+    Route::get('/class-spreadsheet/export-excel', [ClassSpreadsheetExportController::class, 'exportExcel'])
+        ->name('class-spreadsheet.export-excel');
+
+    Route::get('/class-spreadsheet/export-pdf', [ClassSpreadsheetExportController::class, 'exportPdf'])
+        ->name('class-spreadsheet.export-pdf');
+});
+
+
+
+
+
+
+
+
+
+
+
+// Route::get('/result', function () {
+//     return view('pages.result.index');
+// })->name('result');
+// Route::get('/results/print/{student}', [ResultController::class, 'print'])->name('result.print');
+// Route::get('/result/print/{student}/{academicYearId}/{semesterId}', [ResultController::class, 'print'])->name('result.print');
+// Route::get('/results/view', [ResultController::class, 'viewResults'])->name('view-results');
+// Route::get('/get-semesters', [ResultController::class, 'getSemesters']);
+// Route::get('/get-subjects', [ResultController::class, 'getSubjects']);
+// Route::get('/results/annual/export', [ResultController::class, 'exportAnnualResult'])->name('result.annual.export');
+// Route::get('/results/class/export', [ResultController::class, 'exportClassResult'])->name('result.class.export');
+// Route::get('/result/student/{studentId}/{academicYearId}', [ResultController::class, 'showStudentAnnualResult'])->name('result.student.annual');
+// Route::get('/result/print-class/{academicYearId}/{semesterId}/{classId}', [ResultController::class, 'printClassResults'])->name('result.print-class');
+// Route::get('/result/annual/export/pdf', [ResultController::class, 'exportAnnualPdf'])->name('result.annual.export.pdf');
+// Route::get('/student-result-history/{student}', \App\Livewire\StudentResultHistory::class)->name('student-result-history');
+// Route::get('/results/annual', [ResultController::class, 'annualClassResult'])->name('result.annual');
 Route::get('/clean-invalid-results', function () {
-    $invalidResults = \App\Models\Result::whereDoesntHave('student', function($q) {
-        $q->whereHas('studentSubjects', function($q) {
+    $invalidResults = \App\Models\Result::whereDoesntHave('student', function ($q) {
+        $q->whereHas('studentSubjects', function ($q) {
             $q->whereColumn('subjects.id', 'results.subject_id');
         });
     })->get();
@@ -353,6 +472,48 @@ Route::get('/clean-invalid-results', function () {
     return "Deleted {$count} invalid results where subjects weren't assigned to students.";
 });
 
+Route::get('/test-invalid-result', function() {
+    $student = \App\Models\StudentRecord::first();
+    $invalidSubject = \App\Models\Subject::whereDoesntHave('studentRecords', function($q) use ($student) {
+        $q->where('student_records.id', $student->id);
+    })->first();
+    
+    try {
+        \App\Models\Result::create([
+            'student_record_id' => $student->id,
+            'subject_id' => $invalidSubject->id,
+            'academic_year_id' => 1,
+            'semester_id' => 1,
+            'total_score' => 50,
+        ]);
+        return "❌ FAILED: Invalid result was created!";
+    } catch (\Exception $e) {
+        return "✅ SUCCESS: " . $e->getMessage();
+    }
+});
+
+
+
+
+use Ifsnop\Mysqldump\Mysqldump;
+Route::get('/export-db', function () {
+    $file = storage_path('app/backup.sql');
+    $dump = new Mysqldump('mysql:host=' . env('DB_HOST') . ';dbname=' . env('DB_DATABASE'), env('DB_USERNAME'), env('DB_PASSWORD'));
+    $dump->start($file);
+    return response()->download($file);
+});
+
+
+
 Route::post('/classes/{class}/assign-subjects', [MyClassController::class, 'assignSubjects'])->name('classes.assign-subjects');
 Route::post('/sections/{section}/subjects', [SectionController::class, 'attachSubjects'])->name('sections.subjects.attach');
 Route::delete('/sections/{section}/subjects/{subject}', [SectionController::class, 'detachSubject'])->name('sections.subjects.detach');
+
+
+Route::get('/artisan-scheduler', function () {
+    if (request('key') === env('SCHEDULER_KEY')) {
+        Artisan::call('schedule:run');
+        return response()->json(['status' => 'success'], 200);
+    }
+    abort(403, 'Unauthorized');
+})->middleware('throttle:3,1'); // Limits to 3 requests per minute
