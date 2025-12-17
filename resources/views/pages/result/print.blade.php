@@ -16,7 +16,6 @@
         @page {
             size: A4;
             margin: 1cm;
-            /* Give a consistent margin on all sides for the page */
         }
 
         @media print {
@@ -34,14 +33,12 @@
             .print-container {
                 width: 100%;
                 height: 27.7cm;
-                /* A4 height (29.7cm) - 2cm (1cm top + 1cm bottom page margin) */
                 box-sizing: border-box;
                 display: flex;
                 flex-direction: column;
                 position: relative;
                 border: 2px solid #000;
                 padding: 0.5rem;
-                /* Inner padding for the content within the border */
             }
 
             .flex-header,
@@ -49,7 +46,6 @@
                 flex-shrink: 0;
             }
 
-            /* Main content area will grow and act as a flex container for the table wrapper */
             .flex-content {
                 flex-grow: 1;
                 overflow: hidden;
@@ -57,19 +53,15 @@
                 flex-direction: column;
             }
 
-            /* This new wrapper will ensure the table inside can expand to 100% height */
             .results-table-wrapper {
                 flex-grow: 1;
             }
 
             .results-table {
                 height: 100%;
-                /* KEY: Makes the table expand to fill the wrapper */
                 table-layout: fixed;
-                /* Ensures columns are sized correctly */
             }
 
-            /* Apply some padding and a reasonable font size for clarity */
             .results-table th,
             .results-table td {
                 padding: 2px 4px !important;
@@ -90,7 +82,6 @@
                 width: 20%;
             }
 
-            /* Compact other sections to ensure they don't take up too much space */
             .compact-section {
                 font-size: 10px !important;
                 line-height: 1.3 !important;
@@ -108,7 +99,6 @@
             }
         }
 
-        /* Grade colors */
         .grade-A {
             background-color: #e6ffec !important;
         }
@@ -165,8 +155,8 @@
                     <p class="text-sm uppercase tracking-wide text-gray-700">To Create a Brighter Future</p>
                     <p class="text-xs text-gray-600">Email: elitesinternationalcollege@gmail.com | Tel: 08066025508</p>
                     <p class="font-semibold text-sm mt-1 uppercase text-blue-900">
-                        {{ strtoupper($studentRecord->myClass->name) }} - {{ strtoupper($semesterName) }}
-                        {{ $academicYearName }} ACADEMIC REPORT
+                        {{ strtoupper($studentRecord->getClassForYear($academicYearId)->name ?? $studentRecord->myClass->name) }} -
+                        {{ strtoupper($semesterName) }} {{ $academicYearName }} ACADEMIC REPORT
                     </p>
                 </div>
             </div>
@@ -215,7 +205,7 @@
                         <col style="width: 8%;">
                         <col style="width: 8%;">
                         <col style="width: 8%;">
-                        <col style="width: 13%;"> <!-- Make comment column wider -->
+                        <col style="width: 13%;">
                     </colgroup>
                     <thead class="bg-blue-900 text-white">
                         <tr>
@@ -240,9 +230,13 @@
                                 $gradeClass = $result ? 'grade-' . substr($result['grade'], 0, 1) : '';
                                 $isHighest = $result && $stats && $result['total_score'] == $stats['highest'];
                                 $isLowest = $result && $stats && $result['total_score'] == $stats['lowest'];
+                                // Use short name if subject name is longer than 25 characters
+                                $displayName = strlen($subject->name) > 25 && !empty($subject->short_name) 
+                                    ? $subject->short_name 
+                                    : $subject->name;
                             @endphp
                             <tr class="{{ $gradeClass }}">
-                                <td class="border p-1">{{ $subject->name }}</td>
+                                <td class="border p-1">{{ $displayName }}</td>
                                 <td class="border p-1">{{ $result['ca1_score'] ?? '-' }}</td>
                                 <td class="border p-1">{{ $result['ca2_score'] ?? '-' }}</td>
                                 <td class="border p-1">{{ $result['ca3_score'] ?? '-' }}</td>

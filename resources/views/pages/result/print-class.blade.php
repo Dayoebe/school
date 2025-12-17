@@ -175,22 +175,22 @@
                     </div>
                 </div>
 
-                {{-- Header Section --}}
-                <div class="flex-header">
-                    <div class="flex items-center border-b border-blue-900 pb-1 mb-1">
-                        <img src="{{ asset('img/logo.png') }}" alt="School Logo" class="h-20 w-20 object-contain ml-10">
-                        <div class="text-center flex-1">
-                            <h1 class="text-2xl font-bold text-blue-900 uppercase leading-tight">ELITES INTERNATIONAL
-                                COLLEGE, AWKA</h1>
-                            <p class="text-sm uppercase tracking-wide text-gray-700">To Create a Brighter Future</p>
-                            <p class="text-xs text-gray-600">Email: elitesinternationalcollege@gmail.com | Tel:
-                                08066025508</p>
-                            <p class="font-semibold text-sm mt-1 uppercase text-blue-900">
-                                {{ strtoupper($data['studentRecord']->myClass->name) }} -
-                                {{ strtoupper($data['semesterName']) }} {{ $data['academicYearName'] }} ACADEMIC REPORT
-                            </p>
-                        </div>
-                    </div>
+              {{-- Header Section --}}
+<div class="flex-header">
+    <div class="flex items-center border-b border-blue-900 pb-1 mb-1">
+        <img src="{{ asset('img/logo.png') }}" alt="School Logo" class="h-20 w-20 object-contain ml-10">
+        <div class="text-center flex-1">
+            <h1 class="text-2xl font-bold text-blue-900 uppercase leading-tight">ELITES INTERNATIONAL
+                COLLEGE, AWKA</h1>
+            <p class="text-sm uppercase tracking-wide text-gray-700">To Create a Brighter Future</p>
+            <p class="text-xs text-gray-600">Email: elitesinternationalcollege@gmail.com | Tel:
+                08066025508</p>
+            <p class="font-semibold text-sm mt-1 uppercase text-blue-900">
+                {{ strtoupper($data['studentRecord']->getClassForYear($data['academicYearId'])->name ?? $data['studentRecord']->myClass->name) }} -
+                {{ strtoupper($data['semesterName']) }} {{ $data['academicYearName'] }} ACADEMIC REPORT
+            </p>
+        </div>
+    </div>
                     <div class="grid grid-cols-3 gap-4 mb-1 text-sm compact-section">
                         <div class="space-y-0.5">
                             <div><span class="font-bold uppercase">Name:</span>
@@ -259,30 +259,36 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($data['subjects']->sortBy('name') as $subject)
-                                    @php
-                                        $result = $data['results'][$subject->id] ?? null;
-                                        $stats = $data['subjectStats'][$subject->id] ?? null;
-                                        $gradeClass = $result ? 'grade-' . substr($result['grade'], 0, 1) : '';
-                                        $isHighest = $result && $stats && $result['total_score'] == $stats['highest'];
-                                        $isLowest = $result && $stats && $result['total_score'] == $stats['lowest'];
-                                    @endphp
-                                    <tr class="{{ $gradeClass }}">
-                                        <td class="border p-1">{{ $subject->name }}</td>
-                                        <td class="border p-1">{{ $result['ca1_score'] ?? '-' }}</td>
-                                        <td class="border p-1">{{ $result['ca2_score'] ?? '-' }}</td>
-                                        <td class="border p-1">{{ $result['ca3_score'] ?? '-' }}</td>
-                                        <td class="border p-1">{{ $result['ca4_score'] ?? '-' }}</td>
-                                        <td class="border p-1">{{ $result['exam_score'] ?? '-' }}</td>
-                                        <td
-                                            class="border p-1 {{ $isHighest ? 'font-bold text-green-600' : '' }} {{ $isLowest ? 'font-bold text-red-600' : '' }}">
-                                            {{ $result['total_score'] ?? '-' }}</td>
-                                        <td class="border p-1">{{ $result['grade'] ?? '-' }}</td>
-                                        <td class="border p-1 bg-green-50">{{ $stats['highest'] ?? '-' }}</td>
-                                        <td class="border p-1 bg-red-50">{{ $stats['lowest'] ?? '-' }}</td>
-                                        <td class="border p-1 text-left">{{ $result['comment'] ?? '-' }}</td>
-                                    </tr>
-                                @endforeach
+        
+
+@foreach ($data['subjects']->sortBy('name') as $subject)
+@php
+    $result = $data['results'][$subject->id] ?? null;
+    $stats = $data['subjectStats'][$subject->id] ?? null;
+    $gradeClass = $result ? 'grade-' . substr($result['grade'], 0, 1) : '';
+    $isHighest = $result && $stats && $result['total_score'] == $stats['highest'];
+    $isLowest = $result && $stats && $result['total_score'] == $stats['lowest'];
+    // ✅ Use short name if subject name is longer than 25 characters
+    $displayName = strlen($subject->name) > 25 && !empty($subject->short_name) 
+        ? $subject->short_name 
+        : $subject->name;
+@endphp
+<tr class="{{ $gradeClass }}">
+    <td class="border p-1">{{ $displayName }}</td>
+    <td class="border p-1">{{ $result['ca1_score'] ?? '-' }}</td>
+    <td class="border p-1">{{ $result['ca2_score'] ?? '-' }}</td>
+    <td class="border p-1">{{ $result['ca3_score'] ?? '-' }}</td>
+    <td class="border p-1">{{ $result['ca4_score'] ?? '-' }}</td>
+    <td class="border p-1">{{ $result['exam_score'] ?? '-' }}</td>
+    <td class="border p-1 {{ $isHighest ? 'font-bold text-green-600' : '' }} {{ $isLowest ? 'font-bold text-red-600' : '' }}">
+        {{ $result['total_score'] ?? '-' }}
+    </td>
+    <td class="border p-1">{{ $result['grade'] ?? '-' }}</td>
+    <td class="border p-1 bg-green-50">{{ $stats['highest'] ?? '-' }}</td>
+    <td class="border p-1 bg-red-50">{{ $stats['lowest'] ?? '-' }}</td>
+    <td class="border p-1 text-left">{{ $result['comment'] ?? '-' }}</td>
+</tr>
+@endforeach
                             </tbody>
                         </table>
                     </div>
