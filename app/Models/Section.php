@@ -27,10 +27,58 @@ class Section extends Model
         return $this->belongsToMany(Subject::class);
     }
 
-    public function students()
+    /**
+     * Get students in this section (basic - not academic year aware)
+     */
+    public function students(): Collection
     {
-        $students = User::students()->inSchool()->whereRelation('studentRecord.section', 'id', $this->id)->get();
+        $students = User::students()
+            ->inSchool()
+            ->whereRelation('studentRecord.section', 'id', $this->id)
+            ->get();
 
         return $students;
+    }
+
+    /**
+     * Get students in this section for a specific academic year
+     * This is the correct way to query students after promotions
+     */
+    public function studentsForAcademicYear($academicYearId = null): Collection
+    {
+        if (!$academicYearId) {
+            $academicYearId = auth()->user()->school->academic_year_id;
+        }
+
+        // Get student record IDs that are in this section for the academic year
+        $studentIds = \DB::table('academic_year_student_record')
+            ->where('section_id', $this->id)
+            ->where('academic_year_id', $academicYearId)
+            ->pluck('student_record_id');
+
+        $students = User::students()
+            ->inSchool()
+            ->whereHas('studentRecord', function($query) use ($studentIds) {
+                $query->whereIn('id', $studentIds);
+            })
+            ->with('studentRecord')
+            ->get();
+
+        return $students;
+    }
+
+    /**
+     * Count students in this section for current academic year
+     */
+    public function studentsCount($academicYearId = null): int
+    {
+        if (!$academicYearId) {
+            $academicYearId = auth()->user()->school->academic_year_id;
+        }
+
+        return \DB::table('academic_year_student_record')
+            ->where('section_id', $this->id)
+            ->where('academic_year_id', $academicYearId)
+            ->count();
     }
 }

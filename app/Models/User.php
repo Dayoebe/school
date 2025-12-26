@@ -207,8 +207,26 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         $name = trim(collect(explode(' ', $this->name))->map(fn($segment) => mb_substr($segment, 0, 1))->join(' '));
         $email = md5(strtolower(trim($this->email)));
-        return 'https://www.gravatar.com/avatar/' . $email . '?d=https%3A%2F%2Fui-avatars.com%2Fapi%2F/' . urlencode($name) . '/300/EBF4FF/7F9CF5';
+        
+        // Use a more reliable default avatar service
+        return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=7F9CF5&background=EBF4FF';
     }
+    public function getProfilePhotoUrlAttribute()
+{
+    // If user has no profile photo path, return default
+    if (!$this->profile_photo_path) {
+        return $this->defaultProfilePhotoUrl();
+    }
+    
+    // Check if file exists in storage
+    $path = storage_path('app/public/' . $this->profile_photo_path);
+    if (!file_exists($path)) {
+        return $this->defaultProfilePhotoUrl();
+    }
+    
+    // Return the actual URL
+    return asset('storage/' . $this->profile_photo_path);
+}
 
     public function getBirthdayAttribute($value)
     {

@@ -35,4 +35,8 @@ class TimetableRecord extends Pivot
     {
         return $this->morphTo('timetable_time_slot_weekdayable');
     }
+    public function timetable_time_slot_weekdayable()
+{
+    return $this->morphTo();
+}
 }

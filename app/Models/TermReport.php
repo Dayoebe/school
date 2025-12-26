@@ -61,10 +61,10 @@ class TermReport extends Model
      * @param  string|null  $value
      * @return array
      */
-    public function getPsychomotorTraitsAttribute($value)
-    {
-        return $value ? json_decode($value, true) : $this->getDefaultPsychomotorScores();
-    }
+    // public function getPsychomotorTraitsAttribute($value)
+    // {
+    //     return $value ? json_decode($value, true) : $this->getDefaultPsychomotorScores();
+    // }
 
     /**
      * Get the affective traits as an array, decoding from JSON.
@@ -72,10 +72,10 @@ class TermReport extends Model
      * @param  string|null  $value
      * @return array
      */
-    public function getAffectiveTraitsAttribute($value)
-    {
-        return $value ? json_decode($value, true) : $this->getDefaultAffectiveScores();
-    }
+    // public function getAffectiveTraitsAttribute($value)
+    // {
+    //     return $value ? json_decode($value, true) : $this->getDefaultAffectiveScores();
+    // }
 
     /**
      * Get the co-curricular activities as an array, decoding from JSON.
@@ -83,10 +83,10 @@ class TermReport extends Model
      * @param  string|null  $value
      * @return array
      */
-    public function getCoCurricularActivitiesAttribute($value)
-    {
-        return $value ? json_decode($value, true) : $this->getDefaultCoCurricularScores();
-    }
+    // public function getCoCurricularActivitiesAttribute($value)
+    // {
+    //     return $value ? json_decode($value, true) : $this->getDefaultCoCurricularScores();
+    // }
 
     /**
      * Initialize default psychomotor score structure.

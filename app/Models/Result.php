@@ -25,37 +25,68 @@ class Result extends Model
         'approved',
     ];
 
-public static function rules(): array
-{
-    return [
-        'student_record_id' => 'required|exists:student_records,id',
-        'subject_id' => 'required|exists:subjects,id',
-        'academic_year_id' => 'required|exists:academic_years,id',
-        'semester_id' => 'required|exists:semesters,id',
-        // ... other fields
-    ];
-
-
-}
-
-// In App\Models\Result.php
-
-public static function validateSubjectAssignment(StudentRecord $student, Subject $subject)
-{
-    // Check if subject exists in student's class
-    $classSubjects = Subject::where('my_class_id', $student->my_class_id)->pluck('id');
-    
-    if (!$classSubjects->contains($subject->id)) {
-        throw new \Exception("Subject {$subject->name} not assigned to class {$student->myClass->name}");
+    protected static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($result) {
+            self::validateSubjectEnrollment($result);
+        });
+        
+        static::updating(function ($result) {
+            if ($result->isDirty(['student_record_id', 'subject_id'])) {
+                self::validateSubjectEnrollment($result);
+            }
+        });
     }
 
-    // Check if student is enrolled in this subject
-    if (!$student->studentSubjects->contains($subject->id)) {
-        throw new \Exception("Student not enrolled in subject {$subject->name}");
+    protected static function validateSubjectEnrollment($result)
+    {
+        $student = StudentRecord::find($result->student_record_id);
+        
+        if (!$student) {
+            throw new \Exception("Student record not found");
+        }
+        
+        // Check if student is enrolled in this subject
+        $isEnrolled = $student->studentSubjects()
+            ->where('subject_id', $result->subject_id)
+            ->exists();
+        
+        if (!$isEnrolled) {
+            $subject = Subject::find($result->subject_id);
+            $subjectName = $subject ? $subject->name : 'Unknown Subject';
+            throw new \Exception("Student not enrolled in {$subjectName}");
+        }
     }
-    
-    return true;
-}
+
+    public static function rules(): array
+    {
+        return [
+            'student_record_id' => 'required|exists:student_records,id',
+            'subject_id' => 'required|exists:subjects,id',
+            'academic_year_id' => 'required|exists:academic_years,id',
+            'semester_id' => 'required|exists:semesters,id',
+        ];
+    }
+
+    public static function validateSubjectAssignment(StudentRecord $student, Subject $subject)
+    {
+        // Check if subject exists in student's class
+        $classSubjects = Subject::where('my_class_id', $student->my_class_id)->pluck('id');
+        
+        if (!$classSubjects->contains($subject->id)) {
+            throw new \Exception("Subject {$subject->name} not assigned to class {$student->myClass->name}");
+        }
+
+        // Check if student is enrolled in this subject
+        if (!$student->studentSubjects->contains($subject->id)) {
+            throw new \Exception("Student not enrolled in subject {$subject->name}");
+        }
+        
+        return true;
+    }
+
     public function studentRecord()
     {
         return $this->belongsTo(StudentRecord::class);
@@ -75,6 +106,7 @@ public static function validateSubjectAssignment(StudentRecord $student, Subject
     {
         return $this->belongsTo(Semester::class);
     }
+
     public function validate()
     {
         if (!$this->studentRecord || !$this->academicYearId || !$this->semesterId) {
@@ -83,12 +115,12 @@ public static function validateSubjectAssignment(StudentRecord $student, Subject
         }
         return true;
     }
+
     public function student()
     {
         return $this->belongsTo(StudentRecord::class, 'student_record_id');
     }
 
-   
     public static function calculateClassPositions($academicYearId, $semesterId, $classId)
     {
         $results = self::whereHas('studentRecord', function ($query) use ($classId) {
