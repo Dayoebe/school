@@ -11,8 +11,8 @@ return new class() extends Migration {
             $table->id();
             $table->foreignId('old_class_id')->constrained('my_classes')->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('new_class_id')->constrained('my_classes')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreignId('old_section_id')->constrained('sections')->onDelete('cascade')->onUpdate('cascade');
-            $table->foreignId('new_section_id')->constrained('sections')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('old_section_id')->constrained('sections')->nullable()->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('new_section_id')->constrained('sections')->nullable()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('academic_year_id')->constrained('academic_years')->onDelete('cascade')->onUpdate('cascade');
             $table->json('students');
             $table->foreignId('school_id')->constrained('schools')->onDelete('cascade')->onUpdate('cascade');
