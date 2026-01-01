@@ -91,25 +91,14 @@ return [
     */
 
     'from' => [
-        'address' => env('MAIL_FROM_ADDRESS', 'hello@skuul.test'),
+        'address' => env('MAIL_FROM_ADDRESS', 'oyetoke.ebenezer@gmail.com'),
         'name'    => env('MAIL_FROM_NAME', 'Example'),
     ],
 
     'reply_to' => [
-        'address' => env('MAIL_REPLY_ADDRESS', 'contact@skuul.test'),
+        'address' => env('MAIL_REPLY_ADDRESS', 'oyetoke.ebenezer@gmail.com'),
         'name'    => env('MAIL_REPLY_NAME', env('APP_NAME')),
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Markdown Mail Settings
-    |--------------------------------------------------------------------------
-    |
-    | If you are using Markdown based email rendering, you may configure your
-    | theme and component paths here, allowing you to customize the design
-    | of the emails. Or, you may simply stick with the Laravel defaults!
-    |
-    */
 
     'markdown' => [
         'theme' => 'default',
@@ -118,5 +107,4 @@ return [
             resource_path('views/vendor/mail'),
         ],
     ],
-
 ];
