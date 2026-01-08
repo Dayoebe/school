@@ -19,7 +19,7 @@
                     @elseif($hasPermission)
                         <div @click.outside="submenu = false" 
                              x-data="{
-                                'submenu': {{ isset($menuItem['submenu']) && in_array(Route::currentRouteName(), array_column($menuItem['submenu'], 'route')) ? '1' : '0' }}
+                                'submenu': {{ isset($menuItem['submenu']) && in_array(Route::currentRouteName(), array_filter(array_column($menuItem['submenu'], 'route'))) ? '1' : '0' }}
                              }">
                             @if(!isset($menuItem['submenu']))
                                 <a class="flex items-center gap-2 p-3 px-4 my-2 rounded" 
@@ -31,9 +31,21 @@
                                     <p x-show="menuOpen">{{ $menuItem['text'] }}</p>
                                 </a>
                             @else
+                                @php
+                                    // Filter out items without route (like headers) for the active check
+                                    $submenuRoutes = collect($menuItem['submenu'])
+                                        ->filter(function($item) {
+                                            return isset($item['route']);
+                                        })
+                                        ->pluck('route')
+                                        ->toArray();
+                                    
+                                    $isActive = in_array(Route::currentRouteName(), $submenuRoutes);
+                                @endphp
+                                
                                 <div class="flex items-center justify-between gap-2 p-3 my-2 px-4 rounded" 
                                      @click="submenu = !submenu" 
-                                     :class="{{ in_array(Route::currentRouteName(), array_column($menuItem['submenu'], 'route')) ? '1' : '0' }} ? 'bg-blue-600 hover:bg-blue-400 hover:bg-opacity-100' : 'hover:bg-white hover:bg-opacity-5'">
+                                     :class="{{ $isActive ? '1' : '0' }} ? 'bg-blue-600 hover:bg-blue-400 hover:bg-opacity-100' : 'hover:bg-white hover:bg-opacity-5'">
                                     <div class="flex items-center gap-2">
                                         <i class="{{ $menuItem['icon'] ?? 'fa fa-circle' }}" aria-hidden="true" x-transition></i>
                                         <p x-show="menuOpen" class="cursor-default">{{ $menuItem['text'] }}</p>
@@ -43,24 +55,34 @@
                                        x-show="menuOpen"></i>
                                 </div>
 
-                                @foreach($menuItem['submenu'] as $submenu)
+                                @foreach($menuItem['submenu'] as $submenuItem)
                                     @php
                                         // Temporarily bypass permission checks for submenus too
                                         $subHasPermission = auth()->check();
                                     @endphp
 
                                     @if($subHasPermission)
-                                        <a class="flex items-center gap-2 p-3 px-4 my-2 transition-all rounded whitespace-nowrap {{ Route::currentRouteName() == $submenu['route'] ? 'bg-white text-black' : 'hover:bg-white hover:bg-opacity-5' }}" 
-                                           :class="{'h-0 my-auto overflow-hidden py-0': submenu == false}" 
-                                           x-transition 
-                                           href="{{ route($submenu['route']) }}" 
-                                           aria-label="{{ $submenu['text'] }}" 
-                                           @focus="submenu = true" 
-                                           @blur="submenu = false" 
-                                           wire:navigate>
-                                            <i class="{{ $submenu['icon'] ?? 'far fa-fw fa-circle' }}" aria-hidden="true"></i>
-                                            <p x-show="menuOpen">{{ $submenu['text'] }}</p>
-                                        </a>
+                                        @if(isset($submenuItem['type']) && $submenuItem['type'] === 'header')
+                                            {{-- Render header in submenu --}}
+                                            <div class="flex items-center gap-2 p-3 px-4 my-2 transition-all rounded whitespace-nowrap" 
+                                                 :class="{'h-0 my-auto overflow-hidden py-0 opacity-0': submenu == false}" 
+                                                 x-transition>
+                                                <p class="text-sm font-semibold text-gray-300" x-show="menuOpen">{{ $submenuItem['text'] }}</p>
+                                            </div>
+                                        @else
+                                            {{-- Render regular menu item --}}
+                                            <a class="flex items-center gap-2 p-3 px-4 my-2 transition-all rounded whitespace-nowrap {{ Route::currentRouteName() == $submenuItem['route'] ? 'bg-white text-black' : 'hover:bg-white hover:bg-opacity-5' }}" 
+                                               :class="{'h-0 my-auto overflow-hidden py-0 opacity-0': submenu == false}" 
+                                               x-transition 
+                                               href="{{ route($submenuItem['route']) }}" 
+                                               aria-label="{{ $submenuItem['text'] }}" 
+                                               @focus="submenu = true" 
+                                               @blur="submenu = false" 
+                                               wire:navigate>
+                                                <i class="{{ $submenuItem['icon'] ?? 'far fa-fw fa-circle' }}" aria-hidden="true"></i>
+                                                <p x-show="menuOpen">{{ $submenuItem['text'] }}</p>
+                                            </a>
+                                        @endif
                                     @endif
                                 @endforeach
                             @endif

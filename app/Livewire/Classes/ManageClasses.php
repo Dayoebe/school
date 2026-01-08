@@ -4,6 +4,7 @@ namespace App\Livewire\Classes;
 
 use App\Models\ClassGroup;
 use App\Models\MyClass;
+use App\Models\Section;
 use App\Models\Subject;
 use App\Models\StudentRecord;
 use App\Models\User;
@@ -55,14 +56,12 @@ class ManageClasses extends Component
     public $editingStudentSectionId = null;
 
     // ============================================
-    // SUBJECT MANAGEMENT
+    // SUBJECT MANAGEMENT (UPDATED)
     // ============================================
     public $showSubjectModal = false;
-    public $subjectName = '';
-    public $subjectShortName = '';
-    public $subjectIsGeneral = true;
-    public $subjectSections = [];
-    public $editingSubjectId = null;
+    public $availableSubjects = [];
+    public $subjectSearch = '';
+    public $selectedSubjectIds = [];
 
     // ============================================
     // BULK OPERATIONS
@@ -140,8 +139,13 @@ class ManageClasses extends Component
 
     public function showView($id)
     {
-        $this->selectedClass = MyClass::with(['classGroup', 'sections', 'subjects.teachers'])
-            ->findOrFail($id);
+        $this->selectedClass = MyClass::with([
+            'classGroup', 
+            'sections', 
+            'subjects.teachers',
+            'subjects.classes.classGroup' // Also load the classes for each subject
+        ])->findOrFail($id);
+        
         $this->authorize('view', $this->selectedClass);
         
         $this->selectedStudents = [];
@@ -151,7 +155,8 @@ class ManageClasses extends Component
         
         $this->view = 'view';
     }
-
+    
+    
     // ============================================
     // CLASS CRUD OPERATIONS
     // ============================================
@@ -164,8 +169,6 @@ class ManageClasses extends Component
             'name' => $this->name,
             'class_group_id' => $this->class_group_id,
         ]);
-
-        $this->autoAssignSubjectsToClassStudents($class->id);
 
         session()->flash('success', 'Class created successfully!');
         $this->showList();
@@ -242,24 +245,33 @@ class ManageClasses extends Component
         if (!$currentAcademicYearId) {
             return collect();
         }
-
-        $studentRecordIds = DB::table('academic_year_student_record')
+    
+        $pivotData = DB::table('academic_year_student_record')
             ->where('my_class_id', $classId)
             ->where('academic_year_id', $currentAcademicYearId)
-            ->pluck('student_record_id');
-
+            ->select('student_record_id', 'my_class_id', 'section_id')
+            ->get()
+            ->keyBy('student_record_id');
+    
+        $studentRecordIds = $pivotData->pluck('student_record_id');
+    
         if ($studentRecordIds->isEmpty()) {
             return collect();
         }
-
+    
+        $classIds = $pivotData->pluck('my_class_id')->unique();
+        $sectionIds = $pivotData->pluck('section_id')->filter()->unique();
+        
+        $classes = MyClass::whereIn('id', $classIds)->get()->keyBy('id');
+        $sections = Section::whereIn('id', $sectionIds)->get()->keyBy('id');
+    
         $query = StudentRecord::whereIn('student_records.id', $studentRecordIds)
-            ->with(['user', 'studentSubjects', 'myClass', 'section'])
+            ->with(['user', 'studentSubjects'])
             ->select('student_records.*')
             ->join('users', 'student_records.user_id', '=', 'users.id')
             ->leftJoin('sections', 'student_records.section_id', '=', 'sections.id')
             ->whereNull('users.deleted_at');
-
-        // Apply sorting
+    
         switch ($this->sortField) {
             case 'name':
                 $query->orderBy('users.name', $this->sortDirection);
@@ -277,10 +289,20 @@ class ManageClasses extends Component
             default:
                 $query->orderBy('users.name', 'asc');
         }
-
-        return $query->get();
+    
+        $students = $query->get();
+    
+        $students->each(function($student) use ($pivotData, $classes, $sections) {
+            if (isset($pivotData[$student->id])) {
+                $pivot = $pivotData[$student->id];
+                $student->setRelation('myClass', $classes->get($pivot->my_class_id));
+                $student->setRelation('section', $pivot->section_id ? $sections->get($pivot->section_id) : null);
+            }
+        });
+    
+        return $students;
     }
-
+    
     public function showEditStudentSection($studentId)
     {
         $student = StudentRecord::findOrFail($studentId);
@@ -410,131 +432,93 @@ class ManageClasses extends Component
     }
 
     // ============================================
-    // SUBJECT OPERATIONS
+    // SUBJECT OPERATIONS (UPDATED)
     // ============================================
-    public function assignSubjects()
+    public function showAddSubjects()
+    {
+        $this->authorize('update', $this->selectedClass);
+        
+        // Get subjects not already in this class
+        $currentSubjectIds = $this->selectedClass->subjects->pluck('id')->toArray();
+        
+        $this->availableSubjects = Subject::where('school_id', auth()->user()->school_id)
+            ->active()
+            ->whereNotIn('id', $currentSubjectIds)
+            ->with('classes')
+            ->orderBy('name')
+            ->get();
+        
+        $this->selectedSubjectIds = [];
+        $this->subjectSearch = '';
+        $this->showSubjectModal = true;
+    }
+
+    public function toggleSubjectSelection($subjectId)
+    {
+        if (in_array($subjectId, $this->selectedSubjectIds)) {
+            $this->selectedSubjectIds = array_values(array_filter($this->selectedSubjectIds, fn($id) => $id != $subjectId));
+        } else {
+            $this->selectedSubjectIds[] = $subjectId;
+        }
+    }
+
+    public function addSelectedSubjects()
     {
         $this->authorize('update', $this->selectedClass);
 
-        $subjects = Subject::where('my_class_id', $this->selectedClass->id)->get();
-        $students = $this->getStudentsForClass($this->selectedClass->id);
-
-        if ($students->isEmpty()) {
-            session()->flash('error', 'No students found in this class.');
+        if (empty($this->selectedSubjectIds)) {
+            session()->flash('error', 'Please select at least one subject.');
             return;
         }
 
-        $assignedCount = 0;
-        foreach ($students as $student) {
-            $syncData = [];
-            foreach ($subjects as $subject) {
-                $syncData[$subject->id] = [
-                    'my_class_id' => $this->selectedClass->id,
-                    'section_id' => $student->section_id,
-                ];
-            }
-            $student->studentSubjects()->syncWithoutDetaching($syncData);
-            $assignedCount++;
-        }
-
-        session()->flash('success', "Subjects assigned to {$assignedCount} students successfully!");
-        $this->showView($this->selectedClass->id);
-    }
-
-    protected function autoAssignSubjectsToClassStudents($classId)
-    {
-        $subjects = Subject::where('my_class_id', $classId)->get();
-        $students = $this->getStudentsForClass($classId);
-
-        foreach ($students as $student) {
-            $syncData = [];
-            foreach ($subjects as $subject) {
-                if (
-                    $subject->is_general ||
-                    ($student->section_id && $subject->sections->contains($student->section_id))
-                ) {
-                    $syncData[$subject->id] = [
-                        'my_class_id' => $classId,
-                        'section_id' => $student->section_id,
-                    ];
+        $addedCount = 0;
+        
+        DB::transaction(function() use (&$addedCount) {
+            foreach ($this->selectedSubjectIds as $subjectId) {
+                $subject = Subject::find($subjectId);
+                
+                if ($subject) {
+                    // Add this class to the subject's classes
+                    $subject->assignToClass($this->selectedClass->id);
+                    $addedCount++;
                 }
             }
-            if (!empty($syncData)) {
-                $student->studentSubjects()->syncWithoutDetaching($syncData);
-            }
-        }
-    }
+        });
 
-    public function showCreateSubject()
-    {
-        $this->reset(['subjectName', 'subjectShortName', 'subjectIsGeneral', 'subjectSections', 'editingSubjectId']);
-        $this->subjectIsGeneral = true;
-        $this->showSubjectModal = true;
-    }
-
-    public function showEditSubject($subjectId)
-    {
-        $subject = Subject::with('sections')->findOrFail($subjectId);
-        $this->editingSubjectId = $subject->id;
-        $this->subjectName = $subject->name;
-        $this->subjectShortName = $subject->short_name;
-        $this->subjectIsGeneral = $subject->is_general;
-        $this->subjectSections = $subject->sections->pluck('id')->toArray();
-        $this->showSubjectModal = true;
-    }
-
-    public function saveSubject()
-    {
-        $this->validate([
-            'subjectName' => 'required|max:255',
-            'subjectShortName' => 'nullable|max:50',
-        ]);
-
-        $data = [
-            'name' => $this->subjectName,
-            'short_name' => $this->subjectShortName,
-            'is_general' => $this->subjectIsGeneral,
-            'my_class_id' => $this->selectedClass->id,
-            'school_id' => auth()->user()->school_id,
-        ];
-
-        if ($this->editingSubjectId) {
-            $subject = Subject::findOrFail($this->editingSubjectId);
-            $subject->update($data);
-
-            if (!$this->subjectIsGeneral) {
-                $subject->sections()->sync($this->subjectSections);
-            } else {
-                $subject->sections()->detach();
-            }
-
-            session()->flash('success', 'Subject updated successfully!');
-        } else {
-            $subject = Subject::create($data);
-
-            if (!$this->subjectIsGeneral) {
-                $subject->sections()->sync($this->subjectSections);
-            }
-
-            session()->flash('success', 'Subject created and assigned to students successfully!');
-        }
-
-        $this->showSubjectModal = false;
+        session()->flash('success', "{$addedCount} subject(s) added to class successfully!");
+        
+        $this->reset(['showSubjectModal', 'selectedSubjectIds', 'subjectSearch', 'availableSubjects']);
+        
+        // Reload the class with fresh subjects data
+        $this->selectedClass->refresh();
+        $this->selectedClass->load(['classGroup', 'sections', 'subjects.teachers', 'subjects.classes']);
+        
         $this->showView($this->selectedClass->id);
     }
 
-    public function deleteSubject($subjectId)
+    public function removeSubjectFromClass($subjectId)
     {
+        $this->authorize('update', $this->selectedClass);
+        
         $subject = Subject::findOrFail($subjectId);
+        
+        // Remove this class from the subject
+        $subject->removeFromClass($this->selectedClass->id);
+        
+        session()->flash('success', 'Subject removed from class successfully!');
+        $this->showView($this->selectedClass->id);
+    }
 
-        if ($subject->results()->exists()) {
-            session()->flash('error', 'Cannot delete subject with existing results.');
-            return;
+    public function getFilteredAvailableSubjectsProperty()
+    {
+        if (empty($this->subjectSearch)) {
+            return $this->availableSubjects;
         }
 
-        $subject->delete();
-        session()->flash('success', 'Subject deleted successfully!');
-        $this->showView($this->selectedClass->id);
+        return $this->availableSubjects->filter(function($subject) {
+            return stripos($subject->name, $this->subjectSearch) !== false || 
+                   stripos($subject->short_name, $this->subjectSearch) !== false;
+        });
     }
 
     // ============================================
@@ -548,7 +532,7 @@ class ManageClasses extends Component
 
     public function showEditSection($sectionId)
     {
-        $section = \App\Models\Section::findOrFail($sectionId);
+        $section = Section::findOrFail($sectionId);
         $this->editingSectionId = $section->id;
         $this->sectionName = $section->name;
         $this->showSectionModal = true;
@@ -561,11 +545,11 @@ class ManageClasses extends Component
         ]);
 
         if ($this->editingSectionId) {
-            $section = \App\Models\Section::findOrFail($this->editingSectionId);
+            $section = Section::findOrFail($this->editingSectionId);
             $section->update(['name' => $this->sectionName]);
             session()->flash('success', 'Section updated successfully!');
         } else {
-            \App\Models\Section::create([
+            Section::create([
                 'name' => $this->sectionName,
                 'my_class_id' => $this->selectedClass->id,
             ]);
@@ -578,7 +562,7 @@ class ManageClasses extends Component
 
     public function deleteSection($sectionId)
     {
-        $section = \App\Models\Section::findOrFail($sectionId);
+        $section = Section::findOrFail($sectionId);
 
         if ($section->studentsCount() > 0) {
             session()->flash('error', 'Cannot delete section with students.');
@@ -643,22 +627,22 @@ class ManageClasses extends Component
             ->with(['classGroup', 'subjects'])
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->paginate(12);
-
+    
         $classGroups = ClassGroup::where('school_id', auth()->user()->school_id)->get();
         
         $students = null;
         if ($this->view === 'view') {
             $students = $this->getStudentsForClass($this->selectedClass->id);
         }
-
+    
         $allClasses = MyClass::whereHas('classGroup', fn($q) => 
             $q->where('school_id', auth()->user()->school_id)
         )->get();
-
+    
         $teachers = User::role('teacher')
             ->where('school_id', auth()->user()->school_id)
             ->get();
-
+    
         return view('livewire.classes.manage-classes', [
             'classes' => $classes,
             'classGroups' => $classGroups,

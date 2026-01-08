@@ -295,17 +295,13 @@
                                     class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-all text-sm font-semibold">
                                     <i class="fas fa-door-open mr-2"></i>Add Section
                                 </button>
-                                <button wire:click="showCreateSubject"
+                                <button wire:click="showAddSubjects"
                                     class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all text-sm font-semibold">
-                                    <i class="fas fa-book mr-2"></i>Add Subject
+                                    <i class="fas fa-plus mr-2"></i>Add Subjects
                                 </button>
                                 <button wire:click="toggleTeacherModal"
                                     class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all text-sm font-semibold">
                                     <i class="fas fa-user-plus mr-2"></i>Manage Teachers
-                                </button>
-                                <button wire:click="assignSubjects"
-                                    class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-semibold">
-                                    <i class="fas fa-link mr-2"></i>Assign Subjects to All
                                 </button>
                             @endcan
                         </div>
@@ -700,14 +696,14 @@
                         </h3>
                         <i class="fas fa-chevron-down transition-transform" :class="{ 'rotate-180': openSubjects }"></i>
                     </button>
-
+                
                     <div x-show="openSubjects" x-collapse class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Subject Name
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Subject Name</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Code</th>
+                                    <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Other Classes</th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Teachers</th>
                                     <th class="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase">Actions</th>
                                 </tr>
@@ -717,41 +713,56 @@
                                     <tr class="hover:bg-green-50 transition-colors">
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex items-center">
-                                                <div
-                                                    class="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white mr-3">
+                                                <div class="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white mr-3">
                                                     <i class="fas fa-book"></i>
                                                 </div>
                                                 <span class="font-medium text-gray-900">{{ $subject->name }}</span>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="px-3 py-1 {{ $subject->is_general ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700' }} rounded-full text-xs font-medium">
-                                                {{ $subject->is_general ? 'General' : 'Elective' }}
+                                            <span class="px-3 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                                                {{ $subject->short_name ?? 'N/A' }}
                                             </span>
                                         </td>
+                                        <td class="px-6 py-4">
+                                            @php
+                                                $otherClasses = $subject->classes->where('id', '!=', $selectedClass->id);
+                                            @endphp
+                                            @if($otherClasses->count() > 0)
+                                                <div class="flex flex-wrap gap-1">
+                                                    @foreach($otherClasses->take(3) as $class)
+                                                        <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                                            {{ $class->name }}
+                                                        </span>
+                                                    @endforeach
+                                                    @if($otherClasses->count() > 3)
+                                                        <span class="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
+                                                            +{{ $otherClasses->count() - 3 }} more
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                            @else
+                                                <span class="text-xs text-gray-500">Only in this class</span>
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span
-                                                class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
-                                                {{ $subject->teachers->count() }}
-                                                {{ Str::plural('teacher', $subject->teachers->count()) }}
+                                            <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                                {{ $subject->teachers->count() }} {{ Str::plural('teacher', $subject->teachers->count()) }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex gap-2">
                                                 <a href="{{ route('subjects.show', $subject->id) }}"
-                                                    class="px-3 py-1 bg-green-50 text-green-700 rounded hover:bg-green-600 hover:text-white text-sm">
+                                                    class="px-3 py-1 bg-green-50 text-green-700 rounded hover:bg-green-600 hover:text-white text-sm"
+                                                    title="View Subject">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
                                                 @can('update', $selectedClass)
-                                                    <button wire:click="showEditSubject({{ $subject->id }})"
-                                                        class="px-3 py-1 bg-amber-50 text-amber-700 rounded hover:bg-amber-600 hover:text-white text-sm">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button wire:click="deleteSubject({{ $subject->id }})"
-                                                        wire:confirm="Delete this subject?"
-                                                        class="px-3 py-1 bg-red-50 text-red-700 rounded hover:bg-red-600 hover:text-white text-sm">
-                                                        <i class="fas fa-trash"></i>
+                                                    <button wire:click="removeSubjectFromClass({{ $subject->id }})"
+                                                        wire:confirm="Remove {{ $subject->name }} from this class? Students will lose access to this subject."
+                                                        class="px-3 py-1 bg-red-50 text-red-700 rounded hover:bg-red-600 hover:text-white text-sm"
+                                                        title="Remove from Class">
+                                                        <i class="fas fa-unlink"></i>
                                                     </button>
                                                 @endcan
                                             </div>
@@ -759,8 +770,12 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="px-6 py-12 text-center text-gray-500">
-                                            No subjects found
+                                        <td colspan="5" class="px-6 py-12 text-center">
+                                            <div class="text-gray-500">
+                                                <i class="fas fa-book-open text-4xl mb-3"></i>
+                                                <p class="font-medium">No subjects assigned yet</p>
+                                                <p class="text-sm mt-1">Click "Add Subjects" to assign existing subjects to this class</p>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforelse
@@ -916,89 +931,117 @@
     @endif
 
     {{-- Subject Management Modal --}}
+
     @if($showSubjectModal && $view === 'view')
-        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-            wire:click.self="$set('showSubjectModal', false)">
-            <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden" @click.stop>
-                <div class="bg-green-600 p-6 flex items-center justify-between">
-                    <h3 class="text-2xl font-bold text-white">
-                        {{ $editingSubjectId ? 'Edit' : 'Create' }} Subject
-                    </h3>
-                    <button wire:click="$set('showSubjectModal', false)" class="text-white hover:text-gray-200">
-                        <i class="fas fa-times text-2xl"></i>
-                    </button>
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        wire:click.self="$set('showSubjectModal', false)">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-hidden" 
+             x-data="{ selectedCount: @entangle('selectedSubjectIds').live }"
+             @click.stop>
+            <div class="bg-green-600 p-6 flex items-center justify-between">
+                <h3 class="text-2xl font-bold text-white">
+                    Add Subjects to {{ $selectedClass->name }}
+                </h3>
+                <button wire:click="$set('showSubjectModal', false)" class="text-white hover:text-gray-200">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-4 overflow-y-auto" style="max-height: calc(90vh - 180px);">
+                {{-- Search Box --}}
+                <div>
+                    <input wire:model.live="subjectSearch" 
+                           type="text" 
+                           placeholder="Search subjects..."
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200">
                 </div>
 
-                <form wire:submit.prevent="saveSubject" class="p-6 space-y-4 overflow-y-auto"
-                    style="max-height: calc(90vh - 180px);">
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">
-                            Subject Name <span class="text-red-500">*</span>
-                        </label>
-                        <input wire:model="subjectName" type="text" placeholder="e.g., Mathematics"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200">
-                        @error('subjectName')
-                            <p class="mt-2 text-sm text-red-600"><i class="fas fa-exclamation-circle mr-2"></i>{{ $message }}
-                            </p>
-                        @enderror
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">
-                            Short Name <span class="text-gray-500 text-xs">(Optional)</span>
-                        </label>
-                        <input wire:model="subjectShortName" type="text" placeholder="e.g., MATH"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:border-green-500 focus:ring-2 focus:ring-green-200">
-                        @error('subjectShortName')
-                            <p class="mt-2 text-sm text-red-600"><i class="fas fa-exclamation-circle mr-2"></i>{{ $message }}
-                            </p>
-                        @enderror
-                    </div>
-
-                    <div>
-                        <label class="flex items-center cursor-pointer">
-                            <input type="checkbox" wire:model.live="subjectIsGeneral"
-                                class="w-5 h-5 text-green-600 rounded">
-                            <span class="ml-3 text-sm font-bold text-gray-700">General Subject (Available to all
-                                students)</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1 ml-8">Uncheck if this is an elective subject for specific
-                            sections</p>
-                    </div>
-
-                    @if(!$subjectIsGeneral && $selectedClass->sections->count() > 0)
-                        <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">
-                                Available for Sections
-                            </label>
-                            <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-3">
-                                @foreach($selectedClass->sections as $section)
-                                    <label class="flex items-center cursor-pointer">
-                                        <input type="checkbox" wire:model="subjectSections" value="{{ $section->id }}"
-                                            class="w-5 h-5 text-green-600 rounded">
-                                        <span class="ml-3 text-sm text-gray-700">{{ $section->name }}</span>
-                                    </label>
-                                @endforeach
+                {{-- Available Subjects List --}}
+                @if($this->filteredAvailableSubjects->count() > 0)
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        @foreach($this->filteredAvailableSubjects as $subject)
+                            <div class="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                                 wire:click="toggleSubjectSelection({{ $subject->id }})">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-3 mb-2">
+                                            <input type="checkbox" 
+                                                   wire:model.live="selectedSubjectIds"
+                                                   value="{{ $subject->id }}"
+                                                   class="w-5 h-5 text-green-600 rounded"
+                                                   onclick="event.stopPropagation()">
+                                            <div>
+                                                <h4 class="font-bold text-gray-900">{{ $subject->name }}</h4>
+                                                @if($subject->short_name)
+                                                    <p class="text-sm text-gray-600">Code: {{ $subject->short_name }}</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        
+                                        {{-- Show which classes already have this subject --}}
+                                        @if($subject->classes->count() > 0)
+                                            <div class="flex flex-wrap gap-2 mt-2">
+                                                <span class="text-xs text-gray-500">Currently in:</span>
+                                                @foreach($subject->classes as $class)
+                                                    <span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                                        {{ $class->name }}
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <p class="text-xs text-gray-500 mt-2">Not assigned to any class yet</p>
+                                        @endif
+                                    </div>
+                                    
+                                    @if(in_array($subject->id, $selectedSubjectIds))
+                                        <div class="ml-3">
+                                            <span class="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                                                <i class="fas fa-check mr-1"></i>Selected
+                                            </span>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
-                        </div>
-                    @endif
-
-                    <div class="flex justify-end gap-3 pt-4">
-                        <button type="button" wire:click="$set('showSubjectModal', false)"
-                            class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
-                            Cancel
-                        </button>
-                        <button type="submit"
-                            class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold">
-                            <i class="fas fa-save mr-2"></i>{{ $editingSubjectId ? 'Update' : 'Create' }}
-                        </button>
+                        @endforeach
                     </div>
-                </form>
+                @else
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-inbox text-4xl mb-3"></i>
+                        <p>{{ $subjectSearch ? 'No subjects found matching your search' : 'All available subjects have been added to this class' }}</p>
+                    </div>
+                @endif
+
+                {{-- Selected Count --}}
+                <div x-show="selectedCount.length > 0" 
+                     x-transition
+                     class="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p class="text-sm text-green-800 font-medium">
+                        <i class="fas fa-check-circle mr-2"></i>
+                        <span x-text="selectedCount.length"></span> subject(s) selected
+                    </p>
+                </div>
+            </div>
+
+            {{-- Footer Actions --}}
+            <div class="p-6 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                <button type="button" wire:click="$set('showSubjectModal', false)"
+                    class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold">
+                    Cancel
+                </button>
+                <button type="button" 
+                        wire:click="addSelectedSubjects"
+                        class="px-6 py-2 text-white rounded-lg font-semibold transition-all"
+                        :class="selectedCount.length > 0 ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed'"
+                        :disabled="selectedCount.length === 0">
+                    <i class="fas fa-plus mr-2"></i>
+                    <span>Add </span>
+                    <span x-show="selectedCount.length > 0" x-text="selectedCount.length"></span>
+                    <span> Subject(s)</span>
+                </button>
             </div>
         </div>
-    @endif
-
-    {{-- Student Section Change Modal --}}
+    </div>
+@endif    {{-- Student Section Change Modal --}}
     @if($editingStudentSectionId && $view === 'view')
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" x-data
             x-init="$wire.dispatch('open-modal', {id: 'student-section-modal'})">
