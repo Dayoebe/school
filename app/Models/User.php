@@ -2,259 +2,201 @@
 
 namespace App\Models;
 
-use App\Traits\InSchool;
-use Carbon\Carbon;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Fortify\TwoFactorAuthenticatable;
-use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
-use App\Models\StudentResult;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
-    use HasApiTokens;
-    use HasFactory;
-    use SoftDeletes;
-    use HasProfilePhoto;
-    use Notifiable;
-    use TwoFactorAuthenticatable;
-    use HasRoles;
-    use InSchool;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles, SoftDeletes;
 
     protected $fillable = [
         'name',
         'email',
         'password',
+        'gender',
         'birthday',
+        'phone',
         'address',
         'blood_group',
         'religion',
         'nationality',
-        'phone',
         'state',
         'city',
-        'gender',
         'school_id',
+        'locked',
+        'profile_photo_path',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-        'two_factor_recovery_codes',
-        'two_factor_secret',
     ];
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'birthday'          => 'datetime:Y-m-d',
+        'password' => 'hashed',
+        'birthday' => 'date', 
+        'locked' => 'boolean',
     ];
 
-    protected $appends = [
-        'profile_photo_url',
-    ];
+    protected $appends = ['profile_photo_url'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope('orderByName', fn(Builder $builder) => $builder->orderBy('name'));
-    }
-
-    /**
-     * Get the home route for the user based on their role.
-     * All roles will now redirect to the main 'dashboard' route,
-     * and the DashboardController will handle rendering the specific view.
-     *
-     * @return string
-     */
-    public function getHomeRoute(): string
-    {
-        if ($this->hasRole('super-admin')) {
-            return 'dashboard'; // Super-admin goes to the main dashboard
-        } elseif ($this->hasRole('admin')) {
-            return 'dashboard'; // Admin goes to the main dashboard
-        } elseif ($this->hasRole('teacher')) {
-            return 'dashboard'; // Teacher goes to the main dashboard
-        } elseif ($this->hasRole('student')) {
-            return 'dashboard'; // Student goes to the main dashboard
-        } elseif ($this->hasRole('parent')) {
-            return 'dashboard'; // Parent goes to the main dashboard
-        }
-        // Fallback for any other roles or if no role is assigned
-        return 'dashboard';
-    }
-
-    public function classes()
-    {
-        return $this->belongsToMany(MyClass::class, 'class_teacher', 'teacher_id', 'class_id');
-    }
-
-    public function results()
-    {
-        return $this->hasMany(Result::class, 'student_id');
-    }
-
-    public function studentRecords()
-    {
-        return $this->hasMany(StudentRecord::class);
-    }
-
+    // Scopes
     public function scopeStudents($query)
     {
         return $query->role('student');
     }
 
-    public function scopeApplicants($query)
+    public function scopeTeachers($query)
     {
-        return $query->whereHas('accountApplication', fn(Builder $query) => $query->otherCurrentStatus('rejected'))->role('applicant');
+        return $query->role('teacher');
     }
 
-    public function scopeRejectedApplicants($query)
+    public function scopeParents($query)
     {
-        return $query->role('applicant')->whereHas('accountApplication', fn(Builder $query) => $query->currentStatus('rejected'));
+        return $query->role('parent');
     }
 
+    public function scopeInSchool($query, $schoolId = null)
+    {
+        $schoolId = $schoolId ?? auth()->user()?->school_id;
+        return $query->where('school_id', $schoolId);
+    }
+
+    /**
+     * Scope to get only active (non-graduated) students
+     */
     public function scopeActiveStudents($query)
     {
-        return $query->whereRelation('studentRecord', 'is_graduated', 0);
+        return $query->whereHas('studentRecord', function($q) {
+            $q->where('is_graduated', false);
+        });
     }
 
-    public function school(): BelongsTo
+    /**
+     * Scope to get only graduated students (Alumni)
+     */
+    public function scopeGraduatedStudents($query)
+    {
+        return $query->whereHas('studentRecord', function($q) {
+            $q->where('is_graduated', true);
+        });
+    }
+
+    // Relationships
+    public function school()
     {
         return $this->belongsTo(School::class);
     }
+    public function subjects()
+{
+    return $this->belongsToMany(Subject::class, 'subject_user', 'user_id', 'subject_id');
+}
 
-    public function studentRecord(): HasOne
+public function teachingSubjects()
+{
+    return $this->subjects();
+}
+
+// Add these relationship methods to your User.php model:
+
+/**
+ * Get the account application for this user (if applicant)
+ */
+public function accountApplication()
+{
+    return $this->hasOne(AccountApplication::class);
+}
+
+/**
+ * Get the parent record for this user (if parent)
+ */
+public function parentRecord()
+{
+    return $this->hasOne(ParentRecord::class);
+}
+
+/**
+ * Get the teacher record for this user (if teacher)
+ */
+public function teacherRecord()
+{
+    return $this->hasOne(TeacherRecord::class);
+}
+    public function studentRecord()
     {
         return $this->hasOne(StudentRecord::class);
     }
 
-    public function graduatedStudentRecord(): HasOne
+    public function feeInvoices()
     {
-        return $this->hasOne(StudentRecord::class)->withoutGlobalScopes()->where('is_Graduated', true);
+        return $this->hasMany(FeeInvoice::class, 'user_id'); 
     }
 
-    public function allStudentRecords(): HasOne
+    public function parents()
     {
-        return $this->hasOne(StudentRecord::class)->withoutGlobalScopes();
+        return $this->belongsToMany(User::class, 'parent_records', 'student_id', 'user_id');
     }
 
-    public function parents(): BelongsToMany
+    public function children()
     {
-        return $this->belongsToMany(ParentRecord::class);
+        return $this->belongsToMany(User::class, 'parent_records', 'user_id', 'student_id');
     }
 
-    public function teacherRecord(): HasOne
-    {
-        return $this->hasOne(TeacherRecord::class);
-    }
-
-    public function parentRecord(): HasOne
-    {
-        return $this->hasOne(ParentRecord::class);
-    }
-
-    public function accountApplication(): HasOne
-    {
-        return $this->hasOne(AccountApplication::class);
-    }
-
-    public function feeInvoices(): HasMany
-    {
-        return $this->hasMany(FeeInvoice::class);
-    }
-
-    public function firstName()
-    {
-        return explode(' ', $this->name)[0];
-    }
-
-    public function getFirstNameAttribute()
-    {
-        return $this->firstName();
-    }
-
-    public function lastName()
-    {
-        return explode(' ', $this->name)[1];
-    }
-
-    public function getLastNameAttribute()
-    {
-        return $this->lastName();
-    }
-
-    public function otherNames()
-    {
-        $names = array_diff_key(explode(' ', $this->name), array_flip([0, 1]));
-        return implode(' ', $names);
-    }
-
-    public function getOtherNamesAttribute()
-    {
-        return $this->otherNames();
-    }
-
-    public function defaultProfilePhotoUrl()
-    {
-        $name = trim(collect(explode(' ', $this->name))->map(fn($segment) => mb_substr($segment, 0, 1))->join(' '));
-        $email = md5(strtolower(trim($this->email)));
-        
-        // Use a more reliable default avatar service
-        return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=7F9CF5&background=EBF4FF';
-    }
+    // Profile Photo
     public function getProfilePhotoUrlAttribute()
-{
-    // If user has no profile photo path, return default
-    if (!$this->profile_photo_path) {
-        return $this->defaultProfilePhotoUrl();
-    }
-    
-    // Check if file exists in storage
-    $path = storage_path('app/public/' . $this->profile_photo_path);
-    if (!file_exists($path)) {
-        return $this->defaultProfilePhotoUrl();
-    }
-    
-    // Return the actual URL
-    return asset('storage/' . $this->profile_photo_path);
-}
-
-    public function getBirthdayAttribute($value)
     {
-        return Carbon::parse($value)->format('Y-m-d');
+        return $this->profile_photo_path
+            ? asset('storage/' . $this->profile_photo_path)
+            : asset('images/default-avatar.png');
     }
 
-    public function subjects(): BelongsToMany
+    // Helper Methods
+    public function isStudent(): bool
     {
-        return $this->belongsToMany(Subject::class);
-    }
-    public function registeredSubjects()
-    {
-        return $this->belongsToMany(Subject::class, 'student_subject')
-            ->withTimestamps()
-            ->withPivot('my_class_id', 'section_id');
-    }
-
-    public function assignedSubjects(): BelongsToMany
-    {
-        return $this->belongsToMany(Subject::class, 'subject_user');
-    }
-    public function isAdmin(): bool
-    {
-        return $this->hasRole('admin');
+        return $this->hasRole('student');
     }
 
     public function isTeacher(): bool
     {
         return $this->hasRole('teacher');
+    }
+
+    public function isParent(): bool
+    {
+        return $this->hasRole('parent');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole('admin') || $this->hasRole('super_admin');
+    }
+
+    /**
+     * Get the home route based on user role
+     */
+    public function getHomeRoute(): string
+    {
+        if ($this->hasRole('super_admin') || $this->hasRole('admin')) {
+            return 'dashboard';
+        }
+        
+        if ($this->hasRole('teacher')) {
+            return 'teacher.dashboard';
+        }
+        
+        if ($this->hasRole('student')) {
+            return 'student.dashboard';
+        }
+        
+        if ($this->hasRole('parent')) {
+            return 'dashboard';
+        }
+        
+        return 'dashboard';
     }
 }
