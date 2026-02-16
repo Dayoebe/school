@@ -1,0 +1,3 @@
+[2026-02-16 15:30:37] local.ERROR: Debugbar exception: filemtime(): stat failed for /opt/lampp/htdocs/elites/vendor/php-debugbar/php-debugbar/src/DebugBar/Resources/vendor/jquery/dist/jquery.min.js  
+[2026-02-16 15:31:55] local.ERROR: Debugbar exception: filemtime(): stat failed for /opt/lampp/htdocs/elites/vendor/php-debugbar/php-debugbar/src/DebugBar/Resources/vendor/jquery/dist/jquery.min.js  
+[2026-02-16 15:32:16] local.ERROR: Debugbar exception: filemtime(): stat failed for /opt/lampp/htdocs/elites/vendor/php-debugbar/php-debugbar/src/DebugBar/Resources/vendor/jquery/dist/jquery.min.js  

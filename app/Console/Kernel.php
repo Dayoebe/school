@@ -34,10 +34,9 @@ class Kernel extends ConsoleKernel
 
     protected $commands = [
         \App\Console\Commands\AssignSubjectsCommand::class,
-        \App\Console\Commands\CleanInvalidResults::class,
         \App\Console\Commands\SetDefaultPassword::class,
         \App\Console\Commands\CleanupDeletedStudents::class,
-        \App\Console\Commands\CleanupInvalidResults::class,  //php artisan results:cleanup --dry-run
+        \App\Console\Commands\CleanupInvalidResults::class,
     ];
 }
     

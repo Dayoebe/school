@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
 
 // Livewire Components
 use App\Livewire\{
@@ -22,6 +21,8 @@ use App\Livewire\Fees\{
     ManageFeeInvoices,
     FeeInvoiceDetail
 };
+
+use App\Livewire\AccountApplications\ManageAccountApplications;
 use App\Livewire\Sections\{ManageSections, SectionDetail};
 use App\Livewire\Students\{ManageStudents, StudentDetail, PromoteStudents, GraduateStudents};
 use App\Livewire\Classes\{ManageClassGroups, ManageClasses};
@@ -32,21 +33,15 @@ use App\Http\Controllers\{
     AuthController,
     DashboardController,
     ProfileController,
-    SchoolController,
+    FeeInvoiceController,
     MyClassController,
     NoticeController,
     ResultController,
-    AccountApplicationController,
     SyllabusController,
-    TimetableController,
-    CustomTimetableItemController,
-    TimetableTimeSlotController,
     ExamController,
     ExamRecordController,
     ExamSlotController,
     GradeSystemController,
-    AdminController,
-    ParentController,
     LockUserAccountController
 };
 
@@ -103,6 +98,25 @@ Route::middleware('guest')->group(function () {
     Route::post('change-password', [AuthController::class, 'resetPassword'])->name('password.update');
 });
 
+
+
+
+// Account Applications (Full Livewire)
+Route::get('account-applications', ManageAccountApplications::class)
+    ->name('account-applications.index')
+    ->can('viewAny', [App\Models\User::class, 'applicant']);
+
+Route::get('account-applications/rejected', ManageAccountApplications::class)
+    ->name('account-applications.rejected-applications')
+    ->can('viewAny', [App\Models\User::class, 'applicant']);
+
+Route::get('account-applications/{applicant}', ManageAccountApplications::class)
+    ->name('account-applications.show')
+    ->can('view', 'applicant');
+
+Route::get('account-applications/{applicant}/change-status', ManageAccountApplications::class)
+    ->name('account-applications.change-status')
+    ->can('update', 'applicant');
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATED ROUTES
@@ -142,6 +156,28 @@ Route::middleware('auth')->group(function () {
     Route::get('/subjects/teacher/assign', \App\Livewire\Subjects\AssignTeacher::class)
         ->name('subjects.assign-teacher');
     // Route::get('/subjects/assign-teacher', AssignTeacher::class)->name('subjects.assign-teacher');
+});
+/*
+|--------------------------------------------------------------------------
+| PARENT MANAGEMENT (Full Livewire)
+|--------------------------------------------------------------------------
+*/
+
+use App\Livewire\Parents\{ManageParents, ParentDetail, AssignStudentsToParent};
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    Route::prefix('parents')->group(function () {
+        // Main parents page (list/create/edit all in one component)
+        Route::get('/', ManageParents::class)->name('parents.index');
+        
+        // Assign students - IMPORTANT: This must come BEFORE {parentId}
+        Route::get('/{parent}/assign-students', AssignStudentsToParent::class)
+            ->name('parents.assign-student');
+        
+        // View parent profile - This catches any ID that doesn't match above routes
+        Route::get('/{parentId}', ParentDetail::class)->name('parents.show');
+    });
 });
 
 /*
@@ -276,6 +312,49 @@ Route::prefix('results')->middleware(['auth', 'verified'])->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| SCHOOL MANAGEMENT (Full Livewire)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    // Schools list
+    Route::get('/schools', \App\Livewire\Schools\ManageSchools::class)
+        ->name('schools.index');
+    
+    // School Settings - MUST come BEFORE {schoolId} route
+    Route::get('/schools/settings', function() {
+        if (!auth()->user()->school_id) {
+            return redirect()->route('schools.index')->with('error', 'Please set a school first');
+        }
+        return redirect()->route('schools.index', ['mode' => 'edit', 'schoolId' => auth()->user()->school_id]);
+    })->name('schools.settings');
+    
+    // School detail - comes LAST
+    Route::get('/schools/{schoolId}', \App\Livewire\Schools\SchoolDetail::class)
+        ->name('schools.show');
+});
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN MANAGEMENT (Full Livewire)
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    
+    Route::get('/admins', \App\Livewire\Admins\ManageAdmins::class)
+        ->name('admins.index');
+    Route::get('/admins/{adminId}', \App\Livewire\Admins\AdminDetail::class)
+        ->name('admins.show');
+        
+    // Convenience routes for create/edit (they'll be handled by ManageAdmins component)
+    Route::get('/admins/create', function() {
+        return redirect()->route('admins.index', ['mode' => 'create']);
+    })->name('admins.create');
+});
+/*
+|--------------------------------------------------------------------------
 | DASHBOARD ADMINISTRATIVE ROUTES
 |--------------------------------------------------------------------------
 */
@@ -306,29 +385,45 @@ Route::middleware($dashboardMiddleware)->prefix('dashboard')->group(function () 
 
 /*
 |--------------------------------------------------------------------------
+| SCHOOL Timetable ROUTES
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth'])->group(function () {
+    
+    // Main timetable management (handles everything)
+    Route::get('/timetables', function () {
+        return view('pages.timetable.index');
+    })->name('timetables.index')->can('read timetable');
+
+    // Create timetable
+    Route::get('/timetables/create', function () {
+        return view('pages.timetable.index', ['initialView' => 'create']);
+    })->name('timetables.create')->can('create timetable');
+
+    // Custom items
+    Route::get('/custom-timetable-items', function () {
+        return view('pages.timetable.index', ['initialView' => 'custom-items']);
+    })->name('custom-timetable-items.index')->can('read custom timetable items');
+
+    Route::get('/custom-timetable-items/create', function () {
+        return view('pages.timetable.index', ['initialView' => 'custom-items']);
+    })->name('custom-timetable-items.create')->can('create custom timetable items');
+
+});
+
+/*
+|--------------------------------------------------------------------------
 | SCHOOL ADMINISTRATION ROUTES
 |--------------------------------------------------------------------------
 */
 
+
 Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
-
-    // School Settings
-    Route::get('schools/settings', [SchoolController::class, 'settings'])
-        ->name('schools.settings')
-        ->middleware('App\Http\Middleware\EnsureSuperAdminHasSchoolId');
-
-    Route::resource('schools', SchoolController::class);
-    Route::post('schools/set-school', [SchoolController::class, 'setSchool'])->name('schools.setSchool');
 
     Route::middleware('App\Http\Middleware\EnsureSuperAdminHasSchoolId')->group(function () {
 
         // User Management
-        Route::resource('admins', AdminController::class);
-        Route::resource('parents', ParentController::class);
-
-        Route::get('parents/{parent}/assign-student-to-parent', [ParentController::class, 'assignStudentsView'])
-            ->name('parents.assign-student');
-        Route::post('parents/{parent}/assign-student-to-parent', [ParentController::class, 'assignStudent']);
         Route::post('users/lock-account/{user}', LockUserAccountController::class)->name('user.lock-account');
 
         // Notices
@@ -340,15 +435,7 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
             'App\Http\Middleware\CreateCurrentAcademicYearRecord'
         ])->group(function () {
 
-            // Account Applications
-            Route::get('account-applications/rejected-applications', [AccountApplicationController::class, 'rejectedApplicationsView'])
-                ->name('account-applications.rejected-applications');
-            Route::resource('account-applications', AccountApplicationController::class)
-                ->parameters(['account-applications' => 'applicant']);
-            Route::get('account-applications/change-status/{applicant}', [AccountApplicationController::class, 'changeStatusView'])
-                ->name('account-applications.change-status');
-            Route::post('account-applications/change-status/{applicant}', [AccountApplicationController::class, 'changeStatus']);
-
+     
             // Semester Dependent Routes
             Route::middleware('App\Http\Middleware\EnsureSemesterIsSet')->group(function () {
 
@@ -356,18 +443,8 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
                 // Syllabus
                 Route::resource('syllabi', SyllabusController::class);
 
-                // Timetables
-                Route::resource('timetables', TimetableController::class);
-                Route::resource('custom-timetable-items', CustomTimetableItemController::class);
-                Route::get('timetables/{timetable}/manage', [TimetableController::class, 'manage'])
-                    ->name('timetables.manage');
-                Route::get('timetables/{timetable}/print', [TimetableController::class, 'print'])
-                    ->name('timetables.print');
-
-                Route::resource('timetables/manage/time-slots', TimetableTimeSlotController::class);
-                Route::post('timetables/manage/time-slots/{time_slot}/record/create', [TimetableTimeSlotController::class, 'addTimetableRecord'])
-                    ->name('timetables.records.create')->scopeBindings();
-
+   
+                
                 // Exams
                 Route::resource('exams', ExamController::class);
                 Route::post('exams/{exam}/set-active-status', [ExamController::class, 'setExamActiveStatus'])
@@ -396,45 +473,3 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
         });
     });
 });
-
-/*
-|--------------------------------------------------------------------------
-| UTILITY & MAINTENANCE ROUTES
-|--------------------------------------------------------------------------
-*/
-
-Route::prefix('artisan-commands')->group(function () {
-    Route::get('/clean-invalid-results', function () {
-        Artisan::call('app:clean-invalid-results');
-        return "Command executed: <pre>" . Artisan::output() . "</pre>";
-    })->name('artisan.clean-invalid-results');
-
-    Route::get('/cleanup-deleted-students', function () {
-        Artisan::call('cleanup:deleted-students', ['--force' => true]);
-        return "Command executed: <pre>" . Artisan::output() . "</pre>";
-    })->name('artisan.cleanup-deleted-students');
-
-    Route::get('/password-default', function () {
-        Artisan::call('password:default');
-        return "Command executed: <pre>" . Artisan::output() . "</pre>";
-    })->name('artisan.password-default');
-});
-
-Route::get('/export-db', function () {
-    $file = storage_path('app/backup.sql');
-    $dump = new \Ifsnop\Mysqldump\Mysqldump(
-        'mysql:host=' . env('DB_HOST') . ';dbname=' . env('DB_DATABASE'),
-        env('DB_USERNAME'),
-        env('DB_PASSWORD')
-    );
-    $dump->start($file);
-    return response()->download($file);
-});
-
-Route::get('/artisan-scheduler', function () {
-    if (request('key') === env('SCHEDULER_KEY')) {
-        Artisan::call('schedule:run');
-        return response()->json(['status' => 'success'], 200);
-    }
-    abort(403, 'Unauthorized');
-})->middleware('throttle:3,1');
