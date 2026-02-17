@@ -2,66 +2,45 @@
     $breadcrumbs = [['href' => route('dashboard'), 'text' => 'Dashboard', 'active' => true]];
 @endphp
 
-{{-- Reverting to original layout. This file acts as a dispatcher for different roles. --}}
 @extends('layouts.app')
 
 @section('title', __('Dashboard'))
 @section('page_heading', 'Dashboard')
 
 @section('content')
+    {{-- Status Messages --}}
     @if (session('status'))
-        <div class="bg-green-100 text-green-800 p-4 rounded mb-4">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
             {{ session('status') }}
         </div>
     @endif
 
-    @can('set school')
-        @livewire('set-school')
-    @endcan
-
-{{-- <livewire:manage-academic-years />
-<livewire:manage-semesters />
-     --}}
-
+   
+    {{-- Password Warning --}}
     @livewire('password-warning')
-    <livewire:dashboard-data-cards />
 
+    {{-- Dashboard Statistics (Admin/Super Admin Only) --}}
+        <div class="mb-6">
+            @livewire('dashboard-stats')
+        </div>
+   
+    {{-- Notices Section --}}
+   
+        <div class="mb-6">
+            @livewire('list-notices-table')
+        </div>
+   
+   
 
-    @can('read notice')
-        @livewire('list-notices-table')
-    @endcan
-
-    @if (auth()->user()->hasRole('applicant'))
-        @livewire('application-history', ['applicant' => auth()->user()])
-    @endif
-
-    @can('read applicant')
-        @livewire('list-account-applications-table')
-    @endcan
-
-
-    {{-- Include the role-specific dashboard content.
-         Each included partial or Livewire component should manage its own layout if needed,
-         or simply provide the content to be inserted into layouts.app. --}}
-    @if (auth()->user()->hasRole('admin'))
-        @include('dashboard.admin')
-
-    @elseif(auth()->user()->hasRole('teacher'))
-    {{-- <livewire:teacher-dashboard /> --}}
-
+    {{-- Parent Dashboard --}}
     
-    @include('dashboard.teacher', [
-        'teacherClasses' => $teacherClasses ?? new \Illuminate\Support\Collection(),
-        'teacherSubjects' => $teacherSubjects ?? new \Illuminate\Support\Collection(),
-        'subjectPerformance' => $subjectPerformance ?? [],
-        'upcomingEvents' => $upcomingEvents ?? [],
-        'academicYear' => $academicYear ?? null,
-        'semester' => $semester ?? null,
-    ])
-
-        
-    @elseif(auth()->user()->hasRole('student'))
-        
-        <livewire:student-dashboard />
-    @endif
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4">
+                Welcome, {{ auth()->user()->name }}
+            </h2>
+            <p class="text-gray-600 dark:text-gray-400">
+                View your children's information and academic progress.
+            </p>
+        </div>
+    
 @endsection

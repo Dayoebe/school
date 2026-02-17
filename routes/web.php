@@ -15,6 +15,12 @@ use App\Livewire\{
     Teachers\ManageTeachers,
     Teachers\TeacherDetail
 };
+use App\Livewire\Cbt\{
+    CbtExamSelection,
+    CbtExamInterface,
+    CbtViewer,
+    CbtManagement
+};
 use App\Livewire\Fees\{
     ManageFeeCategories,
     ManageFees,
@@ -232,6 +238,22 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 Route::prefix('teacher')->middleware(['auth', 'verified', 'role:teacher'])->group(function () {
     Route::resource('results', ResultController::class)->except(['show']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| CBT ROUTES
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware(['auth', 'verified'])->prefix('cbt')->name('cbt.')->group(function () {
+    Route::get('/exams', CbtExamSelection::class)->name('exams');
+    Route::get('/exam/{assessment}', CbtExamInterface::class)->name('exam.take');
+    Route::get('/results', CbtViewer::class)->name('viewer');
+
+    Route::get('/manage', CbtManagement::class)
+        ->middleware('role:super_admin|admin|teacher')
+        ->name('manage');
 });
 
 /*

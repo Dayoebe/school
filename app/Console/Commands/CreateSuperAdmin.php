@@ -20,7 +20,7 @@ class CreateSuperAdmin extends Command
      *
      * @var string
      */
-    protected $signature = 'skuul:create-super-admin';
+    protected $signature = 'Elites:create-super-admin';
 
     /**
      * The console command description.
