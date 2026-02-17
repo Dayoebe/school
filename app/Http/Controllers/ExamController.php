@@ -6,18 +6,14 @@ use App\Http\Requests\StoreExamRequest;
 use App\Http\Requests\UpdateExamRequest;
 use App\Http\Requests\UpdateExamStatusRequest;
 use App\Models\Exam;
-use App\Services\Exam\ExamService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class ExamController extends Controller
 {
-    public ExamService $examService;
-
-    public function __construct(ExamService $examService)
+    public function __construct()
     {
-        $this->examService = $examService;
         $this->authorizeResource(Exam::class, 'exam');
     }
 
@@ -43,7 +39,13 @@ class ExamController extends Controller
     public function store(StoreExamRequest $request): RedirectResponse
     {
         $data = $request->except('_token');
-        $exam = $this->examService->createExam($data);
+        $exam = Exam::create([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'semester_id' => $data['semester_id'],
+            'start_date' => $data['start_date'],
+            'stop_date' => $data['stop_date'],
+        ]);
 
         return redirect()->route('exam-slots.create', $exam)->with('success', 'Exam created successfully, Now, create exam slots for the exam');
     }
@@ -70,7 +72,13 @@ class ExamController extends Controller
     public function update(UpdateExamRequest $request, Exam $exam): RedirectResponse
     {
         $data = $request->except(['_method', '_token']);
-        $this->examService->updateExam($exam, $data);
+        $exam->update([
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'semester_id' => $data['semester_id'],
+            'start_date' => $data['start_date'],
+            'stop_date' => $data['stop_date'],
+        ]);
 
         return back()->with('success', 'Exam updated successfully');
     }
@@ -80,7 +88,7 @@ class ExamController extends Controller
      */
     public function destroy(Exam $exam): RedirectResponse
     {
-        $this->examService->deleteExam($exam);
+        $exam->delete();
 
         return back()->with('success', 'Exam deleted successfully');
     }
@@ -133,7 +141,7 @@ class ExamController extends Controller
         $this->authorize('update', $exam);
         //get status from request
         $status = $request->status;
-        $this->examService->setExamActiveStatus($exam, $status);
+        $exam->update(['active' => $status]);
 
         return back()->with('success', 'Exam status updated successfully');
     }
@@ -148,7 +156,12 @@ class ExamController extends Controller
         $this->authorize('update', $exam);
         //get status from request
         $status = $request->status;
-        $this->examService->setPublishResultStatus($exam, $status);
+
+        if ($exam->examSlots()->count() <= 0 && (bool) $status === true) {
+            return back()->with('danger', 'Cannot publish result for exam without exam slots');
+        }
+
+        $exam->update(['publish_result' => $status]);
 
         return back()->with('success', 'Result published status updated successfully');
     }

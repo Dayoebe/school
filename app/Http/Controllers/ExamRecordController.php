@@ -5,19 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreExamRecordRequest;
 use App\Http\Requests\UpdateExamRecordRequest;
 use App\Models\ExamRecord;
-use App\Services\Exam\ExamRecordService;
+use App\Models\ExamSlot;
+use App\Models\Subject;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ExamRecordController extends Controller
 {
-    public $examRecord;
-
-    public function __construct(ExamRecordService $examRecord)
+    public function __construct()
     {
-        $this->examRecord = $examRecord;
-
         $this->authorizeResource(ExamRecord::class, 'exam_record');
     }
 
@@ -43,8 +42,39 @@ class ExamRecordController extends Controller
     public function store(StoreExamRecordRequest $request): RedirectResponse
     {
         $data = $request->except('_token');
+        $subject = Subject::findOrFail($data['subject_id']);
 
-        $this->examRecord->createExamRecord($data);
+        if (
+            auth()->user()->hasRole('teacher')
+            && $subject->teachers()->where('users.id', auth()->id())->doesntExist()
+        ) {
+            abort(403, 'Creating exam record for this subject is unauthorised.');
+        }
+
+        DB::transaction(function () use ($data) {
+            foreach ($data['exam_records'] as $record) {
+                $examSlot = ExamSlot::findOrFail($record['exam_slot_id']);
+                $studentMarks = $record['student_marks'] ?? null;
+
+                if ($studentMarks !== null && $studentMarks !== '' && (float) $studentMarks > (float) $examSlot->total_marks) {
+                    throw ValidationException::withMessages([
+                        'exam_records' => 'Student marks cannot be greater than total marks',
+                    ]);
+                }
+
+                ExamRecord::updateOrCreate(
+                    [
+                        'user_id' => $data['user_id'],
+                        'section_id' => $data['section_id'],
+                        'subject_id' => $data['subject_id'],
+                        'exam_slot_id' => $record['exam_slot_id'],
+                    ],
+                    [
+                        'student_marks' => ($studentMarks === '' ? null : $studentMarks),
+                    ]
+                );
+            }
+        });
 
         return back()->with('success', 'Exam Records Created/updated Successfully');
     }

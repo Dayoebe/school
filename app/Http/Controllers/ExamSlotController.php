@@ -6,18 +6,15 @@ use App\Http\Requests\StoreExamSlotRequest;
 use App\Http\Requests\UpdateExamSlotRequest;
 use App\Models\Exam;
 use App\Models\ExamSlot;
-use App\Services\Exam\ExamSlotService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ExamSlotController extends Controller
 {
-    public ExamSlotService $examSlot;
-
-    public function __construct(ExamSlotService $examSlot)
+    public function __construct()
     {
-        $this->examSlot = $examSlot;
         $this->authorizeResource(ExamSlot::class, 'exam_slot');
     }
 
@@ -43,7 +40,13 @@ class ExamSlotController extends Controller
     public function store(StoreExamSlotRequest $request, Exam $exam): RedirectResponse
     {
         $data = $request->except('_token');
-        $this->examSlot->createExamSlot($exam, $data);
+        DB::transaction(function () use ($exam, $data) {
+            $exam->examSlots()->create([
+                'name' => $data['name'],
+                'description' => $data['description'] ?? null,
+                'total_marks' => $data['total_marks'],
+            ]);
+        });
 
         return back()->with('success', 'Exam Slot Created Successfully');
     }
@@ -70,7 +73,13 @@ class ExamSlotController extends Controller
     public function update(UpdateExamSlotRequest $request, Exam $exam, ExamSlot $examSlot): RedirectResponse
     {
         $data = $request->except('_token', '_method');
-        $this->examSlot->updateExamSlot($examSlot, $data);
+        DB::transaction(function () use ($examSlot, $data) {
+            $examSlot->update([
+                'name' => $data['name'],
+                'description' => $data['description'] ?? null,
+                'total_marks' => $data['total_marks'],
+            ]);
+        });
 
         return back()->with('success', 'Exam Slot Updated Successfully');
     }
@@ -80,7 +89,7 @@ class ExamSlotController extends Controller
      */
     public function destroy(Exam $exam, ExamSlot $examSlot): RedirectResponse
     {
-        $this->examSlot->deleteExamSlot($examSlot);
+        $examSlot->delete();
 
         return back()->with('success', 'Exam Slot Deleted Successfully');
     }
