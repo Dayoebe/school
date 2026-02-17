@@ -5,18 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreGradeSystemRequest;
 use App\Http\Requests\UpdateGradeSystemRequest;
 use App\Models\GradeSystem;
-use App\Services\GradeSystem\GradeSystemService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class GradeSystemController extends Controller
 {
-    public $gradeSystem;
-
-    public function __construct(GradeSystemService $gradeSystem)
+    public function __construct()
     {
-        $this->gradeSystem = $gradeSystem;
         $this->authorizeResource(GradeSystem::class, 'grade_system');
     }
 
@@ -42,7 +38,24 @@ class GradeSystemController extends Controller
     public function store(StoreGradeSystemRequest $request): RedirectResponse
     {
         $data = $request->except('_token');
-        $this->gradeSystem->createGradeSystem($data);
+
+        $gradesInDb = GradeSystem::where('class_group_id', $data['class_group_id'])->get();
+        if ($this->gradeRangeExists(
+            ['grade_from' => $data['grade_from'], 'grade_till' => $data['grade_till']],
+            $gradesInDb
+        )) {
+            return back()
+                ->withErrors(['grade_from' => 'Grade range is in another range in class group'])
+                ->withInput();
+        }
+
+        GradeSystem::create([
+            'class_group_id' => $data['class_group_id'],
+            'grade_from' => $data['grade_from'],
+            'grade_till' => $data['grade_till'],
+            'name' => $data['name'],
+            'remark' => $data['remark'],
+        ]);
 
         return back()->with('success', 'Grade range created successfully');
     }
@@ -71,7 +84,26 @@ class GradeSystemController extends Controller
     public function update(UpdateGradeSystemRequest $request, GradeSystem $gradeSystem): RedirectResponse
     {
         $data = $request->except('_token');
-        $this->gradeSystem->updateGradeSystem($gradeSystem, $data);
+        $gradesInDb = GradeSystem::where('class_group_id', $data['class_group_id'])
+            ->where('id', '!=', $gradeSystem->id)
+            ->get();
+
+        if ($this->gradeRangeExists(
+            ['grade_from' => $data['grade_from'], 'grade_till' => $data['grade_till']],
+            $gradesInDb
+        )) {
+            return back()
+                ->withErrors(['grade_from' => 'Grade range is in another range in class group'])
+                ->withInput();
+        }
+
+        $gradeSystem->update([
+            'class_group_id' => $data['class_group_id'],
+            'grade_from' => $data['grade_from'],
+            'grade_till' => $data['grade_till'],
+            'name' => $data['name'],
+            'remark' => $data['remark'],
+        ]);
 
         return back()->with('success', 'Grade range updated successfully');
     }
@@ -81,8 +113,31 @@ class GradeSystemController extends Controller
      */
     public function destroy(GradeSystem $gradeSystem): RedirectResponse
     {
-        $this->gradeSystem->deleteGradeSystem($gradeSystem);
+        $gradeSystem->delete();
 
         return back()->with('success', 'successfully deleted grade');
+    }
+
+    private function gradeRangeExists(array $grade, $grades): bool
+    {
+        foreach ($grades as $existingGrade) {
+            if ($grade['grade_from'] >= $existingGrade['grade_from'] && $grade['grade_till'] <= $existingGrade['grade_till']) {
+                return true;
+            }
+
+            if ($existingGrade['grade_from'] >= $grade['grade_from'] && $existingGrade['grade_till'] <= $grade['grade_till']) {
+                return true;
+            }
+
+            if (in_array($grade['grade_from'], range($existingGrade['grade_from'], $existingGrade['grade_till']))) {
+                return true;
+            }
+
+            if (in_array($grade['grade_till'], range($existingGrade['grade_from'], $existingGrade['grade_till']))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

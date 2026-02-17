@@ -9,5 +9,5 @@
 @section('page_heading', __('Create Syllabus'))
 
 @section('content' )
-    @livewire('create-syllabus-form')
+    @livewire('syllabi.create-syllabus-form')
 @endsection

@@ -9,5 +9,5 @@
 @section('page_heading', __("View $syllabus->name") )
 
 @section('content')
-    @livewire('show-syllabus', ['syllabus' => $syllabus])
+    @livewire('syllabi.show-syllabus', ['syllabus' => $syllabus])
 @endsection

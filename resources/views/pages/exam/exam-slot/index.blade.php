@@ -9,5 +9,5 @@
 @section('page_heading',   __("Exam Slots In $exam->name"))
 
 @section('content', )
-    @livewire('list-exam-slots-table', ['exam'=> $exam])
+    @livewire('exams.slots.list-exam-slots-table', ['exam'=> $exam])
 @endsection

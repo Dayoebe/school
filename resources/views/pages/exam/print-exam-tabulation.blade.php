@@ -3,7 +3,7 @@
 @section('title', 'Print exam tabulation')
 
 @section('content')
-    @livewire('mark-tabulation', ['tabulatedRecords' => $tabulatedRecords,'totalMarksAttainableInEachSubject' => $totalMarksAttainableInEachSubject, 'subjects' => $subjects])
+    @livewire('exams.tabulation.mark-tabulation', ['tabulatedRecords' => $tabulatedRecords,'totalMarksAttainableInEachSubject' => $totalMarksAttainableInEachSubject, 'subjects' => $subjects])
 @endsection
 
 @section('style')

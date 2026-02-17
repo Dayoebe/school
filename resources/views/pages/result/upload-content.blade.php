@@ -1,5 +1,5 @@
 <div x-data="{
-    isSaving: @entangle('isSaving'),
+    isSaving: @entangle('isSaving').live,
     showSuccess: false,
     successMessage: '',
     showError: false,
@@ -56,7 +56,7 @@ Livewire.on('showError', (message) => {
                 <span x-text="errorMessage"></span>
             </div>
 
-            <form wire:submit.prevent="saveResults">
+            <form wire:submit="saveResults">
                 <div class="overflow-x-auto rounded-xl shadow-lg border border-gray-200">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-indigo-50">
@@ -97,7 +97,7 @@ Livewire.on('showError', (message) => {
                                         {{ $subject->name }}</td>
                                     <td class="px-2 py-1 text-center">
                                         <input type="number"
-                                            wire:model.debounce.500ms="results.{{ $subject->id }}.ca1_score"
+                                            wire:model.live.debounce.500ms="results.{{ $subject->id }}.ca1_score"
                                             class="w-full border-gray-300 rounded-lg shadow-sm text-center px-1 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                             min="0" max="10">
                                         @error('results.' . $subject->id . '.ca1_score')
@@ -106,7 +106,7 @@ Livewire.on('showError', (message) => {
                                     </td>
                                     <td class="px-2 py-1 text-center">
                                         <input type="number"
-                                            wire:model.debounce.500ms="results.{{ $subject->id }}.ca2_score"
+                                            wire:model.live.debounce.500ms="results.{{ $subject->id }}.ca2_score"
                                             class="w-full border-gray-300 rounded-lg shadow-sm text-center px-1 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                             min="0" max="10">
                                         @error('results.' . $subject->id . '.ca2_score')
@@ -115,7 +115,7 @@ Livewire.on('showError', (message) => {
                                     </td>
                                     <td class="px-2 py-1 text-center">
                                         <input type="number"
-                                            wire:model.debounce.500ms="results.{{ $subject->id }}.ca3_score"
+                                            wire:model.live.debounce.500ms="results.{{ $subject->id }}.ca3_score"
                                             class="w-full border-gray-300 rounded-lg shadow-sm text-center px-1 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                             min="0" max="10">
                                         @error('results.' . $subject->id . '.ca3_score')
@@ -124,7 +124,7 @@ Livewire.on('showError', (message) => {
                                     </td>
                                     <td class="px-2 py-1 text-center">
                                         <input type="number"
-                                            wire:model.debounce.500ms="results.{{ $subject->id }}.ca4_score"
+                                            wire:model.live.debounce.500ms="results.{{ $subject->id }}.ca4_score"
                                             class="w-full border-gray-300 rounded-lg shadow-sm text-center px-1 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                             min="0" max="10">
                                         @error('results.' . $subject->id . '.ca4_score')
@@ -133,7 +133,7 @@ Livewire.on('showError', (message) => {
                                     </td>
                                     <td class="px-2 py-1 text-center">
                                         <input type="number"
-                                            wire:model.debounce.500ms="results.{{ $subject->id }}.exam_score"
+                                            wire:model.live.debounce.500ms="results.{{ $subject->id }}.exam_score"
                                             class="w-full border-gray-300 rounded-lg shadow-sm text-center px-1 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                             min="0" max="60">
                                         @error('results.' . $subject->id . '.exam_score')
@@ -152,7 +152,7 @@ Livewire.on('showError', (message) => {
                                         )"></span>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <input type="text" wire:model.lazy="results.{{ $subject->id }}.comment"
+                                        <input type="text" wire:model.live.blur="results.{{ $subject->id }}.comment"
                                             class="w-full border-gray-300 rounded-lg shadow-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                             placeholder="Teacher's comment">
                                         @error('results.' . $subject->id . '.comment')
@@ -191,7 +191,7 @@ Livewire.on('showError', (message) => {
                             class="block font-semibold text-gray-800 mb-2 flex items-center">
                             <i class="fas fa-chalkboard-teacher mr-2 text-blue-600"></i> Overall Teacher's Comment
                         </label>
-                        <textarea id="overallTeacherComment" wire:model.lazy="overallTeacherComment"
+                        <textarea id="overallTeacherComment" wire:model.live.blur="overallTeacherComment"
                             class="w-full border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 text-gray-800 h-24 resize-y"
                             placeholder="Enter overall comment for the student's performance..."></textarea>
                         @error('overallTeacherComment')
@@ -203,7 +203,7 @@ Livewire.on('showError', (message) => {
                             class="block font-semibold text-gray-800 mb-2 flex items-center">
                             <i class="fas fa-user-tie mr-2 text-green-600"></i> Principal's Comment
                         </label>
-                        <textarea id="principal_comment" wire:model.lazy="principalComment"
+                        <textarea id="principal_comment" wire:model.live.blur="principalComment"
                             class="w-full border-gray-300 rounded-lg p-3 focus:ring-blue-500 focus:border-blue-500 text-gray-800 h-24 resize-y"
                             placeholder="Enter principal's comment..."></textarea>
                         @error('principalComment')
@@ -223,7 +223,7 @@ Livewire.on('showError', (message) => {
                             <div>
                                 <label for="presentDays" class="block text-sm font-medium text-gray-700 mb-2">Days
                                     Present</label>
-                                <input type="number" wire:model.lazy="presentDays" id="presentDays"
+                                <input type="number" wire:model.live.blur="presentDays" id="presentDays"
                                     class="w-full border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                                     min="0" placeholder="e.g., 90">
                                 @error('presentDays')
@@ -233,7 +233,7 @@ Livewire.on('showError', (message) => {
                             <div>
                                 <label for="absentDays" class="block text-sm font-medium text-gray-700 mb-2">Days
                                     Absent</label>
-                                <input type="number" wire:model.lazy="absentDays" id="absentDays"
+                                <input type="number" wire:model.live.blur="absentDays" id="absentDays"
                                     class="w-full border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:ring-blue-500 focus:border-blue-500 text-gray-800"
                                     min="0" placeholder="e.g., 5">
                                 @error('absentDays')
@@ -264,7 +264,7 @@ Livewire.on('showError', (message) => {
                                                 {{ $trait }}:
                                             </label>
                                             <input type="number"
-                                                wire:model.lazy="psychomotorScores.{{ $trait }}"
+                                                wire:model.live.blur="psychomotorScores.{{ $trait }}"
                                                 id="psychomotor-{{ Str::slug($trait) }}"
                                                 class="w-full border-gray-300 rounded-lg shadow-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                 min="1" max="5" placeholder="1-5">
@@ -290,7 +290,7 @@ Livewire.on('showError', (message) => {
                                                 {{ $trait }}:
                                             </label>
                                             <input type="number"
-                                                wire:model.lazy="affectiveScores.{{ $trait }}"
+                                                wire:model.live.blur="affectiveScores.{{ $trait }}"
                                                 id="affective-{{ Str::slug($trait) }}"
                                                 class="w-full border-gray-300 rounded-lg shadow-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                 min="1" max="5" placeholder="1-5">
@@ -316,7 +316,7 @@ Livewire.on('showError', (message) => {
                                                 {{ $activity }}:
                                             </label>
                                             <input type="number"
-                                                wire:model.lazy="coCurricularScores.{{ $activity }}"
+                                                wire:model.live.blur="coCurricularScores.{{ $activity }}"
                                                 id="cocurricular-{{ Str::slug($activity) }}"
                                                 class="w-full border-gray-300 rounded-lg shadow-sm px-2 py-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                                                 min="1" max="5" placeholder="1-5">

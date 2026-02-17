@@ -4,51 +4,76 @@ namespace App\Http\Controllers;
 
 use App\Events\AccountStatusChanged;
 use App\Http\Requests\RegistrationRequest;
-use App\Services\AccountApplication\AccountApplicationService;
-use App\Services\User\UserService;
-use Auth;
+use App\Models\AccountApplication;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class RegistrationController extends Controller
 {
-    /**
-     * Account application service instance.
-     */
-    public AccountApplicationService $accountApplicationService;
-
-    /**
-     * User service instance.
-     */
-    public UserService $userService;
-
-    public function __construct(AccountApplicationService $accountApplicationService, UserService $userService)
-    {
-        $this->accountApplicationService = $accountApplicationService;
-        $this->userService = $userService;
-    }
-
     public function registerView()
     {
         return view('auth.register');
     }
 
-    public function register(RegistrationRequest $request)
+    public function register(RegistrationRequest $request): RedirectResponse
     {
-        $request['school_id'] = $request->school;
+        $request->validate([
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'name' => 'nullable|string|max:255',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'other_names' => 'nullable|string|max:255',
+        ]);
 
-        $user = $this->userService->createUser($request);
+        $role = Role::findOrFail($request->role);
 
-        //assign applicant role
-        $user->assignRole('applicant');
+        $name = $request->name ?? trim(sprintf(
+            '%s %s %s',
+            $request->first_name ?? '',
+            $request->last_name ?? '',
+            $request->other_names ?? ''
+        ));
+        $name = trim($name) !== '' ? trim($name) : $request->email;
 
-        $accountApplication = $this->accountApplicationService->createAccountApplication($user->id, $request->role);
+        $user = DB::transaction(function () use ($request, $name, $role) {
+            $user = User::create([
+                'name' => $name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'school_id' => $request->school,
+                'gender' => $request->gender,
+                'birthday' => $request->birthday,
+                'nationality' => $request->nationality,
+                'state' => $request->state,
+                'city' => $request->city,
+                'religion' => $request->religion,
+                'blood_group' => $request->blood_group,
+                'phone' => $request->phone,
+                'address' => $request->address,
+            ]);
+
+            $user->assignRole('applicant');
+
+            AccountApplication::create([
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+            ]);
+
+            return $user;
+        });
+
+        $accountApplication = $user->accountApplication;
+        $status = 'Application Received';
+        $reason = 'Application has been received, we would reach out to you for further information';
+        $accountApplication?->setStatus($status, $reason);
 
         Auth::login($user);
 
-        $status = 'Application Received';
-        $reason = 'Application has been received, we would reach out to you for further information';
-        $accountApplication->setStatus($status, $reason);
-
-        //dispatch event
         AccountStatusChanged::dispatch($user, $status, $reason);
 
         return back()->with('success', 'Registration complete, you would receive an email to verify your account');

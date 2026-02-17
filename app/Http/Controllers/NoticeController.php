@@ -5,19 +5,15 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreNoticeRequest;
 use App\Http\Requests\UpdateNoticeRequest;
 use App\Models\Notice;
-use App\Services\Notice\NoticeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class NoticeController extends Controller
 {
-    public $notice;
-
-    public function __construct(NoticeService $notice)
+    public function __construct()
     {
         $this->authorizeResource(Notice::class, 'notice');
-        $this->notice = $notice;
     }
 
     /**
@@ -41,7 +37,19 @@ class NoticeController extends Controller
      */
     public function store(StoreNoticeRequest $request): RedirectResponse
     {
-        $this->notice->storeNotice($request->except('_token'));
+        $data = $request->except('_token');
+        $attachmentPath = isset($data['attachment'])
+            ? $data['attachment']->store('notice/', 'public')
+            : null;
+
+        Notice::create([
+            'title' => $data['title'],
+            'content' => $data['content'],
+            'start_date' => $data['start_date'],
+            'stop_date' => $data['stop_date'],
+            'attachment' => $attachmentPath,
+            'school_id' => auth()->user()->school_id,
+        ]);
 
         return back()->with('success', 'Notice created successfully');
     }
@@ -75,7 +83,7 @@ class NoticeController extends Controller
      */
     public function destroy(Notice $notice): RedirectResponse
     {
-        $this->notice->deleteNotice($notice);
+        $notice->delete();
 
         return back()->with('success', 'Notice deleted successfully');
     }

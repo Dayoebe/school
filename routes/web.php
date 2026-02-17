@@ -4,16 +4,16 @@ use Illuminate\Support\Facades\Route;
 
 // Livewire Components
 use App\Livewire\{
-    StudentDashboard,
-    TeacherDashboard,
-    ManageAcademicYears,
-    ShowAcademicYear,
-    ManageSemesters,
     Subjects\ManageSubjects,
     Subjects\SubjectDetail,
     Subjects\AssignTeacher,
     Teachers\ManageTeachers,
     Teachers\TeacherDetail
+};
+use App\Livewire\AcademicYears\{
+    ManageAcademicYears,
+    ShowAcademicYear,
+    ManageSemesters
 };
 use App\Livewire\Cbt\{
     CbtExamSelection,
@@ -227,14 +227,9 @@ Route::middleware(['auth', 'verified'])->prefix('fees')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| ROLE-SPECIFIC DASHBOARDS
+| TEACHER RESULT ROUTES
 |--------------------------------------------------------------------------
 */
-
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/student/dashboard', StudentDashboard::class)->name('student.dashboard');
-    Route::get('/teacher/dashboard', TeacherDashboard::class)->name('teacher.dashboard');
-});
 
 Route::prefix('teacher')->middleware(['auth', 'verified', 'role:teacher'])->group(function () {
     Route::resource('results', ResultController::class)->except(['show']);
@@ -252,7 +247,7 @@ Route::middleware(['auth', 'verified'])->prefix('cbt')->name('cbt.')->group(func
     Route::get('/results', CbtViewer::class)->name('viewer');
 
     Route::get('/manage', CbtManagement::class)
-        ->middleware('role:super_admin|admin|teacher')
+        ->middleware('role:super-admin|super_admin|admin|principal|teacher')
         ->name('manage');
 });
 

@@ -182,7 +182,7 @@
             </div>
             <h3 class="text-xl font-semibold text-themed-secondary mb-2">No CBT Assessments Available</h3>
             <p class="text-themed-tertiary mb-6">There are currently no computer-based tests available for you to take.</p>
-            <a href="{{ route('student.dashboard') }}" 
+            <a href="{{ route('dashboard') }}" 
                 class="inline-flex items-center px-4 py-2 bg-accent-themed-primary text-white rounded-lg hover:bg-accent-themed-secondary transition-colors">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
             </a>

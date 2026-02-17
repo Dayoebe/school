@@ -20,7 +20,7 @@ class MyClass extends Model
 
     public function school()
     {
-        $this->hasOneThrough(School::class, ClassGroup::class);
+        return $this->hasOneThrough(School::class, ClassGroup::class);
     }
 
     public function classGroup()
@@ -83,9 +83,25 @@ class MyClass extends Model
         return $this->belongsTo(Subject::class);
     }
 
-    public function subjects(): HasMany
+    /**
+     * ✅ NEW: Many-to-Many relationship for subjects (a class can have many subjects, a subject can be in many classes)
+     */
+    public function subjects(): BelongsToMany
     {
-        return $this->hasMany(Subject::class);
+        return $this->belongsToMany(Subject::class, 'class_subject', 'my_class_id', 'subject_id')
+            ->withTimestamps()
+            ->withPivot('school_id')
+            ->where('subjects.is_legacy', false);
+    }
+
+    /**
+     * ⚠️ DEPRECATED: Old one-to-many relationship (kept for backward compatibility)
+     * Use subjects() instead
+     */
+    public function legacySubjects(): HasMany
+    {
+        return $this->hasMany(Subject::class, 'my_class_id')
+            ->where('is_legacy', false);
     }
 
     /**
@@ -111,38 +127,31 @@ class MyClass extends Model
      */
     public function studentsForAcademicYear($academicYearId = null): Collection
     {
-        // Use current academic year if not specified
         if (!$academicYearId) {
             $academicYearId = auth()->user()?->school->academic_year_id;
         }
-
+    
         if (!$academicYearId) {
             return collect();
         }
-
-        // Get all student records that have this class in the specified academic year
+    
         $studentIds = DB::table('academic_year_student_record')
             ->where('my_class_id', $this->id)
             ->where('academic_year_id', $academicYearId)
             ->pluck('student_record_id');
-
+    
         if ($studentIds->isEmpty()) {
             return collect();
         }
-
-        // Get the actual user records
+    
         $students = User::students()
             ->inSchool()
             ->whereHas('studentRecord', function($query) use ($studentIds) {
                 $query->whereIn('id', $studentIds);
             })
-            ->with(['studentRecord' => function($query) use ($academicYearId) {
-                $query->with(['academicYears' => function($q) use ($academicYearId) {
-                    $q->where('academic_year_id', $academicYearId);
-                }]);
-            }])
+            ->with(['studentRecord.myClass', 'studentRecord.section'])
             ->get();
-
+    
         return $students;
     }
 

@@ -49,23 +49,24 @@ class Section extends Model
         if (!$academicYearId) {
             $academicYearId = auth()->user()->school->academic_year_id;
         }
-
-        // Get student record IDs that are in this section for the academic year
+    
         $studentIds = \DB::table('academic_year_student_record')
             ->where('section_id', $this->id)
             ->where('academic_year_id', $academicYearId)
             ->pluck('student_record_id');
-
+    
+        // ✅ FIXED: Eager load myClass and section relationships
         $students = User::students()
             ->inSchool()
             ->whereHas('studentRecord', function($query) use ($studentIds) {
                 $query->whereIn('id', $studentIds);
             })
-            ->with('studentRecord')
+            ->with(['studentRecord.myClass', 'studentRecord.section'])
             ->get();
-
+    
         return $students;
     }
+    
 
     /**
      * Count students in this section for current academic year

@@ -173,7 +173,7 @@ public function teacherRecord()
 
     public function isAdmin(): bool
     {
-        return $this->hasRole('admin') || $this->hasRole('super_admin');
+        return $this->hasAnyRole(['admin', 'super-admin', 'super_admin']);
     }
 
     /**
@@ -181,22 +181,6 @@ public function teacherRecord()
      */
     public function getHomeRoute(): string
     {
-        if ($this->hasRole('super_admin') || $this->hasRole('admin')) {
-            return 'dashboard';
-        }
-        
-        if ($this->hasRole('teacher')) {
-            return 'teacher.dashboard';
-        }
-        
-        if ($this->hasRole('student')) {
-            return 'student.dashboard';
-        }
-        
-        if ($this->hasRole('parent')) {
-            return 'dashboard';
-        }
-        
         return 'dashboard';
     }
 }

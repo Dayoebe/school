@@ -4,22 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\MyClassStoreRequest;
 use App\Http\Requests\MyClassUpdateRequest;
+use App\Models\ClassGroup;
 use App\Models\MyClass;
-use App\Services\MyClass\MyClassService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class MyClassController extends Controller
 {
-    /**
-     * Class service instance.
-     */
-    public MyClassService $myClassService;
-
-    //construct method
-    public function __construct(MyClassService $myClassService)
+    public function __construct()
     {
-        $this->myClassService = $myClassService;
         $this->authorizeResource(MyClass::class, 'class');
     }
 
@@ -45,7 +38,14 @@ class MyClassController extends Controller
     public function store(MyClassStoreRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $this->myClassService->createClass($data);
+
+        $classGroup = ClassGroup::where('school_id', auth()->user()->school_id)
+            ->findOrFail($data['class_group_id']);
+
+        MyClass::create([
+            'name' => $data['name'],
+            'class_group_id' => $classGroup->id,
+        ]);
 
         return back()->with('success', __('Class created successfully'));
     }
@@ -100,7 +100,13 @@ class MyClassController extends Controller
     public function update(MyClassUpdateRequest $request, MyClass $class): RedirectResponse
     {
         $data = $request->validated();
-        $this->myClassService->updateClass($class, $data);
+        $classGroup = ClassGroup::where('school_id', auth()->user()->school_id)
+            ->findOrFail($data['class_group_id']);
+
+        $class->update([
+            'name' => $data['name'],
+            'class_group_id' => $classGroup->id,
+        ]);
 
         return back()->with('success', __('Class updated successfully'));
     }
@@ -110,7 +116,11 @@ class MyClassController extends Controller
      */
     public function destroy(MyClass $class): RedirectResponse
     {
-        $this->myClassService->deleteClass($class);
+        if ($class->studentRecords()->count() > 0) {
+            return back()->with('danger', 'Class contains students');
+        }
+
+        $class->delete();
 
         return back()->with('success', __('Class deleted successfully'));
     }

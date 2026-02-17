@@ -74,7 +74,7 @@
                     label="Confirm Password to continue"
                     x-ref="password"
                     class="w-full"
-                    wire:model="password"
+                    wire:model.live="password"
                     wire:keydown.enter="logoutOtherBrowserSessions" />
             </div>
 

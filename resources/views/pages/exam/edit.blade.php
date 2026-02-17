@@ -8,5 +8,5 @@
 @section('page_heading', __("Edit $exam->name"))
 
 @section('content')
-    @livewire('edit-exam-form', ['exam' => $exam])
+    @livewire('exams.edit-exam-form', ['exam' => $exam])
 @endsection

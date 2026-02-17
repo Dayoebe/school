@@ -9,5 +9,5 @@
 @section('page_heading', __("View $notice->title") )
 
 @section('content')
-    @livewire('show-notice', ['notice' => $notice])
+    @livewire('notices.show-notice', ['notice' => $notice])
 @endsection

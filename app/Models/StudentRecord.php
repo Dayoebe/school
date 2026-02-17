@@ -8,18 +8,68 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Result;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudentRecord extends Model
 {
     protected $appends = ['student_subjects_count'];
     use HasFactory;
 
-    protected $fillable = ['admission_number', 'admission_date', 'my_class_id', 'section_id', 'user_id'];
+    protected $fillable = [
+        'admission_number', 
+        'admission_date', 
+        'my_class_id', 
+        'section_id', 
+        'user_id',
+        'is_graduated'
+    ];
 
     protected $casts = [
         'admission_date' => 'datetime:Y-m-d',
+        'is_graduated' => 'boolean',
     ];
 
+    /**
+     * Get the graduation record for this student
+     */
+    public function graduation(): HasOne
+    {
+        return $this->hasOne(Graduation::class);
+    }
+
+    /**
+     * Check if student is graduated
+     */
+    public function isGraduated(): bool
+    {
+        return $this->is_graduated === true;
+    }
+
+    /**
+     * Get graduation details if exists
+     */
+    public function getGraduationDetails()
+    {
+        return $this->graduation()
+            ->with(['academicYear', 'graduationClass', 'graduationSection'])
+            ->first();
+    }
+
+    /**
+     * Scope to include only non-graduated students
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_graduated', false);
+    }
+
+    /**
+     * Scope to include only graduated students (Alumni)
+     */
+    public function scopeGraduated($query)
+    {
+        return $query->where('is_graduated', true);
+    }
 
     public function myClass()
     {
@@ -42,9 +92,6 @@ class StudentRecord extends Model
         return $this->belongsTo(MyClass::class);
     }
 
-    /**
-     * Override section to be academic-year-aware
-     */
     public function section()
     {
         // Get current academic year
@@ -82,9 +129,6 @@ class StudentRecord extends Model
         return $pivot ? MyClass::find($pivot->my_class_id) : $this->myClass;
     }
 
-    /**
-     * Get the section for the current academic year
-     */
     public function getAcademicYearSectionAttribute()
     {
         $currentYearId = auth()->user()?->school?->academic_year_id;
@@ -101,229 +145,210 @@ class StudentRecord extends Model
         return $pivot && $pivot->section_id ? Section::find($pivot->section_id) : $this->section;
     }
 
-    /**
- * Get class for a specific academic year
- */
-public function getClassForYear($academicYearId)
-{
-    $pivot = \DB::table('academic_year_student_record')
-        ->where('student_record_id', $this->id)
-        ->where('academic_year_id', $academicYearId)
-        ->first();
-    
-    return $pivot ? MyClass::find($pivot->my_class_id) : $this->myClass;
-}
+    public function getClassForYear($academicYearId)
+    {
+        $pivot = \DB::table('academic_year_student_record')
+            ->where('student_record_id', $this->id)
+            ->where('academic_year_id', $academicYearId)
+            ->first();
+        
+        return $pivot ? MyClass::find($pivot->my_class_id) : $this->myClass;
+    }
 
-/**
- * Get section for a specific academic year
- */
-public function getSectionForYear($academicYearId)
-{
-    $pivot = \DB::table('academic_year_student_record')
-        ->where('student_record_id', $this->id)
-        ->where('academic_year_id', $academicYearId)
-        ->first();
-    
-    return $pivot && $pivot->section_id ? Section::find($pivot->section_id) : $this->section;
-}
-public function assignSubjectsAutomatically()
-{
-    $subjects = Subject::where('my_class_id', $this->my_class_id)
-        ->when($this->section_id, function($query) {
-            $query->where(function($q) {
-                $q->where('is_general', true)
-                  ->orWhereHas('sections', function($q) {
-                      $q->where('sections.id', $this->section_id);
-                  });
-            });
-        })
-        ->get();
+    public function getSectionForYear($academicYearId)
+    {
+        $pivot = \DB::table('academic_year_student_record')
+            ->where('student_record_id', $this->id)
+            ->where('academic_year_id', $academicYearId)
+            ->first();
+        
+        return $pivot && $pivot->section_id ? Section::find($pivot->section_id) : $this->section;
+    }
 
-    $this->studentSubjects()->sync($subjects->pluck('id'));
-}
-/**
- * Get the student's class for a specific academic year
- */
-public function getClassForAcademicYear($academicYearId)
-{
-    $record = $this->academicYears()
-        ->where('academic_year_id', $academicYearId)
-        ->first();
-    
-    return $record ? MyClass::find($record->pivot->my_class_id) : null;
-}
+    public function assignSubjectsAutomatically()
+    {
+        $subjects = Subject::where('my_class_id', $this->my_class_id)
+            ->with('sections')
+            ->when($this->section_id, function($query) {
+                $query->where(function($q) {
+                    $q->where('is_general', true)
+                      ->orWhereHas('sections', function($q) {
+                          $q->where('sections.id', $this->section_id);
+                      });
+                });
+            })
+            ->get();
 
-/**
- * Get the student's section for a specific academic year
- */
-public function getSectionForAcademicYear($academicYearId)
-{
-    $record = $this->academicYears()
-        ->where('academic_year_id', $academicYearId)
-        ->first();
-    
-    return $record && $record->pivot->section_id 
-        ? Section::find($record->pivot->section_id) 
-        : null;
-}
+        $this->studentSubjects()->sync($subjects->pluck('id'));
+    }
 
-/**
- * Get all academic years this student has records for
- */
-public function getAllAcademicYearRecords()
-{
-    return $this->academicYears()
-        ->with(['semesters'])
-        ->orderBy('start_year', 'desc')
-        ->get()
-        ->map(function($year) {
+    public function getClassForAcademicYear($academicYearId)
+    {
+        $record = $this->academicYears()
+            ->where('academic_year_id', $academicYearId)
+            ->first();
+        
+        return $record ? MyClass::find($record->pivot->my_class_id) : null;
+    }
+
+    public function getSectionForAcademicYear($academicYearId)
+    {
+        $record = $this->academicYears()
+            ->where('academic_year_id', $academicYearId)
+            ->first();
+        
+        return $record && $record->pivot->section_id 
+            ? Section::find($record->pivot->section_id) 
+            : null;
+    }
+
+    public function getAllAcademicYearRecords()
+    {
+        $records = $this->academicYears()
+            ->with(['semesters'])
+            ->orderBy('start_year', 'desc')
+            ->get();
+        
+        $classIds = $records->pluck('pivot.my_class_id')->unique();
+        $sectionIds = $records->pluck('pivot.section_id')->filter()->unique();
+        
+        $classes = MyClass::whereIn('id', $classIds)->get()->keyBy('id');
+        $sections = Section::whereIn('id', $sectionIds)->get()->keyBy('id');
+        
+        return $records->map(function($year) use ($classes, $sections) {
             return [
                 'academic_year' => $year,
-                'class' => MyClass::find($year->pivot->my_class_id),
-                'section' => $year->pivot->section_id ? Section::find($year->pivot->section_id) : null,
+                'class' => $classes->get($year->pivot->my_class_id),
+                'section' => $year->pivot->section_id ? $sections->get($year->pivot->section_id) : null,
             ];
         });
-}
-
-/**
- * Check if student was in a specific class during an academic year
- */
-public function wasInClassDuringYear($classId, $academicYearId)
-{
-    return $this->academicYears()
-        ->where('academic_year_id', $academicYearId)
-        ->wherePivot('my_class_id', $classId)
-        ->exists();
-}
-
-/**
- * Get student's results for a specific academic year
- */
-public function getResultsForAcademicYear($academicYearId)
-{
-    return $this->results()
-        ->whereHas('semester', function($q) use ($academicYearId) {
-            $q->where('academic_year_id', $academicYearId);
-        })
-        ->with(['semester', 'subject', 'exam'])
-        ->get();
-}
-
-/**
- * Get student's complete academic history
- */
-public function getAcademicHistory()
-{
-    return $this->academicYears()
-        ->with(['semesters.exams'])
-        ->orderBy('start_year', 'asc')
-        ->get()
-        ->map(function($year) {
-            $classInfo = MyClass::find($year->pivot->my_class_id);
-            $sectionInfo = $year->pivot->section_id ? Section::find($year->pivot->section_id) : null;
-            
-            return [
-                'year' => $year->name,
-                'year_id' => $year->id,
-                'class' => $classInfo?->name,
-                'section' => $sectionInfo?->name,
-                'semesters' => $year->semesters->count(),
-                'was_promoted' => $this->wasPromotedInYear($year->id),
-            ];
-        });
-}
-
-/**
- * Check if student was promoted during an academic year
- */
-public function wasPromotedInYear($academicYearId)
-{
-    return Promotion::where('academic_year_id', $academicYearId)
-        ->where(function($query) {
-            $query->whereJsonContains('students', $this->user_id)
-                  ->orWhereJsonContains('students', (string)$this->user_id);
-        })
-        ->exists();
-}
-
-/**
- * Get the promotion record for a specific academic year
- */
-public function getPromotionForYear($academicYearId)
-{
-    return Promotion::where('academic_year_id', $academicYearId)
-        ->where(function($query) {
-            $query->whereJsonContains('students', $this->user_id)
-                  ->orWhereJsonContains('students', (string)$this->user_id);
-        })
-        ->with(['oldClass', 'newClass', 'oldSection', 'newSection'])
-        ->first();
-}
-
-/**
- * Get student's term reports for a specific academic year
- */
-public function getTermReportsForYear($academicYearId)
-{
-    return $this->termReports()
-        ->where('academic_year_id', $academicYearId)
-        ->with(['semester'])
-        ->orderBy('semester_id')
-        ->get();
-}
-
-/**
- * Check if student has any records for an academic year
- */
-public function hasRecordsForAcademicYear($academicYearId)
-{
-    return $this->academicYears()
-        ->where('academic_year_id', $academicYearId)
-        ->exists();
-}
-
-/**
- * Get student's subjects for a specific academic year
- * (subjects may vary by class/section)
- */
-public function getSubjectsForAcademicYear($academicYearId)
-{
-    $record = $this->academicYears()
-        ->where('academic_year_id', $academicYearId)
-        ->first();
-    
-    if (!$record) {
-        return collect();
     }
-    
-    $classId = $record->pivot->my_class_id;
-    $sectionId = $record->pivot->section_id;
-    
-    $query = Subject::where('my_class_id', $classId);
-    
-    if ($sectionId) {
-        $query->where(function($q) use ($sectionId) {
-            $q->where('is_general', true)
-              ->orWhereHas('sections', function($q) use ($sectionId) {
-                  $q->where('sections.id', $sectionId);
-              });
-        });
+
+    public function wasInClassDuringYear($classId, $academicYearId)
+    {
+        return $this->academicYears()
+            ->where('academic_year_id', $academicYearId)
+            ->wherePivot('my_class_id', $classId)
+            ->exists();
     }
-    
-    return $query->get();
-}
 
+    public function getResultsForAcademicYear($academicYearId)
+    {
+        return $this->results()
+            ->whereHas('semester', function($q) use ($academicYearId) {
+                $q->where('academic_year_id', $academicYearId);
+            })
+            ->with(['semester', 'subject', 'exam'])
+            ->get();
+    }
 
-public function getStudentSubjectsCountAttribute()
-{
-    return $this->studentSubjects->count();
-}
-public function getSubjectsListAttribute()
-{
-    return $this->studentSubjects
-        ->pluck('name')
-        ->join(', ');
-}
+    public function getAcademicHistory()
+    {
+        return $this->academicYears()
+            ->with(['semesters.exams'])
+            ->orderBy('start_year', 'asc')
+            ->get()
+            ->map(function($year) {
+                $classInfo = MyClass::find($year->pivot->my_class_id);
+                $sectionInfo = $year->pivot->section_id ? Section::find($year->pivot->section_id) : null;
+                
+                return [
+                    'year' => $year->name,
+                    'year_id' => $year->id,
+                    'class' => $classInfo?->name,
+                    'section' => $sectionInfo?->name,
+                    'semesters' => $year->semesters->count(),
+                    'was_promoted' => $this->wasPromotedInYear($year->id),
+                    'was_graduated' => $this->wasGraduatedInYear($year->id),
+                ];
+            });
+    }
+
+    public function wasPromotedInYear($academicYearId)
+    {
+        return Promotion::where('academic_year_id', $academicYearId)
+            ->where(function($query) {
+                $query->whereJsonContains('students', $this->user_id)
+                      ->orWhereJsonContains('students', (string)$this->user_id);
+            })
+            ->exists();
+    }
+
+    /**
+     * Check if student was graduated in a specific academic year
+     */
+    public function wasGraduatedInYear($academicYearId)
+    {
+        return $this->graduation()
+            ->where('academic_year_id', $academicYearId)
+            ->exists();
+    }
+
+    public function getPromotionForYear($academicYearId)
+    {
+        return Promotion::where('academic_year_id', $academicYearId)
+            ->where(function($query) {
+                $query->whereJsonContains('students', $this->user_id)
+                      ->orWhereJsonContains('students', (string)$this->user_id);
+            })
+            ->with(['oldClass', 'newClass', 'oldSection', 'newSection'])
+            ->first();
+    }
+
+    public function getTermReportsForYear($academicYearId)
+    {
+        return $this->termReports()
+            ->where('academic_year_id', $academicYearId)
+            ->with(['semester'])
+            ->orderBy('semester_id')
+            ->get();
+    }
+
+    public function hasRecordsForAcademicYear($academicYearId)
+    {
+        return $this->academicYears()
+            ->where('academic_year_id', $academicYearId)
+            ->exists();
+    }
+
+    public function getSubjectsForAcademicYear($academicYearId)
+    {
+        $record = $this->academicYears()
+            ->where('academic_year_id', $academicYearId)
+            ->first();
+        
+        if (!$record) {
+            return collect();
+        }
+        
+        $classId = $record->pivot->my_class_id;
+        $sectionId = $record->pivot->section_id;
+        
+        $query = Subject::where('my_class_id', $classId);
+        
+        if ($sectionId) {
+            $query->where(function($q) use ($sectionId) {
+                $q->where('is_general', true)
+                  ->orWhereHas('sections', function($q) use ($sectionId) {
+                      $q->where('sections.id', $sectionId);
+                  });
+            });
+        }
+        
+        return $query->get();
+    }
+
+    public function getStudentSubjectsCountAttribute()
+    {
+        return $this->studentSubjects->count();
+    }
+
+    public function getSubjectsListAttribute()
+    {
+        return $this->studentSubjects
+            ->pluck('name')
+            ->join(', ');
+    }
 
     public function studentSubjects()
     {
@@ -357,7 +382,6 @@ public function getSubjectsListAttribute()
             $builder->where('is_graduated', 0);
         });
 
-        
         static::created(function ($studentRecord) {
             $studentRecord->assignSubjectsAutomatically();
         });
@@ -368,6 +392,7 @@ public function getSubjectsListAttribute()
             }
         });
     }
+
     public function getAdmissionDateAttribute($value)
     {
         return Carbon::parse($value)->format('Y-m-d');
@@ -418,34 +443,21 @@ public function getSubjectsListAttribute()
             ->where('semester_id', $semesterId)
             ->first();
     }
-    /**
- * Scope to include only students with non-deleted users
- */
-public function scopeWithActiveUser($query)
-{
-    return $query->whereHas('user', function($q) {
-        $q->whereNull('deleted_at');
-    })->with(['user' => function($query) {
-        $query->whereNull('deleted_at');
-    }]);
-}
-// /**
-//  * Scope a query to order by student name.
-//  */
-// public function scopeOrderByName($query)
-// {
-//     return $query->select('student_records.*')
-//                 ->join('users', function($join) {
-//                     $join->on('student_records.user_id', '=', 'users.id')
-//                          ->whereNull('users.deleted_at');
-//                 })
-//                 ->orderBy('users.name');
-// }
-public function scopeOrderByName($query)
-{
-    return $query->select('student_records.*')
-        ->join('users', 'student_records.user_id', '=', 'users.id')
-        ->whereNull('users.deleted_at')
-        ->orderBy('users.name');
-}
+
+    public function scopeWithActiveUser($query)
+    {
+        return $query->whereHas('user', function($q) {
+            $q->whereNull('deleted_at');
+        })->with(['user' => function($query) {
+            $query->whereNull('deleted_at');
+        }]);
+    }
+
+    public function scopeOrderByName($query)
+    {
+        return $query->select('student_records.*')
+            ->join('users', 'student_records.user_id', '=', 'users.id')
+            ->whereNull('users.deleted_at')
+            ->orderBy('users.name');
+    }
 }

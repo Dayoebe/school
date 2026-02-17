@@ -6,7 +6,7 @@
 @section('page_heading', __('Annual Class Results Summary'))
 
 @section('content')
-    <div class="container mx-auto px-4 py-6" x-data="annualClassResults()">
+    <div class=" px-4 py-6" x-data="annualClassResults()">
         <!-- Filter Section -->
         <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
@@ -289,28 +289,40 @@
                             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
                                 <h3 class="text-sm font-semibold text-blue-800">Annual Average</h3>
                                 <p class="text-xl font-bold">
-                                    {{ number_format(array_sum(array_map(function ($r) {return $r['average_percentage'];}, $annualReports)) / count($annualReports),1) }}%
+                                    @if(count($annualReports) > 0)
+                                        {{ number_format(array_sum(array_map(function ($r) {return $r['average_percentage'];}, $annualReports)) / count($annualReports), 1) }}%
+                                    @else
+                                        0%
+                                    @endif
                                 </p>
                             </div>
 
                             <div class="bg-green-50 p-4 rounded-lg border border-green-200">
                                 <h3 class="text-sm font-semibold text-green-800">Highest Score</h3>
                                 <p class="text-xl font-bold">
-                                    {{ max(array_map(function ($r) {return $r['average_percentage'];}, $annualReports)) }}%
+                                    @if(count($annualReports) > 0)
+                                        {{ max(array_map(function ($r) {return $r['average_percentage'];}, $annualReports)) }}%
+                                    @else
+                                        0%
+                                    @endif
                                 </p>
                             </div>
 
                             <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                                 <h3 class="text-sm font-semibold text-yellow-800">Lowest Score</h3>
                                 <p class="text-xl font-bold">
-                                    {{ min(array_map(function ($r) {return $r['average_percentage'];}, $annualReports)) }}%
+                                    @if(count($annualReports) > 0)
+                                        {{ min(array_map(function ($r) {return $r['average_percentage'];}, $annualReports)) }}%
+                                    @else
+                                        0%
+                                    @endif
                                 </p>
                             </div>
 
                             <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                                 <h3 class="text-sm font-semibold text-purple-800">Passing Students</h3>
                                 <p class="text-xl font-bold">
-                                    {{ count(array_filter($annualReports, function ($r) {return $r['average_percentage'] >= 50;})) }}
+                                    {{ count(array_filter($annualReports ?? [], function ($r) {return $r['average_percentage'] >= 50;})) }}
                                 </p>
                             </div>
                         </div>

@@ -6,7 +6,6 @@ use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\User;
 use App\Models\StudentRecord;
-use App\Services\MyClass\MyClassService;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
@@ -74,9 +73,13 @@ class ManageStudents extends Component
 
     protected $listeners = ['refreshStudents' => '$refresh'];
 
-    public function mount(MyClassService $classService)
+    public function mount()
     {
-        $this->classes = $classService->getAllClasses();
+        $this->classes = auth()->user()->school
+            ->myClasses()
+            ->with(['classGroup', 'sections'])
+            ->orderBy('name')
+            ->get();
         
         if ($this->mode === 'edit' && $this->studentId) {
             $this->loadStudentForEdit();

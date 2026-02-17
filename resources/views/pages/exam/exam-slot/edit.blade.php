@@ -9,5 +9,5 @@
 @section('page_heading', __("Edit $examSlot->name"))
 
 @section('content')
-    @livewire('edit-exam-slot-form', ['exam' => $exam, 'examSlot' => $examSlot])
+    @livewire('exams.slots.edit-exam-slot-form', ['exam' => $exam, 'examSlot' => $examSlot])
 @endsection

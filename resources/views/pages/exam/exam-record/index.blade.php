@@ -9,5 +9,5 @@
 @section('page_heading',   __('Exam records'))
 
 @section('content', )
-    @livewire('list-exam-records-table')
+    @livewire('exams.records.list-exam-records-table')
 @endsection

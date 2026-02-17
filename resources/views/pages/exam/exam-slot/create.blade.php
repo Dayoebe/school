@@ -10,5 +10,5 @@
 @section('page_heading',  __("Create Exam slots in $exam->name"))
 
 @section('content' )
-    @livewire('create-exam-slot-form', ['exam' => $exam])
+    @livewire('exams.slots.create-exam-slot-form', ['exam' => $exam])
 @endsection

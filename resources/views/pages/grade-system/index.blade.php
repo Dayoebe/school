@@ -8,5 +8,5 @@
 @section('page_heading',  __('Grade systems'))
 
 @section('content', )
-    @livewire('list-grade-systems-table')
+    @livewire('grade-systems.list-grade-systems-table')
 @endsection

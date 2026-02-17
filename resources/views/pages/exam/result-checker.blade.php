@@ -9,5 +9,5 @@
 @section('page_heading', __('Result Checker'))
 
 @section('content', )
-    @livewire('result-checker')
+    @livewire('exams.result-checker')
 @endsection

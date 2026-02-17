@@ -9,5 +9,5 @@
 @section('page_heading',  __('Create notices'))
 
 @section('content' )
-    @livewire('create-notice-form')
+    @livewire('notices.create-notice-form')
 @endsection

@@ -176,7 +176,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Academic Year</label>
                             <div class="relative">
-                                <select wire:model="selectedAcademicYear" 
+                                <select wire:model.live="selectedAcademicYear" 
                                         class="w-full border border-gray-300 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none shadow-sm">
                                     <option value="all">All Academic Years</option>
                                     @foreach($academicYears as $year)
@@ -193,7 +193,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-2">Term</label>
                             <div class="relative">
-                                <select wire:model="selectedSemester" 
+                                <select wire:model.live="selectedSemester" 
                                         class="w-full border border-gray-300 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 appearance-none shadow-sm">
                                     <option value="all">All Terms</option>
                                     @foreach($academicYears as $year)

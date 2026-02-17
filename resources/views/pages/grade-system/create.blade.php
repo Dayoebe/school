@@ -9,5 +9,5 @@
 @section('page_heading', __('Create Grade'))
 
 @section('content')
-    @livewire('create-grade-system-form')
+    @livewire('grade-systems.create-grade-system-form')
 @endsection

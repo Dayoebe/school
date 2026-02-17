@@ -9,5 +9,5 @@
 @section('page_heading',  __('Semester result tabulation'))
 
 @section('content', )
-@livewire('semester-result-tabulation')
+@livewire('exams.tabulation.semester-result-tabulation')
 @endsection

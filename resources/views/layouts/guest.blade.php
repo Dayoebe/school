@@ -41,7 +41,7 @@
     
     <body class="bg-gray-100 mx-5">
         @yield('body')
-        <livewire:display-status />
+        <livewire:common.display-status />
     </body>
     <livewire:scripts />
 </html>

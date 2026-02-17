@@ -8,5 +8,5 @@
 @section('page_heading', __('Notices'))
 
 @section('content', )
-    @livewire('list-notices-table')
+    @livewire('notices.list-notices-table')
 @endsection

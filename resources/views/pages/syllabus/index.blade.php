@@ -8,5 +8,5 @@
 @section('page_heading',  __('Syllabi'))
 
 @section('content', )
-    @livewire('list-syllabi-table')
+    @livewire('syllabi.list-syllabi-table')
 @endsection

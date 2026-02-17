@@ -9,5 +9,5 @@
 @section('page_heading',  __('Create exams'))
 
 @section('content' )
-    @livewire('create-exam-form')
+    @livewire('exams.create-exam-form')
 @endsection

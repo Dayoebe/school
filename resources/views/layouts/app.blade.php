@@ -71,7 +71,7 @@
                 </div>
             </div>
         </div>
-        @livewire('display-status')
+        @livewire('common.display-status')
     </body>
     <livewire:scripts />
     @stack('scripts')

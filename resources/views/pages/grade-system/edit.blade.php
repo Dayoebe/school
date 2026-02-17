@@ -8,5 +8,5 @@
 @section('page_heading', __("Edit $gradeSystem->name"))
 
 @section('content')
-	@livewire('edit-grade-system-form', ['grade' => $gradeSystem])
+	@livewire('grade-systems.edit-grade-system-form', ['grade' => $gradeSystem])
 @endsection

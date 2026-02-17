@@ -75,12 +75,41 @@
                 <!-- Login/Register or User Info -->
                 <div class="hidden lg:flex items-center space-x-4 ml-2">
                     @auth
-                        <a href="{{ route('dashboard') }}"
-                            class="flex items-center space-x-2 hover:text-emerald-600 transition-colors duration-200">
-                            <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}"
-                                alt="Avatar" class="w-8 h-8 rounded-full object-cover border border-gray-200">
-                            <span class="hover:uppercase text-sm font-medium">{{ Auth::user()->name }}</span>
-                        </a>
+                        {{-- User Dropdown for Desktop --}}
+                        <div class="relative" x-data="{ userDropdownOpen: false }">
+                            <button @click="userDropdownOpen = !userDropdownOpen"
+                                class="flex items-center space-x-2 hover:text-emerald-600 transition-colors duration-200 focus:outline-none">
+                                <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}"
+                                    alt="Avatar" class="w-8 h-8 rounded-full object-cover border border-gray-200">
+                                <span class="hover:uppercase text-sm font-medium">{{ Auth::user()->name }}</span>
+                                <svg class="w-4 h-4 ml-1 transition-transform transform" :class="{ 'rotate-180': userDropdownOpen }"
+                                    fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+                            <div x-show="userDropdownOpen" @click.away="userDropdownOpen = false" x-transition
+                                class="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg z-50 py-1">
+                                <a href="{{ route('dashboard') }}"
+                                    class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">
+                                    <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                                </a>
+                                {{-- Assuming you have a profile edit route --}}
+                                @if (Route::has('profile.edit'))
+                                    <a href="{{ route('profile.edit') }}"
+                                        class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">
+                                        <i class="fas fa-user-circle mr-2"></i>Profile
+                                    </a>
+                                @endif
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <form method="POST" action="{{ route('logout') }}">
+                                    @csrf
+                                    <button type="submit"
+                                        class="hover:uppercase block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Log Out
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     @else
                         <a href="{{ route('login') }}"
                             class="hover:uppercase text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors duration-200">
@@ -133,10 +162,37 @@
         
         <div class="pt-2 border-t border-gray-200">
             @auth
-                <a href="{{ route('dashboard') }}" class="hover:uppercase sudflex items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
-                    <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}" alt="Avatar" class="w-6 h-6 rounded-full mr-2 object-cover border border-gray-200">
-                    My Account
-                </a>
+                {{-- Mobile User Dropdown --}}
+                <div x-data="{ mobileUserDropdownOpen: false }">
+                    <button @click="mobileUserDropdownOpen = !mobileUserDropdownOpen" class="hover:uppercase w-full flex justify-between items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
+                        <div class="flex items-center">
+                            <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}" alt="Avatar" class="w-6 h-6 rounded-full mr-2 object-cover border border-gray-200">
+                            <span>My Account</span>
+                        </div>
+                        <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': mobileUserDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+                    <div x-show="mobileUserDropdownOpen" class="pl-4 space-y-1 mt-1">
+                        <a href="{{ route('home') }}"
+                            class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
+                            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+                        </a>
+                        @if (Route::has('profile.edit'))
+                            <a href="{{ route('profile.edit') }}"
+                                class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
+                                <i class="fas fa-user-circle mr-2"></i>Profile
+                            </a>
+                        @endif
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit"
+                                class="hover:uppercase block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Log Out
+                            </button>
+                        </form>
+                    </div>
+                </div>
             @else
                 <a href="{{ route('login') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Login</a>
             @endauth
