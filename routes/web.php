@@ -407,25 +407,21 @@ Route::middleware($dashboardMiddleware)->prefix('dashboard')->group(function () 
 */
 
 Route::middleware(['auth'])->group(function () {
-    
-    // Main timetable management (handles everything)
-    Route::get('/timetables', function () {
-        return view('pages.timetable.index');
-    })->name('timetables.index')->can('read timetable');
+    Route::get('/timetables', \App\Livewire\Timetable\ManageTimetables::class)
+        ->name('timetables.index')
+        ->can('read timetable');
 
-    // Create timetable
-    Route::get('/timetables/create', function () {
-        return view('pages.timetable.index', ['initialView' => 'create']);
-    })->name('timetables.create')->can('create timetable');
+    Route::get('/timetables/create', \App\Livewire\Timetable\ManageTimetables::class)
+        ->name('timetables.create')
+        ->can('create timetable');
 
-    // Custom items
-    Route::get('/custom-timetable-items', function () {
-        return view('pages.timetable.index', ['initialView' => 'custom-items']);
-    })->name('custom-timetable-items.index')->can('read custom timetable items');
+    Route::get('/custom-timetable-items', \App\Livewire\Timetable\ManageTimetables::class)
+        ->name('custom-timetable-items.index')
+        ->can('read custom timetable item');
 
-    Route::get('/custom-timetable-items/create', function () {
-        return view('pages.timetable.index', ['initialView' => 'custom-items']);
-    })->name('custom-timetable-items.create')->can('create custom timetable items');
+    Route::get('/custom-timetable-items/create', \App\Livewire\Timetable\ManageTimetables::class)
+        ->name('custom-timetable-items.create')
+        ->can('create custom timetable item');
 
 });
 
