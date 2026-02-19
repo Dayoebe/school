@@ -1,154 +1,112 @@
-<footer class="relative bg-gradient-to-br from-blue-950 via-slate-800 to-blue-900 text-white overflow-hidden">
-    <!-- Floating Glow Effects -->
-    <div class="absolute inset-0 pointer-events-none -z-10">
-        <div class="absolute w-96 h-96 bg-white/10 rounded-full blur-3xl top-32 left-10 animate-pulse"></div>
-        <div class="absolute w-72 h-72 bg-white/5 rounded-full blur-2xl bottom-10 right-10 animate-bounce"></div>
+<footer class="relative mt-16 overflow-hidden border-t border-slate-200 bg-slate-950 text-slate-100">
+    <div class="pointer-events-none absolute inset-0">
+        <div class="absolute -top-20 -left-10 h-56 w-56 rounded-full bg-red-500/15 blur-3xl"></div>
+        <div class="absolute bottom-0 right-0 h-64 w-64 rounded-full bg-orange-500/15 blur-3xl"></div>
     </div>
 
-    <!-- Top Curve -->
-    <div class="absolute top-0 left-0 w-full h-24 bg-white rounded-b-[50%] -z-10"></div>
-
-    <!-- Main Footer Content -->
-    <div
-        class="max-w-7xl mx-auto px-6 lg:px-20 pt-28 pb-20 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-10 text-sm animate__animated animate__fadeInUp">
-
-        <!-- Logo + About -->
-        <div class="space-y-4 col-span-1">
-            <div class="transform hover:scale-110 transition hover:uppercase flex items-center gap-3">
-                <img src="{{ asset('img/logo.png') }}" alt="Logo" class="h-12 w-12 rounded-full shadow-lg">
-                <h2 class="text-xl font-extrabold leading-tight">Elites International College</h2>
-            </div>
-            <p class="transform hover:scale-110 transition text-gray-300 leading-relaxed">A citadel of excellence
-                dedicated to academic brilliance, moral
-                integrity, and global standards.</p>
-            <p class="italic text-xs text-gray-400">"Inspiring minds, shaping futures."</p>
-        </div>
-
-        <!-- Quick Links -->
-        <div>
-            <h3
-                class="transform hover:scale-125 transition hover:uppercase font-semibold text-base mb-4 border-b border-blue-500 inline-block pb-1">
-                Quick Links</h3>
-            <ul class="space-y-2 text-gray-300">
-                <li><a href="{{ route('home') }}"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Home</a>
-                </li>
-                <li><a href="{{ route('about') }}"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">About</a>
-                </li>
-                <li><a href="{{ route('contact') }}"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Contact</a>
-                </li>
-                <li><a href="{{ route('admission') }}"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Admission</a>
-                </li>
-                <li><a href="{{ route('gallery') }}"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Gallery</a>
-                </li>
-                <li><a href="#"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Career</a>
-                </li>
-            </ul>
-        </div>
-
-        <!-- Academics Section -->
-        <div>
-            <h3
-                class="transform hover:scale-125 transition hover:uppercase font-semibold text-base mb-4 border-b border-blue-500 inline-block pb-1">
-                Academics</h3>
-            <ul class="space-y-2 text-gray-300">
-                <li><a href="#"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Curriculum</a>
-                </li>
-                <li><a href="#"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Subjects
-                        Offered</a></li>
-                <li><a href="#"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Clubs
-                        & Societies</a></li>
-                <li><a href="#"
-                        class="transform hover:scale-110 transition hover:uppercase hover:border-b border-blue-300 text-white">Boarding
-                        Life</a></li>
-            </ul>
-        </div>
-
-        <!-- Contact Info -->
-        <div>
-            <h3
-                class="transform hover:scale-125 transition hover:uppercase font-semibold text-base mb-4 border-b border-blue-500 inline-block pb-1">
-                Contact</h3>
-            <address class="not-italic leading-loose text-gray-300">
-                13 Chief Mbanefo E. Uduezue Street,
-                Umubele, Awka, Anambra State<br>
-                📞 <a href="tel:+2348066025508" class="hover:text-white">+234 806 602 5508</a><br>
-                📞 <a href="tel:+2348037315741" class="hover:text-white">+234 803 731 5741</a><br>
-                📧 <a href="mailto:info@elitesinternationalcollege.com" class="hover:text-white">info@elitesinternationalcollege.com</a>
-            </address>
-        </div>
-
-        <!-- Subscribe & Socials -->
-        <div>
-            <h3
-                class="transform hover:scale-125 transition hover:uppercase font-semibold text-base mb-4 border-b border-blue-500 inline-block pb-1">
-                Stay Updated</h3>
-            <form class="flex items-center space-x-2 mb-4">
-                <input type="email" placeholder="Your Email"
-                    class="flex-1 px-3 py-2 rounded-md bg-blue-800 text-white placeholder-gray-400 focus:ring focus:ring-blue-400 text-sm">
-                <button
-                    class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium">Subscribe</button>
-            </form>
-            <div class="flex space-x-4 text-white">
-                <a href="#" aria-label="WhatsApp"
-                    class="hover:text-green-500 transform hover:scale-110 transition"><i
-                        class="fab fa-whatsapp"></i></a>
-                <a href="#" aria-label="Facebook"
-                    class="hover:text-blue-300 transform hover:scale-110 transition"><i
-                        class="fab fa-facebook-f"></i></a>
-                <a href="#" aria-label="Twitter"
-                    class="hover:text-gray-400 transform hover:scale-110 transition"><i class="fab fa-twitter"></i></a>
-                <a href="#" aria-label="Instagram"
-                    class="hover:text-red-300 transform hover:scale-110 transition"><i class="fab fa-instagram"></i></a>
-                <a href="#" aria-label="LinkedIn"
-                    class="hover:text-blue-300 transform hover:scale-110 transition"><i
-                        class="fab fa-linkedin-in"></i></a>
+    <div class="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div class="mb-10 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur sm:p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-xs font-bold uppercase tracking-widest text-amber-300">Admissions Open</p>
+                    <h2 class="mt-1 text-xl font-black text-white sm:text-2xl">Ready to enroll your child?</h2>
+                    <p class="mt-2 text-sm text-slate-300">Start your admission process today or contact us for guidance.</p>
+                </div>
+                <div class="flex flex-col gap-2 sm:flex-row">
+                    <a href="{{ route('admission') }}"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700">
+                        <i class="fas fa-user-plus text-xs"></i>
+                        <span>Apply Now</span>
+                    </a>
+                    <a href="{{ route('contact') }}"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-orange-300/40 bg-orange-500/15 px-5 py-3 text-sm font-bold text-orange-100 transition hover:bg-orange-500/25">
+                        <i class="fas fa-phone text-xs"></i>
+                        <span>Contact School</span>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- Testimonial -->
-    <div class="max-w-5xl mx-auto text-center text-gray-300 text-sm px-6 mb-12 animate__animated animate__fadeIn">
-        <blockquote class="italic border-l-4 border-blue-500 pl-4 text-gray-300">
-            “Elites International College provided a foundation I still rely on today. The values and vision here are
-            truly life-changing.”
-        </blockquote>
-        <p class="mt-2 text-xs text-gray-400">– Alumni, Class of 2021</p>
-    </div>
+        <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <div class="flex items-center gap-3">
+                    <img src="{{ asset('img/logo.png') }}" alt="Elites International College Logo"
+                        class="h-11 w-11 rounded-full border border-white/20 object-cover">
+                    <div>
+                        <p class="text-sm font-black text-white">Elites International College</p>
+                        <p class="text-xs text-rose-300">Awka, Anambra</p>
+                    </div>
+                </div>
+                <p class="mt-4 text-sm leading-relaxed text-slate-300">
+                    A modern learning community focused on academic excellence, leadership development, and moral values.
+                </p>
+                <div class="mt-4 flex items-center gap-3 text-base">
+                    <a href="#" aria-label="Facebook" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" aria-label="Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                    <a href="#" aria-label="X" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" aria-label="WhatsApp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+            </div>
 
-    <!-- Mission / Vision -->
-    <div
-        class="bg-blue-950 px-6 lg:px-20 py-6 grid sm:grid-cols-2 gap-8 text-sm text-gray-300 border-t border-blue-800">
-        <div>
-            <h4 class="text-white font-semibold mb-1">Our Mission</h4>
-            <p>To nurture students with a sound mind and strong moral principles through globally competitive education.
-            </p>
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-orange-300">Quick Links</h3>
+                <ul class="mt-4 space-y-2 text-sm text-slate-300">
+                    <li><a href="{{ route('home') }}" class="transition hover:text-white">Home</a></li>
+                    <li><a href="{{ route('about') }}" class="transition hover:text-white">About Us</a></li>
+                    <li><a href="{{ route('admission') }}" class="transition hover:text-white">Admission</a></li>
+                    <li><a href="{{ route('gallery') }}" class="transition hover:text-white">Gallery</a></li>
+                    <li><a href="{{ route('contact') }}" class="transition hover:text-white">Contact</a></li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-yellow-300">Academics</h3>
+                <ul class="mt-4 space-y-2 text-sm text-slate-300">
+                    <li>Junior Secondary School</li>
+                    <li>Senior Secondary School</li>
+                    <li>STEM and Innovation</li>
+                    <li>Clubs and Leadership</li>
+                    <li>Exam and Result Portal</li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="text-sm font-bold uppercase tracking-wider text-cyan-300">Contact Info</h3>
+                <ul class="mt-4 space-y-3 text-sm text-slate-300">
+                    <li class="flex items-start gap-2">
+                        <i class="fas fa-location-dot mt-1 text-lime-300"></i>
+                        <span>13 Chief Mbanefo E. Uduezue Street, Umubele, Awka, Anambra State</span>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <i class="fas fa-phone text-green-300"></i>
+                        <a href="tel:+2348066025508" class="transition hover:text-white">+234 806 602 5508</a>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <i class="fas fa-phone text-teal-300"></i>
+                        <a href="tel:+2348037315741" class="transition hover:text-white">+234 803 731 5741</a>
+                    </li>
+                    <li class="flex items-center gap-2">
+                        <i class="fas fa-envelope text-sky-300"></i>
+                        <a href="mailto:info@elitesinternationalcollege.com" class="transition hover:text-white">info@elitesinternationalcollege.com</a>
+                    </li>
+                </ul>
+            </div>
         </div>
-        <div>
-            <h4 class="text-white font-semibold mb-1">Our Vision</h4>
-            <p>To be Africa’s leading institution for academic and character excellence.</p>
-        </div>
-    </div>
 
-    <!-- Copyright -->
-
-
-    <div
-        class="text-center py-4 text-xs bg-blue-950 text-gray-400  px-6 lg:px-20  grid sm:grid-cols-2 gap-8 border-t border-blue-800">
-        <div>
+        <div class="mt-10 flex flex-col gap-3 border-t border-white/10 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <p>&copy; {{ date('Y') }} Elites International College. All rights reserved.</p>
-        </div>
-        <div
-            class="text-center py-4 text-xs bg-blue-950 text-gray-400  px-6 lg:px-20  grid sm:grid-cols-2 gap-8  border-blue-800">
-            <p>{{ date('F d Y H:i (T)') }} - Wireless Terminal.</p>
+            <a href="#top" class="inline-flex items-center gap-2 font-semibold text-fuchsia-300 transition hover:text-fuchsia-200">
+                <span>Back to Top</span>
+                <i class="fas fa-arrow-up text-[10px]"></i>
+            </a>
         </div>
     </div>
 </footer>

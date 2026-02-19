@@ -1,201 +1,170 @@
-@push('styles')
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-@endpush
+@php
+    $publicNavItems = [
+        ['label' => 'Home', 'route' => 'home'],
+        ['label' => 'About', 'route' => 'about'],
+        ['label' => 'Admission', 'route' => 'admission'],
+        ['label' => 'Gallery', 'route' => 'gallery'],
+        ['label' => 'Contact', 'route' => 'contact'],
+    ];
+@endphp
 
-<header x-data="{ mobileMenuOpen: false, dropdownOpen: false, scrolled: false }"
-    @scroll.window="scrolled = window.scrollY > 10"
-    class="bg-white text-gray-800 shadow-sm sticky top-0 z-50 transition-all duration-300"
-    :class="{ 'shadow-md': scrolled }">
-    
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center py-4">
+<header
+    x-data="{ mobileOpen: false, accountOpen: false, scrolled: false }"
+    @scroll.window="scrolled = window.scrollY > 8"
+    @keydown.escape.window="mobileOpen = false; accountOpen = false"
+    class="sticky top-0 z-50 border-b border-slate-200/70 bg-white/95 backdrop-blur transition-all duration-300"
+    :class="scrolled ? 'shadow-lg shadow-slate-900/5' : 'shadow-none'">
 
-            <!-- Logo & Name -->
-            <div class="flex items-center space-x-3 transition transform hover:scale-[1.02]">
-                <img src="{{ asset('img/logo.png') }}" alt="Elites Logo"
-                    class="w-10 h-10 rounded-full border-2 border-blue-500 shadow-sm animate__animated animate__zoomIn">
-                <a href="{{ route('home') }}"
-                    class="hover:uppercase text-xl font-bold tracking-tight text-gray-900 hover:text-emerald-600 transition duration-300 animate__animated animate__fadeInLeft">
-                    Elites International College
+    <div class="hidden border-b border-slate-200 bg-slate-50 lg:block">
+        <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs text-slate-600">
+            <p class="flex items-center gap-2">
+                <i class="fas fa-location-dot text-red-600"></i>
+                <span>13 Chief Mbanefo E. Uduezue Street, Umubele, Awka</span>
+            </p>
+            <div class="flex items-center gap-5">
+                <a href="tel:+2348066025508" class="transition hover:text-orange-700">
+                    <i class="fas fa-phone mr-1"></i>+234 806 602 5508
+                </a>
+                <a href="mailto:info@elitesinternationalcollege.com" class="transition hover:text-amber-700">
+                    <i class="fas fa-envelope mr-1"></i>info@elitesinternationalcollege.com
                 </a>
             </div>
+        </div>
+    </div>
 
-            <div class="flex items-center space-x-6">
-                <!-- Desktop Nav -->
-                <nav class="hidden lg:flex items-center space-x-1 font-medium">
-                    <a href="{{ route('home') }}"
-                        class="hover:uppercase px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 flex items-center group">
-                        <span class="relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 group-hover:after:w-full">Home</span>
-                    </a>
-                    <a href="{{ route('about') }}"
-                        class="hover:uppercase px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 flex items-center group">
-                        <span class="relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 group-hover:after:w-full">About</span>
-                    </a>
-                    <a href="{{ route('admission') }}"
-                        class="hover:uppercase px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 flex items-center group">
-                        <span class="relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 group-hover:after:w-full">Admission</span>
-                    </a>
-                    <a href="{{ route('gallery') }}"
-                        class="hover:uppercase px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 flex items-center group">
-                        <span class="relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 group-hover:after:w-full">Gallery</span>
-                    </a>
-                    <a href="{{ route('contact') }}"
-                        class="hover:uppercase px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 flex items-center group">
-                        <span class="relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 group-hover:after:w-full">Contact</span>
-                    </a>
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between py-3">
+            <a href="{{ route('home') }}" class="group flex items-center gap-3">
+                <img src="{{ asset('img/logo.png') }}" alt="Elites International College Logo"
+                    class="h-10 w-10 rounded-full border border-amber-300 object-cover shadow-sm transition group-hover:scale-105 sm:h-11 sm:w-11">
+                <div class="min-w-0">
+                    <p class="truncate text-sm font-black leading-tight text-slate-900 sm:text-base">
+                        Elites International College
+                    </p>
+                    <p class="text-xs font-semibold text-orange-700">Awka, Anambra</p>
+                </div>
+            </a>
 
-                    <!-- Dropdown -->
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open"
-                            class="hover:uppercase px-4 py-2 rounded-md hover:bg-gray-50 text-gray-700 hover:text-emerald-600 transition-all duration-200 flex items-center group">
-                            <span class="relative after:absolute after:bottom-0 after:left-0 after:w-0 after:h-0.5 after:bg-emerald-500 after:transition-all after:duration-300 group-hover:after:w-full">More</span>
-                            <svg class="w-4 h-4 ml-1 transition-transform transform" :class="{ 'rotate-180': open }"
-                                fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                            </svg>
+            <nav class="hidden items-center gap-1 lg:flex">
+                @foreach ($publicNavItems as $item)
+                    <a href="{{ route($item['route']) }}"
+                        @class([
+                            'rounded-xl px-4 py-2 text-sm font-semibold transition',
+                            'bg-red-100 text-red-700' => request()->routeIs($item['route']),
+                            'text-slate-700 hover:bg-slate-100 hover:text-slate-900' => !request()->routeIs($item['route']),
+                        ])>
+                        {{ $item['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+
+            <div class="hidden items-center gap-2 lg:flex">
+                <a href="{{ route('admission') }}"
+                    class="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-700">
+                    <i class="fas fa-user-plus text-xs"></i>
+                    <span>Apply Now</span>
+                </a>
+
+                @auth
+                    <div class="relative">
+                        <button type="button" @click="accountOpen = !accountOpen"
+                            class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                            <img src="{{ auth()->user()->profile_photo_url }}" alt="{{ auth()->user()->name }}"
+                                class="h-7 w-7 rounded-full border border-slate-200 object-cover">
+                            <span class="max-w-[110px] truncate">{{ auth()->user()->name }}</span>
+                            <i class="fas fa-chevron-down text-xs text-slate-500 transition"
+                                :class="{ 'rotate-180': accountOpen }"></i>
                         </button>
-                        <div x-show="open" @click.away="open = false" x-transition
-                            class="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg z-50 py-1">
-                            <a href="#"
-                                class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">Academics</a>
-                            <a href="#"
-                                class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">News</a>
-                            <a href="#"
-                                class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">Careers</a>
+
+                        <div x-show="accountOpen" x-cloak @click.away="accountOpen = false" x-transition
+                            class="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+                            <a href="{{ route('dashboard') }}"
+                                class="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                                <i class="fas fa-chart-line text-blue-600"></i>Dashboard
+                            </a>
+                            @if (Route::has('profile.edit'))
+                                <a href="{{ route('profile.edit') }}"
+                                    class="flex items-center gap-2 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+                                    <i class="fas fa-user text-indigo-600"></i>Profile
+                                </a>
+                            @endif
+                            <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-100">
+                                @csrf
+                                <button type="submit"
+                                    class="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium text-rose-700 transition hover:bg-rose-50">
+                                    <i class="fas fa-right-from-bracket"></i>Log Out
+                                </button>
+                            </form>
                         </div>
                     </div>
-                </nav>
-
-                <!-- CTA Button -->
-                <a href="{{ route('admission') }}"
-                    class="hover:uppercase hidden lg:inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 transition-colors duration-200 ml-2">
-                    Apply Now
-                </a>
-
-                <!-- Login/Register or User Info -->
-                <div class="hidden lg:flex items-center space-x-4 ml-2">
-                    @auth
-                        {{-- User Dropdown for Desktop --}}
-                        <div class="relative" x-data="{ userDropdownOpen: false }">
-                            <button @click="userDropdownOpen = !userDropdownOpen"
-                                class="flex items-center space-x-2 hover:text-emerald-600 transition-colors duration-200 focus:outline-none">
-                                <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}"
-                                    alt="Avatar" class="w-8 h-8 rounded-full object-cover border border-gray-200">
-                                <span class="hover:uppercase text-sm font-medium">{{ Auth::user()->name }}</span>
-                                <svg class="w-4 h-4 ml-1 transition-transform transform" :class="{ 'rotate-180': userDropdownOpen }"
-                                    fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            <div x-show="userDropdownOpen" @click.away="userDropdownOpen = false" x-transition
-                                class="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-lg shadow-lg z-50 py-1">
-                                <a href="{{ route('dashboard') }}"
-                                    class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">
-                                    <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
-                                </a>
-                                {{-- Assuming you have a profile edit route --}}
-                                @if (Route::has('profile.edit'))
-                                    <a href="{{ route('profile.edit') }}"
-                                        class="hover:uppercase block px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">
-                                        <i class="fas fa-user-circle mr-2"></i>Profile
-                                    </a>
-                                @endif
-                                <div class="border-t border-gray-100 my-1"></div>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit"
-                                        class="hover:uppercase block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-50 hover:text-emerald-600 transition-colors duration-200">
-                                        <i class="fas fa-sign-out-alt mr-2"></i>Log Out
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    @else
-                        <a href="{{ route('login') }}"
-                            class="hover:uppercase text-sm font-medium text-gray-700 hover:text-emerald-600 transition-colors duration-200">
-                            Login
-                        </a>
-                    @endauth
-                </div>
+                @else
+                    <a href="{{ route('login') }}"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
+                        <i class="fas fa-right-to-bracket text-xs"></i>
+                        <span>Login</span>
+                    </a>
+                @endauth
             </div>
 
-            <!-- Mobile Toggle -->
-            <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden focus:outline-none">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path x-show="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    <path x-show="mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+            <button type="button" @click="mobileOpen = !mobileOpen"
+                class="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 text-slate-700 transition hover:bg-slate-100 lg:hidden"
+                aria-label="Toggle menu">
+                <i class="fas text-lg" :class="mobileOpen ? 'fa-times' : 'fa-bars'"></i>
             </button>
         </div>
     </div>
 
-    <!-- Mobile Menu -->
-    <div x-show="mobileMenuOpen" x-transition
-        class="lg:hidden bg-white border-t border-gray-200 px-4 pt-2 pb-4 space-y-1">
-        <a href="{{ route('home') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Home</a>
-        <a href="{{ route('about') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">About</a>
-        <a href="{{ route('admission') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Admission</a>
-        <a href="{{ route('gallery') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Gallery</a>
-        <a href="{{ route('contact') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Contact</a>
-        
-        <div class="pt-2 border-t border-gray-200">
-            <div x-data="{ open: false }">
-                <button @click="open = !open" class="hover:uppercase w-full flex justify-between items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
-                    <span>More</span>
-                    <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': open }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
-                </button>
-                <div x-show="open" class="pl-4 space-y-1 mt-1">
-                    <a href="#" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Academics</a>
-                    <a href="#" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">News</a>
-                    <a href="#" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Careers</a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="pt-2">
-            <a href="{{ route('admission') }}" class="hover:uppercase block w-full px-4 py-2 text-center rounded-md border border-transparent font-medium text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm">
-                Apply Now
-            </a>
-        </div>
-        
-        <div class="pt-2 border-t border-gray-200">
-            @auth
-                {{-- Mobile User Dropdown --}}
-                <div x-data="{ mobileUserDropdownOpen: false }">
-                    <button @click="mobileUserDropdownOpen = !mobileUserDropdownOpen" class="hover:uppercase w-full flex justify-between items-center px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
-                        <div class="flex items-center">
-                            <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}" alt="Avatar" class="w-6 h-6 rounded-full mr-2 object-cover border border-gray-200">
-                            <span>My Account</span>
-                        </div>
-                        <svg class="w-4 h-4 transform transition-transform duration-200" :class="{ 'rotate-180': mobileUserDropdownOpen }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                        </svg>
-                    </button>
-                    <div x-show="mobileUserDropdownOpen" class="pl-4 space-y-1 mt-1">
-                        <a href="{{ route('home') }}"
-                            class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
-                            <i class="fas fa-tachometer-alt mr-2"></i>Dashboard
+    <div x-show="mobileOpen" x-cloak x-transition class="border-t border-slate-200 bg-white lg:hidden">
+        <div class="mx-auto max-w-7xl space-y-2 px-4 py-3 sm:px-6">
+            @foreach ($publicNavItems as $item)
+                <a href="{{ route($item['route']) }}"
+                    @class([
+                        'block rounded-xl px-4 py-3 text-sm font-semibold transition',
+                        'bg-red-100 text-red-700' => request()->routeIs($item['route']),
+                        'text-slate-700 hover:bg-slate-100' => !request()->routeIs($item['route']),
+                    ])>
+                    {{ $item['label'] }}
+                </a>
+            @endforeach
+
+            <div class="grid grid-cols-1 gap-2 pt-2">
+                <a href="{{ route('admission') }}"
+                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-700">
+                    <i class="fas fa-user-plus text-xs"></i>
+                    <span>Apply Now</span>
+                </a>
+
+                @auth
+                    <a href="{{ route('dashboard') }}"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                        <i class="fas fa-chart-line text-xs"></i>
+                        <span>Dashboard</span>
+                    </a>
+
+                    @if (Route::has('profile.edit'))
+                        <a href="{{ route('profile.edit') }}"
+                            class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                            <i class="fas fa-user text-xs"></i>
+                            <span>Profile</span>
                         </a>
-                        @if (Route::has('profile.edit'))
-                            <a href="{{ route('profile.edit') }}"
-                                class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
-                                <i class="fas fa-user-circle mr-2"></i>Profile
-                            </a>
-                        @endif
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit"
-                                class="hover:uppercase block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">
-                                <i class="fas fa-sign-out-alt mr-2"></i>Log Out
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            @else
-                <a href="{{ route('login') }}" class="hover:uppercase block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-50 hover:text-emerald-600">Login</a>
-            @endauth
+                    @endif
+
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit"
+                            class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100">
+                            <i class="fas fa-right-from-bracket text-xs"></i>
+                            <span>Log Out</span>
+                        </button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+                        <i class="fas fa-right-to-bracket text-xs"></i>
+                        <span>Login</span>
+                    </a>
+                @endauth
+            </div>
         </div>
     </div>
 </header>
