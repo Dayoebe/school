@@ -40,7 +40,7 @@ class AssignTeacher extends Component
     public function loadData()
     {
         // FIX: Eager load classes and teachers to prevent N+1
-        $this->subjects = Subject::where('school_id', auth()->user()->school_id)
+        $this->subjects = Subject::query()
             ->active()
             ->when($this->searchSubject, function($query) {
                 $query->where(function($q) {
@@ -61,7 +61,9 @@ class AssignTeacher extends Component
             ->get(['id', 'name', 'email']);
         
         // FIX: Eager load classGroup
-        $this->classes = MyClass::where('school_id', auth()->user()->school_id)
+        $this->classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
             ->with('classGroup')
             ->orderBy('name')
             ->get();
@@ -78,10 +80,30 @@ class AssignTeacher extends Component
             'selectedTeacher' => 'required|exists:users,id',
             'selectedClass' => 'required_if:isGeneralAssignment,false|nullable|exists:my_classes,id',
         ]);
+
+        $subject = Subject::query()
+            ->with('classes')
+            ->find($this->selectedSubject);
+        if (!$subject) {
+            session()->flash('error', 'Selected subject is not in your current school.');
+            return;
+        }
+
+        $teacherExists = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $this->selectedTeacher)
+            ->exists();
+        if (!$teacherExists) {
+            session()->flash('error', 'Selected teacher is not in your current school.');
+            return;
+        }
+
+        if (!$this->isGeneralAssignment && $this->selectedClass && !$this->classBelongsToCurrentSchool($this->selectedClass)) {
+            session()->flash('error', 'Selected class is not in your current school.');
+            return;
+        }
         
-        DB::transaction(function () {
-            $subject = Subject::with('classes')->find($this->selectedSubject);
-            
+        DB::transaction(function () use ($subject) {
             // Check if subject is assigned to the selected class (if class-specific)
             if (!$this->isGeneralAssignment && $this->selectedClass) {
                 if (!$subject->classes->contains($this->selectedClass)) {
@@ -98,7 +120,7 @@ class AssignTeacher extends Component
         
         $assignmentType = $this->isGeneralAssignment 
             ? 'all classes' 
-            : MyClass::find($this->selectedClass)?->name;
+            : $this->getClassNameForCurrentSchool($this->selectedClass);
             
         session()->flash('success', "Teacher assigned successfully for {$assignmentType}!");
         
@@ -120,12 +142,28 @@ class AssignTeacher extends Component
             'bulkClass' => 'required_if:bulkIsGeneral,false|nullable|exists:my_classes,id',
         ]);
 
+        $teacherExists = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $this->bulkTeacher)
+            ->exists();
+        if (!$teacherExists) {
+            session()->flash('error', 'Selected teacher is not in your current school.');
+            return;
+        }
+
+        if (!$this->bulkIsGeneral && $this->bulkClass && !$this->classBelongsToCurrentSchool($this->bulkClass)) {
+            session()->flash('error', 'Selected class is not in your current school.');
+            return;
+        }
+
         $assignedCount = 0;
         $skippedCount = 0;
 
         DB::transaction(function () use (&$assignedCount, &$skippedCount) {
             foreach ($this->bulkSubjects as $subjectId) {
-                $subject = Subject::with('classes')->find($subjectId);
+                $subject = Subject::query()
+                    ->with('classes')
+                    ->find($subjectId);
                 
                 if ($subject) {
                     // Verify class assignment if class-specific
@@ -148,7 +186,7 @@ class AssignTeacher extends Component
 
         $assignmentType = $this->bulkIsGeneral 
             ? 'all classes' 
-            : MyClass::find($this->bulkClass)?->name;
+            : $this->getClassNameForCurrentSchool($this->bulkClass);
             
         $message = "{$assignedCount} subject(s) assigned to teacher for {$assignmentType}!";
         
@@ -170,9 +208,24 @@ class AssignTeacher extends Component
         }
         
         DB::transaction(function () use ($subjectId, $teacherId, $classId) {
-            $subject = Subject::find($subjectId);
+            $subject = Subject::query()->find($subjectId);
+            if (!$subject) {
+                return;
+            }
+
+            $teacherExists = User::role('teacher')
+                ->where('school_id', auth()->user()->school_id)
+                ->where('id', $teacherId)
+                ->exists();
+            if (!$teacherExists) {
+                return;
+            }
             
             if ($classId) {
+                if (!$this->classBelongsToCurrentSchool($classId)) {
+                    return;
+                }
+
                 // Remove class-specific assignment
                 $subject->teachers()->wherePivot('user_id', $teacherId)
                     ->wherePivot('my_class_id', $classId)
@@ -220,10 +273,32 @@ class AssignTeacher extends Component
         $this->selectedClass = null;
     }
 
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function getClassNameForCurrentSchool($classId): string
+    {
+        if (!$classId) {
+            return 'all classes';
+        }
+
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->value('name') ?? 'selected class';
+    }
+
     public function render()
     {
         return view('livewire.subjects.assign-teacher')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('subjects.index'), 'text' => 'Subjects'],

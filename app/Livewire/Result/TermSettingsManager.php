@@ -22,11 +22,15 @@ class TermSettingsManager extends Component
 
     public function mount()
     {
-        $this->classes = MyClass::orderBy('name')->get();
+        $this->classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
         
         // Get from session (set by AcademicPeriodSelector)
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
         
         $this->loadSettings();
     }
@@ -58,7 +62,35 @@ class TermSettingsManager extends Component
             return;
         }
 
+        $yearValid = \App\Models\AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        $semesterValid = \App\Models\Semester::where('id', $this->semesterId)
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+
+        if (!$yearValid || !$semesterValid) {
+            $this->generalAnnouncement = '';
+            $this->resumptionDate = null;
+            return;
+        }
+
         $classId = $this->isGlobal ? null : $this->selectedClassId;
+
+        if ($classId) {
+            $classValid = MyClass::where('id', $classId)
+                ->whereHas('classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$classValid) {
+                $this->generalAnnouncement = '';
+                $this->resumptionDate = null;
+                return;
+            }
+        }
         
         $settings = TermSettings::getForTermAndClass(
             $this->academicYearId, 
@@ -84,6 +116,32 @@ class TermSettingsManager extends Component
             'resumptionDate' => 'nullable|date',
             'selectedClassId' => $this->isGlobal ? 'nullable' : 'required|exists:my_classes,id',
         ]);
+
+        $yearValid = \App\Models\AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        $semesterValid = \App\Models\Semester::where('id', $this->semesterId)
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+
+        if (!$yearValid || !$semesterValid) {
+            session()->flash('error', 'Academic year/term is not in your current school.');
+            return;
+        }
+
+        if (!$this->isGlobal) {
+            $classValid = MyClass::where('id', $this->selectedClassId)
+                ->whereHas('classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$classValid) {
+                session()->flash('error', 'Selected class is not in your current school.');
+                return;
+            }
+        }
 
         $data = [
             'academic_year_id' => $this->academicYearId,

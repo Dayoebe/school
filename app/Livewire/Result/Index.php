@@ -3,7 +3,7 @@
 namespace App\Livewire\Result;
 
 use Livewire\Component;
-use App\Models\{AcademicYear, Semester};
+use App\Models\AcademicYear;
 
 class Index extends Component
 {
@@ -16,13 +16,15 @@ class Index extends Component
 
     public function render()
     {
-        $academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
-        $currentYear = auth()->user()->school->academicYear ?? $academicYears->first();
+        $academicYears = AcademicYear::query()
+            ->orderBy('start_year', 'desc')
+            ->get();
+        $currentYear = auth()->user()->school?->academicYear ?? $academicYears->first();
         
         return view('livewire.result.index', [
             'academicYears' => $academicYears,
             'currentYear' => $currentYear,
-        ])->layout('layouts.new', [
+        ])->layout('layouts.result', [
             'title' => 'Results Management',
             'page_heading' => 'Results Management System'
         ]);

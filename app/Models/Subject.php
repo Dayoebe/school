@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\InSchool;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
@@ -10,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class Subject extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, InSchool;
 
     protected $fillable = [
         'name',

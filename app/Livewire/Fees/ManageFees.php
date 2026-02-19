@@ -50,7 +50,7 @@ class ManageFees extends Component
 
     public function loadFeeCategories()
     {
-        $this->feeCategories = FeeCategory::where('school_id', auth()->user()->school_id)
+        $this->feeCategories = FeeCategory::query()
             ->orderBy('name')
             ->get();
     }
@@ -70,12 +70,7 @@ class ManageFees extends Component
 
     public function loadFeeForEdit()
     {
-        $fee = Fee::with('feeCategory')->findOrFail($this->feeId);
-        
-        // Authorization check
-        if ($fee->feeCategory->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $fee = $this->getFeeForCurrentSchool($this->feeId);
         
         $this->fill([
             'name' => $fee->name,
@@ -93,10 +88,7 @@ class ManageFees extends Component
         ]);
 
         // Verify category belongs to school
-        $category = FeeCategory::findOrFail($this->fee_category_id);
-        if ($category->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $this->getFeeCategoryForCurrentSchool($this->fee_category_id);
 
         DB::transaction(function () {
             Fee::create([
@@ -112,11 +104,7 @@ class ManageFees extends Component
 
     public function updateFee()
     {
-        $fee = Fee::with('feeCategory')->findOrFail($this->feeId);
-        
-        if ($fee->feeCategory->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $fee = $this->getFeeForCurrentSchool($this->feeId);
         
         $this->validate([
             'name' => 'required|string|max:255',
@@ -125,10 +113,7 @@ class ManageFees extends Component
         ]);
 
         // Verify new category belongs to school
-        $category = FeeCategory::findOrFail($this->fee_category_id);
-        if ($category->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $this->getFeeCategoryForCurrentSchool($this->fee_category_id);
 
         DB::transaction(function () use ($fee) {
             $fee->update([
@@ -144,11 +129,7 @@ class ManageFees extends Component
 
     public function deleteFee($feeId)
     {
-        $fee = Fee::with('feeCategory')->findOrFail($feeId);
-        
-        if ($fee->feeCategory->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $fee = $this->getFeeForCurrentSchool($feeId);
         
         DB::transaction(function () use ($fee) {
             $fee->delete();
@@ -197,9 +178,25 @@ class ManageFees extends Component
                 });
             })
             ->when($this->filterCategory, function($q) {
-                $q->where('fee_category_id', $this->filterCategory);
+                $q->whereHas('feeCategory', function ($query) {
+                    $query->where('id', $this->filterCategory)
+                        ->where('school_id', auth()->user()->school_id);
+                });
             })
             ->orderBy($this->sortField, $this->sortDirection);
+    }
+
+    protected function getFeeCategoryForCurrentSchool($feeCategoryId): FeeCategory
+    {
+        return FeeCategory::query()
+            ->findOrFail($feeCategoryId);
+    }
+
+    protected function getFeeForCurrentSchool($feeId): Fee
+    {
+        return Fee::whereHas('feeCategory', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->with('feeCategory')->findOrFail($feeId);
     }
 
     public function render()
@@ -211,7 +208,7 @@ class ManageFees extends Component
         }
 
         return view('livewire.fees.manage-fees', compact('fees'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('fees.index'), 'text' => 'Fees', 'active' => true]

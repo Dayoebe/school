@@ -32,6 +32,9 @@ use App\Livewire\AccountApplications\ManageAccountApplications;
 use App\Livewire\Sections\{ManageSections, SectionDetail};
 use App\Livewire\Students\{ManageStudents, StudentDetail, PromoteStudents, GraduateStudents};
 use App\Livewire\Classes\{ManageClassGroups, ManageClasses};
+use App\Livewire\Admissions\ManageAdmissionRegistrations;
+use App\Livewire\Contacts\ManageContactMessages;
+use App\Livewire\Gallery\ManageGallery;
 
 // Controllers 
 use App\Http\Controllers\{
@@ -108,35 +111,53 @@ Route::middleware('guest')->group(function () {
 
 
 // Account Applications (Full Livewire)
-Route::get('account-applications', ManageAccountApplications::class)
-    ->name('account-applications.index')
-    ->can('viewAny', [App\Models\User::class, 'applicant']);
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:read applicant'])
+    ->group(function () {
+        Route::get('account-applications', ManageAccountApplications::class)
+            ->name('account-applications.index')
+            ->can('viewAny', [App\Models\User::class, 'applicant']);
 
-Route::get('account-applications/rejected', ManageAccountApplications::class)
-    ->name('account-applications.rejected-applications')
-    ->can('viewAny', [App\Models\User::class, 'applicant']);
+        Route::get('account-applications/rejected', ManageAccountApplications::class)
+            ->name('account-applications.rejected-applications')
+            ->can('viewAny', [App\Models\User::class, 'applicant']);
 
-Route::get('account-applications/{applicant}', ManageAccountApplications::class)
-    ->name('account-applications.show')
-    ->can('view', 'applicant');
+        Route::get('account-applications/{applicant}', ManageAccountApplications::class)
+            ->name('account-applications.show')
+            ->can('view', 'applicant');
 
-Route::get('account-applications/{applicant}/change-status', ManageAccountApplications::class)
-    ->name('account-applications.change-status')
-    ->can('update', 'applicant');
+        Route::get('account-applications/{applicant}/change-status', ManageAccountApplications::class)
+            ->name('account-applications.change-status')
+            ->middleware('permission:update applicant')
+            ->can('update', 'applicant');
+    });
 /*
 |--------------------------------------------------------------------------
 | AUTHENTICATED ROUTES
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth')->group(function () {
-    Route::post('logout', [AuthController::class, 'logout'])->name('logout');
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+Route::post('logout', [AuthController::class, 'logout'])
+    ->middleware('auth')
+    ->name('logout');
+
+Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])
+        ->middleware('permission:view dashboard')
+        ->name('dashboard');
 
     // Profile Management
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::get('/change-password', [ProfileController::class, 'showChangePasswordForm'])->name('password.change');
+    Route::get('/profile', [ProfileController::class, 'edit'])
+        ->middleware('permission:manage own profile')
+        ->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->middleware('permission:manage own profile')
+        ->name('profile.update');
+    Route::get('/change-password', [ProfileController::class, 'showChangePasswordForm'])
+        ->middleware('permission:change own password')
+        ->name('password.change');
+    Route::post('/change-password', [ProfileController::class, 'changePassword'])
+        ->middleware('permission:change own password')
+        ->name('password.change.update');
 
     /*
     |--------------------------------------------------------------------------
@@ -144,10 +165,18 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::get('/teachers', ManageTeachers::class)->name('teachers.index');
-    Route::get('/teachers/create', ManageTeachers::class)->name('teachers.create');
-    Route::get('/teachers/{teacher}/edit', ManageTeachers::class)->name('teachers.edit');
-    Route::get('/teachers/{teacherId}', TeacherDetail::class)->name('teachers.show');
+    Route::get('/teachers', ManageTeachers::class)
+        ->middleware('permission:read teacher')
+        ->name('teachers.index');
+    Route::get('/teachers/create', ManageTeachers::class)
+        ->middleware('permission:create teacher')
+        ->name('teachers.create');
+    Route::get('/teachers/{teacher}/edit', ManageTeachers::class)
+        ->middleware('permission:update teacher')
+        ->name('teachers.edit');
+    Route::get('/teachers/{teacherId}', TeacherDetail::class)
+        ->middleware('permission:read teacher')
+        ->name('teachers.show');
 
     /*
     |--------------------------------------------------------------------------
@@ -155,11 +184,20 @@ Route::middleware('auth')->group(function () {
     |--------------------------------------------------------------------------
     */
 
-    Route::get('/subjects', ManageSubjects::class)->name('subjects.index');
-    Route::get('/subjects/create', ManageSubjects::class)->name('subjects.create');
-    Route::get('/subjects/{subject}/edit', ManageSubjects::class)->name('subjects.edit');
-    Route::get('/subjects/{subjectId}', SubjectDetail::class)->name('subjects.show');
+    Route::get('/subjects', ManageSubjects::class)
+        ->middleware('permission:read subject')
+        ->name('subjects.index');
+    Route::get('/subjects/create', ManageSubjects::class)
+        ->middleware('permission:create subject')
+        ->name('subjects.create');
+    Route::get('/subjects/{subject}/edit', ManageSubjects::class)
+        ->middleware('permission:update subject')
+        ->name('subjects.edit');
+    Route::get('/subjects/{subjectId}', SubjectDetail::class)
+        ->middleware('permission:read subject')
+        ->name('subjects.show');
     Route::get('/subjects/teacher/assign', \App\Livewire\Subjects\AssignTeacher::class)
+        ->middleware('permission:update subject')
         ->name('subjects.assign-teacher');
     // Route::get('/subjects/assign-teacher', AssignTeacher::class)->name('subjects.assign-teacher');
 });
@@ -171,18 +209,23 @@ Route::middleware('auth')->group(function () {
 
 use App\Livewire\Parents\{ManageParents, ParentDetail, AssignStudentsToParent};
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     
     Route::prefix('parents')->group(function () {
         // Main parents page (list/create/edit all in one component)
-        Route::get('/', ManageParents::class)->name('parents.index');
+        Route::get('/', ManageParents::class)
+            ->middleware('permission:read parent')
+            ->name('parents.index');
         
         // Assign students - IMPORTANT: This must come BEFORE {parentId}
         Route::get('/{parent}/assign-students', AssignStudentsToParent::class)
+            ->middleware('permission:update parent')
             ->name('parents.assign-student');
         
         // View parent profile - This catches any ID that doesn't match above routes
-        Route::get('/{parentId}', ParentDetail::class)->name('parents.show');
+        Route::get('/{parentId}', ParentDetail::class)
+            ->middleware('permission:read parent')
+            ->name('parents.show');
     });
 });
 
@@ -192,36 +235,47 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->prefix('fees')->group(function () {
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->prefix('fees')->group(function () {
 
     // Fee Categories
     Route::get('/fee-categories', ManageFeeCategories::class)
+        ->middleware('permission:read fee category')
         ->name('fee-categories.index');
     Route::get('/fee-categories/create', ManageFeeCategories::class)
+        ->middleware('permission:create fee category')
         ->name('fee-categories.create');
     Route::get('/fee-categories/{feeCategory}/edit', ManageFeeCategories::class)
+        ->middleware('permission:update fee category')
         ->name('fee-categories.edit');
 
     // Fees
     Route::get('/', ManageFees::class)
+        ->middleware('permission:read fee')
         ->name('fees.index');
     Route::get('/create', ManageFees::class)
+        ->middleware('permission:create fee')
         ->name('fees.create');
     Route::get('/{fee}/edit', ManageFees::class)
+        ->middleware('permission:update fee')
         ->name('fees.edit');
 
     // Fee Invoices
     Route::get('/fee-invoices', ManageFeeInvoices::class)
+        ->middleware('permission:read fee invoice')
         ->name('fee-invoices.index');
     Route::get('/fee-invoices/create', ManageFeeInvoices::class)
+        ->middleware('permission:create fee invoice')
         ->name('fee-invoices.create');
     Route::get('/fee-invoices/{feeInvoice}/edit', ManageFeeInvoices::class)
+        ->middleware('permission:update fee invoice')
         ->name('fee-invoices.edit');
     Route::get('/fee-invoices/{feeInvoiceId}', FeeInvoiceDetail::class)
+        ->middleware('permission:read fee invoice')
         ->name('fee-invoices.show');
 
     // Print invoice (keeping this as controller since it generates PDF)
     Route::get('/fee-invoices/{fee_invoice}/print', [FeeInvoiceController::class, 'print'])
+        ->middleware('permission:read fee invoice')
         ->name('fee-invoices.print');
 });
 
@@ -231,7 +285,7 @@ Route::middleware(['auth', 'verified'])->prefix('fees')->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('teacher')->middleware(['auth', 'verified', 'role:teacher'])->group(function () {
+Route::prefix('teacher')->middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:upload result'])->group(function () {
     Route::resource('results', ResultController::class)->except(['show']);
 });
 
@@ -241,13 +295,19 @@ Route::prefix('teacher')->middleware(['auth', 'verified', 'role:teacher'])->grou
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->prefix('cbt')->name('cbt.')->group(function () {
-    Route::get('/exams', CbtExamSelection::class)->name('exams');
-    Route::get('/exam/{assessment}', CbtExamInterface::class)->name('exam.take');
-    Route::get('/results', CbtViewer::class)->name('viewer');
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->prefix('cbt')->name('cbt.')->group(function () {
+    Route::get('/exams', CbtExamSelection::class)
+        ->middleware('permission:take cbt exam')
+        ->name('exams');
+    Route::get('/exam/{assessment}', CbtExamInterface::class)
+        ->middleware('permission:take cbt exam')
+        ->name('exam.take');
+    Route::get('/results', CbtViewer::class)
+        ->middleware('permission:view cbt result')
+        ->name('viewer');
 
     Route::get('/manage', CbtManagement::class)
-        ->middleware('role:super-admin|super_admin|admin|principal|teacher')
+        ->middleware('permission:manage cbt')
         ->name('manage');
 });
 
@@ -257,25 +317,45 @@ Route::middleware(['auth', 'verified'])->prefix('cbt')->name('cbt.')->group(func
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/students', ManageStudents::class)->name('students.index');
-    Route::get('/students/create', ManageStudents::class)->name('students.create');
-    Route::get('/students/{studentId}/edit', ManageStudents::class)->name('students.edit');
-    Route::get('/students/{studentId}', StudentDetail::class)->name('students.show');
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+    Route::get('/students', ManageStudents::class)
+        ->middleware('permission:read student')
+        ->name('students.index');
+    Route::get('/students/create', ManageStudents::class)
+        ->middleware('permission:create student')
+        ->name('students.create');
+    Route::get('/students/{studentId}/edit', ManageStudents::class)
+        ->middleware('permission:update student')
+        ->name('students.edit');
+    Route::get('/students/{studentId}', StudentDetail::class)
+        ->middleware('permission:read student')
+        ->name('students.show');
+
+    Route::get('/admissions/registrations', ManageAdmissionRegistrations::class)
+        ->name('admissions.registrations.index')
+        ->middleware('permission:read admission registration');
+
+    Route::get('/contacts/messages', ManageContactMessages::class)
+        ->name('contacts.messages.index')
+        ->middleware('permission:read contact message');
+
+    Route::get('/gallery/manage', ManageGallery::class)
+        ->name('gallery.manage')
+        ->middleware('permission:manage gallery');
 
     // Graduation routes
     Route::get('/students/graduations/manage', GraduateStudents::class)
         ->name('students.graduate')
-        ->can('read student');
+        ->middleware('permission:graduate student');
 
     Route::get('/students/graduations/history', GraduateStudents::class)
         ->name('students.graduations')
-        ->can('read student');
+        ->middleware('permission:view graduations');
 
     // Promotion routes
     Route::get('/students/promotions/manage', PromoteStudents::class)
         ->name('students.promote')
-        ->can('promote student');
+        ->middleware('permission:promote student');
 });
 
 /*
@@ -284,9 +364,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/sections', ManageSections::class)->name('sections.index');
-    Route::get('/sections/{sectionId}', SectionDetail::class)->name('sections.show');
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+    Route::get('/sections', ManageSections::class)
+        ->middleware('permission:read section')
+        ->name('sections.index');
+    Route::get('/sections/{sectionId}', SectionDetail::class)
+        ->middleware('permission:read section')
+        ->name('sections.show');
 });
 
 /*
@@ -295,7 +379,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('results')->middleware(['auth', 'verified'])->group(function () {
+Route::prefix('results')->middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::get('/', \App\Livewire\Result\Index::class)->name('result')->can('upload result');
 
     Route::get('/upload/individual', \App\Livewire\Result\Upload\IndividualUpload::class)
@@ -337,6 +421,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Schools list
     Route::get('/schools', \App\Livewire\Schools\ManageSchools::class)
+        ->middleware('permission:read school|create school|update school|delete school|manage school settings')
         ->name('schools.index');
     
     // School Settings - MUST come BEFORE {schoolId} route
@@ -345,10 +430,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
             return redirect()->route('schools.index')->with('error', 'Please set a school first');
         }
         return redirect()->route('schools.index', ['mode' => 'edit', 'schoolId' => auth()->user()->school_id]);
-    })->name('schools.settings');
+    })->middleware('permission:manage school settings')->name('schools.settings');
     
     // School detail - comes LAST
     Route::get('/schools/{schoolId}', \App\Livewire\Schools\SchoolDetail::class)
+        ->middleware('permission:read school')
         ->name('schools.show');
 });
 
@@ -358,17 +444,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     
     Route::get('/admins', \App\Livewire\Admins\ManageAdmins::class)
+        ->middleware('permission:read admin|create admin|update admin|delete admin')
         ->name('admins.index');
     Route::get('/admins/{adminId}', \App\Livewire\Admins\AdminDetail::class)
+        ->middleware('permission:read admin')
         ->name('admins.show');
         
     // Convenience routes for create/edit (they'll be handled by ManageAdmins component)
     Route::get('/admins/create', function() {
         return redirect()->route('admins.index', ['mode' => 'create']);
-    })->name('admins.create');
+    })->middleware('permission:create admin')->name('admins.create');
 });
 /*
 |--------------------------------------------------------------------------
@@ -380,24 +468,32 @@ Route::middleware($dashboardMiddleware)->prefix('dashboard')->group(function () 
 
     // Academic Year Management
     Route::get('academic-years', ManageAcademicYears::class)
+        ->middleware('permission:read academic year')
         ->name('academic-years.index')
         ->can('viewAny', 'App\Models\AcademicYear');
 
     Route::get('academic-years/{academicYear}', ShowAcademicYear::class)
+        ->middleware('permission:read academic year')
         ->name('academic-years.show')
         ->can('view', 'academicYear');
 
     // Semester Management
     Route::middleware('App\Http\Middleware\EnsureAcademicYearIsSet')->group(function () {
         Route::get('semesters', ManageSemesters::class)
+            ->middleware('permission:read semester')
             ->name('semesters.index')
             ->can('viewAny', 'App\Models\Semester');
     });
 
     // Class Groups & Classes
-    Route::get('class-groups', ManageClassGroups::class)->name('class-groups.index');
-    Route::get('classes', ManageClasses::class)->name('classes.index');
-    Route::post('classes/{class}/assign-subjects', [MyClassController::class, 'assignSubjects']);
+    Route::get('class-groups', ManageClassGroups::class)
+        ->middleware('permission:read class group')
+        ->name('class-groups.index');
+    Route::get('classes', ManageClasses::class)
+        ->middleware('permission:read class')
+        ->name('classes.index');
+    Route::post('classes/{class}/assign-subjects', [MyClassController::class, 'assignSubjects'])
+        ->middleware('permission:update class');
 });
 
 /*
@@ -406,22 +502,22 @@ Route::middleware($dashboardMiddleware)->prefix('dashboard')->group(function () 
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::get('/timetables', \App\Livewire\Timetable\ManageTimetables::class)
-        ->name('timetables.index')
-        ->can('read timetable');
+        ->middleware('permission:read timetable')
+        ->name('timetables.index');
 
     Route::get('/timetables/create', \App\Livewire\Timetable\ManageTimetables::class)
-        ->name('timetables.create')
-        ->can('create timetable');
+        ->middleware('permission:create timetable')
+        ->name('timetables.create');
 
     Route::get('/custom-timetable-items', \App\Livewire\Timetable\ManageTimetables::class)
-        ->name('custom-timetable-items.index')
-        ->can('read custom timetable item');
+        ->middleware('permission:read custom timetable item')
+        ->name('custom-timetable-items.index');
 
     Route::get('/custom-timetable-items/create', \App\Livewire\Timetable\ManageTimetables::class)
-        ->name('custom-timetable-items.create')
-        ->can('create custom timetable item');
+        ->middleware('permission:create custom timetable item')
+        ->name('custom-timetable-items.create');
 
 });
 
@@ -437,10 +533,23 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
     Route::middleware('App\Http\Middleware\EnsureSuperAdminHasSchoolId')->group(function () {
 
         // User Management
-        Route::post('users/lock-account/{user}', LockUserAccountController::class)->name('user.lock-account');
+        Route::post('users/lock-account/{user}', LockUserAccountController::class)
+            ->middleware('permission:lock user')
+            ->name('user.lock-account');
 
         // Notices
-        Route::resource('notices', NoticeController::class);
+        Route::resource('notices', NoticeController::class)
+            ->only(['index', 'show'])
+            ->middleware('permission:read notice');
+        Route::resource('notices', NoticeController::class)
+            ->only(['create', 'store'])
+            ->middleware('permission:create notice');
+        Route::resource('notices', NoticeController::class)
+            ->only(['edit', 'update'])
+            ->middleware('permission:update notice');
+        Route::resource('notices', NoticeController::class)
+            ->only(['destroy'])
+            ->middleware('permission:delete notice');
 
         // Academic Year Dependent Routes
         Route::middleware([
@@ -454,34 +563,90 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
 
 
                 // Syllabus
-                Route::resource('syllabi', SyllabusController::class);
+                Route::resource('syllabi', SyllabusController::class)
+                    ->only(['index', 'show'])
+                    ->middleware('permission:read syllabus');
+                Route::resource('syllabi', SyllabusController::class)
+                    ->only(['create', 'store'])
+                    ->middleware('permission:create syllabus');
+                Route::resource('syllabi', SyllabusController::class)
+                    ->only(['edit', 'update'])
+                    ->middleware('permission:update syllabus');
+                Route::resource('syllabi', SyllabusController::class)
+                    ->only(['destroy'])
+                    ->middleware('permission:delete syllabus');
 
    
                 
                 // Exams
-                Route::resource('exams', ExamController::class);
+                Route::resource('exams', ExamController::class)
+                    ->only(['index', 'show'])
+                    ->middleware('permission:read exam');
+                Route::resource('exams', ExamController::class)
+                    ->only(['create', 'store'])
+                    ->middleware('permission:create exam');
+                Route::resource('exams', ExamController::class)
+                    ->only(['edit', 'update'])
+                    ->middleware('permission:update exam');
+                Route::resource('exams', ExamController::class)
+                    ->only(['destroy'])
+                    ->middleware('permission:delete exam');
                 Route::post('exams/{exam}/set-active-status', [ExamController::class, 'setExamActiveStatus'])
+                    ->middleware('permission:update exam')
                     ->name('exams.set-active-status');
                 Route::post('exams/{exam}/set-publish-result-status', [ExamController::class, 'setPublishResultStatus'])
+                    ->middleware('permission:update exam')
                     ->name('exams.set-publish-result-status');
 
-                Route::resource('exams/exam-records', ExamRecordController::class);
+                Route::resource('exams/exam-records', ExamRecordController::class)
+                    ->only(['index'])
+                    ->middleware('permission:read exam record');
+                Route::resource('exams/exam-records', ExamRecordController::class)
+                    ->only(['create', 'store'])
+                    ->middleware('permission:create exam record');
+
                 Route::scopeBindings()->group(function () {
-                    Route::resource('exams/{exam}/manage/exam-slots', ExamSlotController::class);
+                    Route::resource('exams/{exam}/manage/exam-slots', ExamSlotController::class)
+                        ->only(['index', 'show'])
+                        ->middleware('permission:read exam slot');
+                    Route::resource('exams/{exam}/manage/exam-slots', ExamSlotController::class)
+                        ->only(['create', 'store'])
+                        ->middleware('permission:create exam slot');
+                    Route::resource('exams/{exam}/manage/exam-slots', ExamSlotController::class)
+                        ->only(['edit', 'update'])
+                        ->middleware('permission:update exam slot');
+                    Route::resource('exams/{exam}/manage/exam-slots', ExamSlotController::class)
+                        ->only(['destroy'])
+                        ->middleware('permission:delete exam slot');
                 });
 
                 // Exam Reports
                 Route::get('exams/tabulation-sheet', [ExamController::class, 'examTabulation'])
+                    ->middleware('permission:read exam')
                     ->name('exams.tabulation');
                 Route::get('exams/semester-result-tabulation', [ExamController::class, 'semesterResultTabulation'])
+                    ->middleware('permission:read exam')
                     ->name('exams.semester-result-tabulation');
                 Route::get('exams/academic-year-result-tabulation', [ExamController::class, 'academicYearResultTabulation'])
+                    ->middleware('permission:read exam')
                     ->name('exams.academic-year-result-tabulation');
                 Route::get('exams/result-checker', [ExamController::class, 'resultChecker'])
+                    ->middleware('permission:check result')
                     ->name('exams.result-checker');
 
                 // Grade Systems
-                Route::resource('grade-systems', GradeSystemController::class);
+                Route::resource('grade-systems', GradeSystemController::class)
+                    ->only(['index', 'show'])
+                    ->middleware('permission:read grade system');
+                Route::resource('grade-systems', GradeSystemController::class)
+                    ->only(['create', 'store'])
+                    ->middleware('permission:create grade system');
+                Route::resource('grade-systems', GradeSystemController::class)
+                    ->only(['edit', 'update'])
+                    ->middleware('permission:update grade system');
+                Route::resource('grade-systems', GradeSystemController::class)
+                    ->only(['destroy'])
+                    ->middleware('permission:delete grade system');
             });
         });
     });

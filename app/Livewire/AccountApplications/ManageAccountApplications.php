@@ -243,7 +243,7 @@ if ($this->filter === 'pending') {
         }
 
         return view('livewire.account-applications.manage-account-applications', compact('applicants'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => $this->getBreadcrumbs()
             ])
             ->title($this->getPageTitle());

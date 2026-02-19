@@ -70,7 +70,10 @@ class ManageTeachers extends Component
 
     public function loadTeacherForEdit()
     {
-        $teacher = User::findOrFail($this->teacherId);
+        $teacher = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->teacherId);
+
         $this->authorize('update', [$teacher, 'teacher']);
         
         $this->fill([
@@ -128,7 +131,10 @@ class ManageTeachers extends Component
 
     public function updateTeacher()
     {
-        $teacher = User::findOrFail($this->teacherId);
+        $teacher = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->teacherId);
+
         $this->authorize('update', [$teacher, 'teacher']);
         
         $this->validate([
@@ -165,7 +171,10 @@ class ManageTeachers extends Component
 
     public function deleteTeacher($teacherId)
     {
-        $teacher = User::findOrFail($teacherId);
+        $teacher = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($teacherId);
+
         $this->authorize('delete', [$teacher, 'teacher']);
         
         DB::transaction(function () use ($teacher) {
@@ -204,6 +213,7 @@ class ManageTeachers extends Component
     protected function getTeachersQuery()
     {
         return User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
             ->when($this->search, function($q) {
                 $q->where(function($query) {
                     $query->where('name', 'like', '%' . $this->search . '%')
@@ -226,7 +236,7 @@ class ManageTeachers extends Component
         }
 
         return view('livewire.teachers.manage-teachers', compact('teachers'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('teachers.index'), 'text' => 'Teachers', 'active' => true]

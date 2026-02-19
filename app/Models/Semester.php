@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\InSchool;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class Semester extends Model
 {
     use HasFactory;
+    use InSchool;
 
     protected $table = 'semesters';
 

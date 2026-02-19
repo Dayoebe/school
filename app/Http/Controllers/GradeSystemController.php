@@ -21,7 +21,7 @@ class GradeSystemController extends Controller
      */
     public function index(): View
     {
-        return view('pages.grade-system.index');
+        return view('livewire.grade-systems.pages.index');
     }
 
     /**
@@ -29,7 +29,7 @@ class GradeSystemController extends Controller
      */
     public function create(): View
     {
-        return view('pages.grade-system.create');
+        return view('livewire.grade-systems.pages.create');
     }
 
     /**
@@ -67,7 +67,7 @@ class GradeSystemController extends Controller
     {
         abort(404);
 
-        // return view('pages.grade-system.show', compact('gradeSystem'));
+        // return view('livewire.grade-systems.pages.show', compact('gradeSystem'));
     }
 
     /**
@@ -75,7 +75,7 @@ class GradeSystemController extends Controller
      */
     public function edit(GradeSystem $gradeSystem): View
     {
-        return view('pages.grade-system.edit', compact('gradeSystem'));
+        return view('livewire.grade-systems.pages.edit', compact('gradeSystem'));
     }
 
     /**

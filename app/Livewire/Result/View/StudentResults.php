@@ -31,8 +31,8 @@ class StudentResults extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
     }
 
     #[On('academic-period-changed')]
@@ -46,10 +46,15 @@ class StudentResults extends Component
     public function viewStudent($studentId)
     {
         $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
             ->findOrFail($studentId);
 
         // Get subjects for this student
-        $this->subjects = Subject::where('my_class_id', $this->studentRecord->my_class_id)
+        $this->subjects = Subject::query()
+            ->where('my_class_id', $this->studentRecord->my_class_id)
             ->orderBy('name')
             ->get();
 
@@ -87,7 +92,7 @@ class StudentResults extends Component
                 ->where('semester_id', $this->semesterId);
         }])
         ->where('my_class_id', $this->studentRecord->my_class_id)
-        ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+        ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
         ->get();
 
         $this->totalStudents = $classStudents->count();
@@ -142,12 +147,35 @@ class StudentResults extends Component
 
     public function render()
     {
-        $classes = MyClass::orderBy('name')->get();
-        $sections = Section::when($this->selectedClass, fn($q) => $q->where('my_class_id', $this->selectedClass))->get();
+        $classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
+        $sections = Section::when($this->selectedClass, function ($q) {
+            $q->where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                });
+        })->get();
     
         $students = collect();
         
         if ($this->selectedClass && !$this->viewingStudent) {
+            $classExists = MyClass::where('id', $this->selectedClass)
+                ->whereHas('classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$classExists) {
+                return view('livewire.result.view.student-results', compact('classes', 'sections', 'students'))
+                    ->layout('layouts.result', [
+                        'title' => 'View Student Results',
+                        'page_heading' => 'View Student Results'
+                    ]);
+            }
+
             $studentRecordIds = DB::table('academic_year_student_record')
                 ->where('academic_year_id', $this->academicYearId)
                 ->where('my_class_id', $this->selectedClass)
@@ -156,7 +184,8 @@ class StudentResults extends Component
     
             $students = StudentRecord::whereIn('student_records.id', $studentRecordIds) // Change here
                 ->with(['user' => function($query) {
-                    $query->whereNull('deleted_at');
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at');
                 }, 'results' => function($q) {
                     $q->where('academic_year_id', $this->academicYearId)
                       ->where('semester_id', $this->semesterId);
@@ -164,18 +193,20 @@ class StudentResults extends Component
                 ->when($this->searchTerm, function($q) {
                     $q->whereHas('user', function($query) {
                         $query->where('name', 'like', '%' . $this->searchTerm . '%')
+                              ->where('school_id', auth()->user()->school_id)
                               ->whereNull('deleted_at');
                     });
                 })
                 ->whereHas('user', function($query) {
-                    $query->whereNull('deleted_at');
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at');
                 })
                 ->orderByName()
                 ->paginate($this->perPage);
         }    
     
         return view('livewire.result.view.student-results', compact('classes', 'sections', 'students'))
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'View Student Results',
                 'page_heading' => 'View Student Results'
             ]);

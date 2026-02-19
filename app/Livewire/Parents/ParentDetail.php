@@ -13,6 +13,7 @@ class ParentDetail extends Component
     public function mount($parentId)
     {
         $this->parent = User::with(['children.studentRecord.myClass', 'children.studentRecord.section'])
+            ->where('school_id', auth()->user()->school_id)
             ->findOrFail($parentId);
 
         // Check if user is actually a parent
@@ -39,7 +40,7 @@ class ParentDetail extends Component
     public function render()
     {
         return view('livewire.parents.parent-detail')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('parents.index'), 'text' => 'Parents'],

@@ -61,15 +61,12 @@ class ManageSubjects extends Component
 
     protected function getClassesForCurrentSchool()
     {
-        $columns = \Schema::getColumnListing('my_classes');
-        
-        $query = MyClass::with('classGroup')->orderBy('name');
-        
-        if (in_array('school_id', $columns)) {
+        return MyClass::whereHas('classGroup', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
-        }
-        
-        return $query->get();
+        })
+            ->with('classGroup')
+            ->orderBy('name')
+            ->get();
     }
 
     public function switchMode($mode, $subjectId = null)
@@ -87,7 +84,9 @@ class ManageSubjects extends Component
 
     public function loadSubjectForEdit()
     {
-        $subject = Subject::with(['teachers', 'classes'])->findOrFail($this->subjectId);
+        $subject = Subject::query()
+            ->with(['teachers', 'classes'])
+            ->findOrFail($this->subjectId);
         
         if (!auth()->user()->can('update subject')) {
             abort(403, 'Unauthorized action.');
@@ -113,6 +112,11 @@ class ManageSubjects extends Component
 
     public function toggleClass($classId)
     {
+        if (!$this->classBelongsToCurrentSchool($classId)) {
+            session()->flash('error', 'Selected class does not belong to your current school.');
+            return;
+        }
+
         if (in_array($classId, $this->selectedClasses)) {
             // Remove class
             $this->selectedClasses = array_values(array_filter($this->selectedClasses, fn($id) => $id != $classId));
@@ -134,6 +138,11 @@ class ManageSubjects extends Component
 
     public function toggleTeacher($teacherId)
     {
+        if (!$this->teacherBelongsToCurrentSchool($teacherId)) {
+            session()->flash('error', 'Selected teacher does not belong to your current school.');
+            return;
+        }
+
         if (in_array($teacherId, $this->selectedTeachers)) {
             $this->removeTeacher($teacherId);
         } else {
@@ -207,6 +216,18 @@ class ManageSubjects extends Component
             'selectedTeachers.*' => 'exists:users,id'
         ]);
 
+        $validClassIds = $this->getValidClassIdsForCurrentSchool($this->selectedClasses);
+        if (count($validClassIds) !== count($this->selectedClasses)) {
+            $this->addError('selectedClasses', 'One or more selected classes are not in your current school.');
+            return;
+        }
+
+        $validTeacherIds = $this->getValidTeacherIdsForCurrentSchool($this->selectedTeachers);
+        if (count($validTeacherIds) !== count($this->selectedTeachers)) {
+            $this->addError('selectedTeachers', 'One or more selected teachers are not in your current school.');
+            return;
+        }
+
         DB::transaction(function () {
             $subject = Subject::create([
                 'name' => $this->name,
@@ -217,12 +238,12 @@ class ManageSubjects extends Component
             ]);
 
             // Assign to classes
-            foreach ($this->selectedClasses as $classId) {
+            foreach ($this->getValidClassIdsForCurrentSchool($this->selectedClasses) as $classId) {
                 $subject->assignToClass($classId);
             }
 
             // Assign teachers
-            foreach ($this->selectedTeachers as $teacherId) {
+            foreach ($this->getValidTeacherIdsForCurrentSchool($this->selectedTeachers) as $teacherId) {
                 $assignment = $this->teacherAssignments[$teacherId] ?? ['class_id' => null, 'is_general' => true];
                 
                 // Validate class assignment
@@ -242,7 +263,8 @@ class ManageSubjects extends Component
 
     public function updateSubject()
     {
-        $subject = Subject::findOrFail($this->subjectId);
+        $subject = Subject::query()
+            ->findOrFail($this->subjectId);
         
         if (!auth()->user()->can('update subject')) {
             abort(403, 'Unauthorized action.');
@@ -257,6 +279,18 @@ class ManageSubjects extends Component
             'selectedTeachers.*' => 'exists:users,id'
         ]);
 
+        $validClassIds = $this->getValidClassIdsForCurrentSchool($this->selectedClasses);
+        if (count($validClassIds) !== count($this->selectedClasses)) {
+            $this->addError('selectedClasses', 'One or more selected classes are not in your current school.');
+            return;
+        }
+
+        $validTeacherIds = $this->getValidTeacherIdsForCurrentSchool($this->selectedTeachers);
+        if (count($validTeacherIds) !== count($this->selectedTeachers)) {
+            $this->addError('selectedTeachers', 'One or more selected teachers are not in your current school.');
+            return;
+        }
+
         DB::transaction(function () use ($subject) {
             $subject->update([
                 'name' => $this->name,
@@ -266,7 +300,7 @@ class ManageSubjects extends Component
             // Sync classes with school_id in pivot (handle empty array)
             if (count($this->selectedClasses) > 0) {
                 $syncData = [];
-                foreach ($this->selectedClasses as $classId) {
+                foreach ($this->getValidClassIdsForCurrentSchool($this->selectedClasses) as $classId) {
                     $syncData[$classId] = ['school_id' => auth()->user()->school_id];
                 }
                 $subject->classes()->sync($syncData);
@@ -286,7 +320,7 @@ class ManageSubjects extends Component
             // Clear old teacher assignments and add new ones
             $subject->teachers()->detach();
             
-            foreach ($this->selectedTeachers as $teacherId) {
+            foreach ($this->getValidTeacherIdsForCurrentSchool($this->selectedTeachers) as $teacherId) {
                 $assignment = $this->teacherAssignments[$teacherId] ?? ['class_id' => null, 'is_general' => true];
                 
                 // If no classes are selected, force general assignment
@@ -312,7 +346,7 @@ class ManageSubjects extends Component
     }
     public function deleteSubject($subjectId)
     {
-        $subject = Subject::findOrFail($subjectId);
+        $subject = Subject::query()->findOrFail($subjectId);
         
         if (!auth()->user()->can('delete subject')) {
             abort(403, 'Unauthorized action.');
@@ -328,6 +362,50 @@ class ManageSubjects extends Component
         });
         
         session()->flash('success', 'Subject deleted successfully');
+    }
+
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function teacherBelongsToCurrentSchool($teacherId): bool
+    {
+        return User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $teacherId)
+            ->exists();
+    }
+
+    protected function getValidClassIdsForCurrentSchool(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        return MyClass::whereIn('id', $ids)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->pluck('id')
+            ->toArray();
+    }
+
+    protected function getValidTeacherIdsForCurrentSchool(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        return User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $ids)
+            ->pluck('id')
+            ->toArray();
     }
 
     public function applyFilters()
@@ -362,7 +440,7 @@ class ManageSubjects extends Component
 
     protected function getSubjectsQuery()
     {
-        return Subject::where('school_id', auth()->user()->school_id)
+        return Subject::query()
             ->active()
             ->when($this->appliedClass, function($q) {
                 $q->whereHas('classes', function($query) {
@@ -394,7 +472,7 @@ class ManageSubjects extends Component
             'subjects' => $subjects,
             'classes' => $this->classes,
         ])
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('subjects.index'), 'text' => 'Subjects', 'active' => true]

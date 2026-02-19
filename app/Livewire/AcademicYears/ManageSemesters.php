@@ -33,7 +33,7 @@ class ManageSemesters extends Component
         $academicYear = auth()->user()->school->academicYear;
 
         if ($academicYear) {
-            $this->semesters = Semester::where('school_id', auth()->user()->school_id)
+            $this->semesters = Semester::query()
                 ->where('academic_year_id', $academicYear->id)
                 ->orderBy('id')
                 ->get();
@@ -69,19 +69,18 @@ class ManageSemesters extends Component
 
     public function edit($id)
     {
-        $semester = Semester::find($id);
+        $semester = $this->getSemesterForCurrentSchool($id);
         $this->authorize('update', $semester);
-        
-        $term = $this->semesters->firstWhere('id', $id);
+
         $this->editingId = $id;
-        $this->termName = $term->name;
+        $this->termName = $semester->name;
         $this->editMode = true;
         $this->showForm = true;
     }
 
     public function update()
     {
-        $semester = Semester::find($this->editingId);
+        $semester = $this->getSemesterForCurrentSchool($this->editingId);
         $this->authorize('update', $semester);
 
         $this->validate();
@@ -97,7 +96,7 @@ class ManageSemesters extends Component
 
     public function delete($id)
     {
-        $semester = Semester::find($id);
+        $semester = $this->getSemesterForCurrentSchool($id);
         $this->authorize('delete', $semester);
 
         // Prevent deleting current semester
@@ -120,7 +119,8 @@ class ManageSemesters extends Component
             'selectedSemesterId' => 'required|exists:semesters,id',
         ]);
 
-        $semester = Semester::findOrFail($this->selectedSemesterId);
+        $semester = Semester::query()
+            ->findOrFail($this->selectedSemesterId);
 
         if ($semester->academic_year_id !== auth()->user()->school->academic_year_id) {
             session()->flash('danger', 'Semester not in current academic year');
@@ -137,6 +137,17 @@ class ManageSemesters extends Component
         $this->dispatch('$refresh');
     }
 
+    protected function getSemesterForCurrentSchool($id): Semester
+    {
+        $query = Semester::query();
+
+        if (auth()->user()->school->academic_year_id) {
+            $query->where('academic_year_id', auth()->user()->school->academic_year_id);
+        }
+
+        return $query->findOrFail($id);
+    }
+
     public function resetForm()
     {
         $this->termName = '';
@@ -149,6 +160,6 @@ class ManageSemesters extends Component
     public function render()
     {
         return view('livewire.academic-years.manage-semesters')
-            ->layout('layouts.new');
+            ->layout('layouts.dashboard');
     }
 }

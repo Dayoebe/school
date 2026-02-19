@@ -18,8 +18,8 @@ class ClassResults extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
         $this->classResults = collect(); // ADD THIS
         $this->subjects = collect(); // ADD THIS
     }
@@ -39,6 +39,30 @@ class ClassResults extends Component
             $this->dispatch('error', 'Please select a class');
             return;
         }
+
+        $classExists = MyClass::where('id', $this->selectedClass)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+        if (!$classExists) {
+            $this->dispatch('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if ($this->selectedSection) {
+            $sectionExists = Section::where('id', $this->selectedSection)
+                ->where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$sectionExists) {
+                $this->dispatch('error', 'Selected section is not valid for your current school/class.');
+                return;
+            }
+        }
     
         // Get students for this academic year
         $studentRecordIds = DB::table('academic_year_student_record')
@@ -54,7 +78,8 @@ class ClassResults extends Component
         }
     
         // Get subjects for this class
-        $this->subjects = Subject::where('my_class_id', $this->selectedClass)
+        $this->subjects = Subject::query()
+            ->where('my_class_id', $this->selectedClass)
             ->orderBy('name')
             ->get();
     
@@ -70,7 +95,7 @@ class ClassResults extends Component
                         ->with('subject');
                 }
             ])
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
             ->orderByName()
             ->get();
     
@@ -141,11 +166,20 @@ class ClassResults extends Component
 
     public function render()
     {
-        $classes = MyClass::orderBy('name')->get();
-        $sections = Section::when($this->selectedClass, fn($q) => $q->where('my_class_id', $this->selectedClass))->get();
+        $classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
+        $sections = Section::when($this->selectedClass, function ($q) {
+            $q->where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                });
+        })->get();
 
         return view('livewire.result.view.class-results', compact('classes', 'sections'))
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'View Class Results',
                 'page_heading' => 'View Class Results'
             ]);

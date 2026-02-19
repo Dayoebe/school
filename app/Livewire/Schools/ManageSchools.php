@@ -170,6 +170,12 @@ class ManageSchools extends Component
         $school = School::findOrFail($this->selectedSchoolId);
         
         auth()->user()->update(['school_id' => $school->id]);
+        auth()->user()->refresh();
+
+        session([
+            'result_academic_year_id' => $school->academic_year_id,
+            'result_semester_id' => $school->semester_id,
+        ]);
 
         session()->flash('success', 'School set successfully');
         $this->dispatch('school-changed');
@@ -211,7 +217,7 @@ class ManageSchools extends Component
         }
 
         return view('livewire.schools.manage-schools', compact('schools', 'allSchools'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('schools.index'), 'text' => 'Schools', 'active' => true]

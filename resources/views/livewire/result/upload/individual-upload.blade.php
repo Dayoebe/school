@@ -47,6 +47,10 @@
                 @if($selectedClass && $students->isEmpty())
                     <p class="mt-2 text-sm text-amber-600">⚠️ No students found in this class for the selected academic period.</p>
                 @endif
+
+                @if($selectedClass && !$semesterId)
+                    <p class="mt-2 text-sm text-red-600">No term is configured for this academic year. Set it in Result Term Settings first.</p>
+                @endif
             </div>
 
             <div class="flex items-end">

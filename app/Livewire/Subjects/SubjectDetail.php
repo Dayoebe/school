@@ -16,7 +16,8 @@ class SubjectDetail extends Component
 
     public function mount($subjectId)
     {
-        $this->subject = Subject::with(['myClass', 'teachers', 'studentRecords.user'])
+        $this->subject = Subject::query()
+            ->with(['myClass', 'teachers', 'studentRecords.user'])
             ->findOrFail($subjectId);
         
         // Check authorization manually
@@ -55,10 +56,12 @@ class SubjectDetail extends Component
             abort(403, 'Unauthorized action.');
         }
         
-        $teacher = User::findOrFail($teacherId);
+        $teacher = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($teacherId);
         
         if (!in_array($teacherId, $this->subjectTeachers)) {
-            $this->subject->teachers()->attach($teacherId);
+            $this->subject->assignTeacher($teacherId, null, true);
             $this->subjectTeachers[] = $teacherId;
             $this->subject->load('teachers');
             
@@ -73,6 +76,16 @@ class SubjectDetail extends Component
             abort(403, 'Unauthorized action.');
         }
         
+        $teacherBelongsToCurrentSchool = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $teacherId)
+            ->exists();
+
+        if (!$teacherBelongsToCurrentSchool) {
+            session()->flash('error', 'Teacher not found in your current school.');
+            return;
+        }
+
         $this->subject->teachers()->detach($teacherId);
         $this->subjectTeachers = array_filter($this->subjectTeachers, fn($id) => $id != $teacherId);
         $this->subject->load('teachers');
@@ -90,7 +103,7 @@ class SubjectDetail extends Component
             'subject' => $subject,
             'availableTeachers' => $availableTeachers,
         ])
-        ->layout('layouts.new', [
+        ->layout('layouts.dashboard', [
             'breadcrumbs' => [
                 ['href' => route('dashboard'), 'text' => 'Dashboard'],
                 ['href' => route('subjects.index'), 'text' => 'Subjects'],

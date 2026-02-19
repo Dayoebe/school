@@ -7,7 +7,6 @@ use App\Http\Requests\MyClassUpdateRequest;
 use App\Models\ClassGroup;
 use App\Models\MyClass;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
 
 class MyClassController extends Controller
 {
@@ -19,17 +18,17 @@ class MyClassController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): View
+    public function index(): RedirectResponse
     {
-        return view('pages.class.index');
+        return redirect()->route('classes.index');
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('pages.class.create');
+        return redirect()->route('classes.index', ['action' => 'create']);
     }
 
     /**
@@ -39,7 +38,7 @@ class MyClassController extends Controller
     {
         $data = $request->validated();
 
-        $classGroup = ClassGroup::where('school_id', auth()->user()->school_id)
+        $classGroup = ClassGroup::query()
             ->findOrFail($data['class_group_id']);
 
         MyClass::create([
@@ -53,21 +52,17 @@ class MyClassController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(MyClass $class): View
+    public function show(MyClass $class): RedirectResponse
     {
-        $data['class'] = $class;
-
-        return view('pages.class.show', $data);
+        return redirect()->route('classes.index', ['action' => 'view', 'class' => $class->id]);
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(MyClass $class): View
+    public function edit(MyClass $class): RedirectResponse
     {
-        $data['myClass'] = $class;
-
-        return view('pages.class.edit', $data);
+        return redirect()->route('classes.index', ['action' => 'edit', 'class' => $class->id]);
     }
 
     public function assignSubjects(MyClass $class)
@@ -100,7 +95,7 @@ class MyClassController extends Controller
     public function update(MyClassUpdateRequest $request, MyClass $class): RedirectResponse
     {
         $data = $request->validated();
-        $classGroup = ClassGroup::where('school_id', auth()->user()->school_id)
+        $classGroup = ClassGroup::query()
             ->findOrFail($data['class_group_id']);
 
         $class->update([

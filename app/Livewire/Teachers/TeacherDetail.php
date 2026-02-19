@@ -18,6 +18,8 @@ class TeacherDetail extends Component
     public function mount($teacherId)
     {
         $this->teacher = User::with(['subjects', 'subjects.myClass'])
+            ->role('teacher')
+            ->where('school_id', auth()->user()->school_id)
             ->findOrFail($teacherId);
         
         // Load initially assigned subjects
@@ -31,7 +33,7 @@ class TeacherDetail extends Component
 
     public function getAvailableSubjects()
     {
-        return Subject::where('school_id', auth()->user()->school_id)
+        return Subject::query()
             ->when($this->subjectSearch, function($q) {
                 $q->where(function($query) {
                     $query->where('name', 'like', '%' . $this->subjectSearch . '%')
@@ -46,10 +48,16 @@ class TeacherDetail extends Component
 
     public function assignSubject($subjectId)
     {
-        $subject = Subject::findOrFail($subjectId);
+        $subject = Subject::query()
+            ->findOrFail($subjectId);
         
         if (!in_array($subjectId, $this->teacherSubjects)) {
-            $this->teacher->subjects()->attach($subjectId);
+            $this->teacher->subjects()->syncWithoutDetaching([
+                $subjectId => [
+                    'school_id' => auth()->user()->school_id,
+                    'is_general' => true,
+                ],
+            ]);
             $this->teacherSubjects[] = $subjectId;
             $this->teacher->load('subjects');
             
@@ -76,7 +84,7 @@ class TeacherDetail extends Component
             'teacher' => $teacher,
             'availableSubjects' => $availableSubjects,
         ])
-        ->layout('layouts.new', [
+        ->layout('layouts.dashboard', [
             'breadcrumbs' => [
                 ['href' => route('dashboard'), 'text' => 'Dashboard'],
                 ['href' => route('teachers.index'), 'text' => 'Teachers'],

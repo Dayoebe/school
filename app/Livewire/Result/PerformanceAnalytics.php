@@ -30,9 +30,13 @@ class PerformanceAnalytics extends Component
 
     public function mount()
     {
-        $this->classes = MyClass::orderBy('name')->get();
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
     }
 
     #[On('academic-period-changed')]
@@ -67,19 +71,32 @@ class PerformanceAnalytics extends Component
             return;
         }
 
+        $classExists = MyClass::where('id', $this->selectedClassId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+        if (!$classExists) {
+            $this->students = [];
+            return;
+        }
+
         $studentRecordIds = DB::table('academic_year_student_record')
             ->where('academic_year_id', $this->academicYearId)
             ->where('my_class_id', $this->selectedClassId)
             ->pluck('student_record_id');
 
         $this->students = StudentRecord::with(['user' => function($q) {
-                $q->whereNull('deleted_at');
+                $q->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
             }])
             ->whereIn('student_records.id', $studentRecordIds)
             ->whereHas('user', function($q) {
-                $q->whereNull('deleted_at');
+                $q->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
             })
             ->join('users', 'student_records.user_id', '=', 'users.id')
+            ->where('users.school_id', auth()->user()->school_id)
             ->whereNull('users.deleted_at')
             ->orderBy('users.name')
             ->select('student_records.*')
@@ -103,11 +120,15 @@ class PerformanceAnalytics extends Component
 
     protected function loadStudentAnalytics()
     {
-        $student = StudentRecord::find($this->selectedStudentId);
+        $student = StudentRecord::whereHas('user', function ($query) {
+            $query->where('school_id', auth()->user()->school_id)
+                ->whereNull('deleted_at');
+        })->find($this->selectedStudentId);
         if (!$student) return;
 
         // Load all semesters for trend analysis
         $semesters = Semester::where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
             ->get();
 
@@ -138,6 +159,7 @@ class PerformanceAnalytics extends Component
             ->pluck('student_record_id');
 
         $this->subjects = Subject::where('my_class_id', $this->selectedClassId)
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
             ->get();
 
@@ -169,10 +191,13 @@ class PerformanceAnalytics extends Component
             ->pluck('student_record_id');
 
         $this->subjects = Subject::where('my_class_id', $this->selectedClassId)
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
             ->get();
 
-        $semesters = Semester::where('academic_year_id', $this->academicYearId)->get();
+        $semesters = Semester::where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->get();
 
         $results = Result::whereIn('student_record_id', $studentRecordIds)
             ->where('academic_year_id', $this->academicYearId)
@@ -315,6 +340,9 @@ class PerformanceAnalytics extends Component
 
             if ($average < 50 || $failingSubjects >= 3) {
                 $student = StudentRecord::with('user')->find($studentId);
+                if (!$student || !$student->user || $student->user->school_id !== auth()->user()->school_id) {
+                    continue;
+                }
                 
                 $atRisk[] = [
                     'student' => $student,

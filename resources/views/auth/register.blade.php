@@ -1,13 +1,21 @@
-@extends('layouts.guest')
+@extends('layouts.app', ['mode' => 'guest'])
 
-@section('title', 'Login')
+@section('title', 'Register')
 
 @section('body')
-    <x-partials.authentication-card class="w-full md:w-11/12 lg:w-11/12 xl:w-11/12" width="">
+    <x-partials.authentication-card>
+        <x-slot:header>
+            <h1 class="text-2xl font-bold text-gray-900">Create Account</h1>
+            <p class="text-gray-600 mt-2">Register as student, parent, or teacher.</p>
+        </x-slot:header>
+
         <x-display-validation-errors />
+
         <livewire:auth.registration-form />
-        <div class="py-6">
-            <p>Have An Account? <a href="{{route('login')}}" class="text-blue-800 mx-1"> Login </a></p>
-        </div>
+
+        <x-slot:footer>
+            <span>Already have an account?</span>
+            <a href="{{ route('login') }}" class="text-blue-700 hover:underline ml-1">Log in</a>
+        </x-slot:footer>
     </x-partials.authentication-card>
 @endsection

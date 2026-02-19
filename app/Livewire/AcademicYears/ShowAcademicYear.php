@@ -36,11 +36,17 @@ class ShowAcademicYear extends Component
 
     public function mount($academicYear)
     {
+        $schoolId = auth()->user()->school_id;
+
         // If it's an ID, load the model; if it's already a model, use it
         if (is_numeric($academicYear)) {
-            $this->academicYear = AcademicYear::findOrFail($academicYear);
+            $this->academicYear = AcademicYear::query()->findOrFail($academicYear);
         } else {
             $this->academicYear = $academicYear;
+        }
+
+        if ($this->academicYear->school_id !== $schoolId) {
+            abort(403);
         }
         
         $this->authorize('view', $this->academicYear);
@@ -133,7 +139,14 @@ class ShowAcademicYear extends Component
 
     public function editSemester($semesterId)
     {
-        $semester = Semester::find($semesterId);
+        $semester = Semester::query()
+            ->where('academic_year_id', $this->academicYear->id)
+            ->find($semesterId);
+
+        if (!$semester) {
+            abort(404);
+        }
+
         $this->authorize('update', $semester);
         
         $this->editingSemesterId = $semesterId;
@@ -143,7 +156,14 @@ class ShowAcademicYear extends Component
 
     public function updateSemester()
     {
-        $semester = Semester::find($this->editingSemesterId);
+        $semester = Semester::query()
+            ->where('academic_year_id', $this->academicYear->id)
+            ->find($this->editingSemesterId);
+
+        if (!$semester) {
+            abort(404);
+        }
+
         $this->authorize('update', $semester);
 
         $this->validate(['semesterName' => 'required|string|max:255']);
@@ -158,7 +178,14 @@ class ShowAcademicYear extends Component
 
     public function deleteSemester($semesterId)
     {
-        $semester = Semester::find($semesterId);
+        $semester = Semester::query()
+            ->where('academic_year_id', $this->academicYear->id)
+            ->find($semesterId);
+
+        if (!$semester) {
+            abort(404);
+        }
+
         $this->authorize('delete', $semester);
 
         if ($semester->id == auth()->user()->school->semester_id) {
@@ -177,7 +204,9 @@ class ShowAcademicYear extends Component
     {
         $this->authorize('setSemester', Semester::class);
 
-        $semester = Semester::findOrFail($semesterId);
+        $semester = Semester::query()
+            ->where('academic_year_id', $this->academicYear->id)
+            ->findOrFail($semesterId);
 
         if ($semester->academic_year_id !== auth()->user()->school->academic_year_id) {
             session()->flash('danger', 'Semester not in current academic year');
@@ -203,7 +232,7 @@ class ShowAcademicYear extends Component
     public function render()
     {
         return view('livewire.academic-years.show-academic-year')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'title' => "View {$this->academicYear->name}",
                 'page_heading' => "Academic Year Details: {$this->academicYear->name}",
                 'breadcrumbs' => [

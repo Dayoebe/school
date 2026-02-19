@@ -1,25 +1,25 @@
-@extends('layouts.pages') 
+@extends('layouts.app')
 
 @section('title', 'Edit Profile')
+@section('page_heading', 'My Profile')
 
 @section('content')
 <div x-data="profileEdit()" class="max-w-4xl mx-auto py-10 sm:px-6 lg:px-8">
-    <!-- Hero Section -->
-    <div class="bg-gradient-to-r from-blue-600 to-green-600 text-white p-8 rounded-2xl shadow-xl mb-10 text-center animate__animated animate__fadeInDown">
+    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 rounded-2xl shadow-sm mb-10 text-center">
         <div class="flex flex-col items-center justify-center">
             <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}"
                  alt="Profile Avatar"
-                 class="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover mb-4">
-            <h1 class="text-4xl font-extrabold mb-2">
-                <i class="fas fa-user-circle mr-3"></i>My Profile
+                 class="w-24 h-24 rounded-full border-2 border-gray-200 dark:border-gray-600 shadow-sm object-cover mb-4">
+            <h1 class="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
+                <i class="fas fa-user-circle mr-2"></i>My Profile
             </h1>
-            <p class="text-blue-100 text-lg">Manage your personal and account settings</p>
+            <p class="text-gray-600 dark:text-gray-300">Manage your personal and account settings</p>
         </div>
     </div>
 
     <!-- Success Message -->
     @if (session('success'))
-    <div x-show="showSuccess" x-transition class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-md relative mb-6 flex items-center animate__animated animate__fadeIn">
+    <div x-show="showSuccess" x-transition class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-sm relative mb-6 flex items-center">
         <div class="flex-shrink-0">
             <i class="fas fa-check-circle text-green-500 text-xl"></i>
         </div>
@@ -82,7 +82,7 @@
 
                 <div class="flex justify-end">
                     <button type="submit"
-                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300">
+                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300">
                         <i class="fas fa-save mr-2"></i> Save Changes
                     </button>
                 </div>
@@ -94,7 +94,7 @@
     <div x-show="activeTab === 'password'" x-transition>
         <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Change Password</h2>
-            @include('auth.change-password')
+            @include('profile.partials.change-password-form')
         </div>
     </div>
 </div>

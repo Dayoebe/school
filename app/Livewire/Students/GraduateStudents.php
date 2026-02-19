@@ -67,7 +67,7 @@ class GraduateStudents extends Component
             $query->where('school_id', auth()->user()->school_id);
         })->with('sections')->orderBy('name')->get();
 
-        $this->academicYears = AcademicYear::where('school_id', auth()->user()->school_id)
+        $this->academicYears = AcademicYear::query()
             ->orderBy('start_year', 'desc')
             ->get();
 
@@ -120,6 +120,21 @@ class GraduateStudents extends Component
             session()->flash('info', 'Please select a class and academic year.');
             return;
         }
+
+        if (!$this->classBelongsToCurrentSchool($this->graduateClass)) {
+            session()->flash('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if (!AcademicYear::query()->where('id', $this->academicYearId)->exists()) {
+            session()->flash('error', 'Selected academic year is not in your current school.');
+            return;
+        }
+
+        if ($this->graduateSection && !$this->sectionBelongsToClassInCurrentSchool($this->graduateSection, $this->graduateClass)) {
+            session()->flash('error', 'Selected section is not valid for the selected class.');
+            return;
+        }
     
         try {
             $query = DB::table('academic_year_student_record')
@@ -140,9 +155,10 @@ class GraduateStudents extends Component
     
             // Check for already graduated students
             $alreadyGraduated = Graduation::whereIn('student_record_id', $studentRecordIds)
+                ->where('school_id', auth()->user()->school_id)
                 ->pluck('student_record_id');
-    
-            $users = User::whereIn('id', function ($q) use ($studentRecordIds) {
+
+            $users = User::role('student')->whereIn('id', function ($q) use ($studentRecordIds) {
                 $q->select('user_id')
                     ->from('student_records')
                     ->whereIn('id', $studentRecordIds)
@@ -218,10 +234,27 @@ class GraduateStudents extends Component
             return;
         }
 
+        if (!$this->classBelongsToCurrentSchool($this->graduateClass) || !$this->classBelongsToCurrentSchool($this->alumniClass->id)) {
+            session()->flash('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if (!AcademicYear::query()->where('id', $this->academicYearId)->exists()) {
+            session()->flash('error', 'Selected academic year is not in your current school.');
+            return;
+        }
+
         $selectedStudents = collect($this->graduationDecisions)
             ->filter(fn($decision) => $decision === true)
             ->keys()
             ->toArray();
+
+        $allowedStudentIds = collect($this->studentsToGraduate)
+            ->where('already_graduated', false)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+        $selectedStudents = array_values(array_intersect(array_map('intval', $selectedStudents), $allowedStudentIds));
 
         if (empty($selectedStudents)) {
             session()->flash('error', 'No students selected for graduation');
@@ -234,7 +267,9 @@ class GraduateStudents extends Component
             $successCount = 0;
 
             // Eager load all students and their records
-            $students = User::whereIn('id', $selectedStudents)
+            $students = User::role('student')
+                ->where('school_id', auth()->user()->school_id)
+                ->whereIn('id', $selectedStudents)
                 ->with('studentRecord')
                 ->get()
                 ->keyBy('id');
@@ -249,7 +284,9 @@ class GraduateStudents extends Component
                     $studentRecord = $student->studentRecord;
 
                     // Check if already graduated
-                    $existingGraduation = Graduation::where('student_record_id', $studentRecord->id)->first();
+                    $existingGraduation = Graduation::where('student_record_id', $studentRecord->id)
+                        ->where('school_id', auth()->user()->school_id)
+                        ->first();
                     if ($existingGraduation) {
                         continue;
                     }
@@ -322,7 +359,7 @@ class GraduateStudents extends Component
 
 public function loadGraduations()
 {
-    $this->graduations = Graduation::where('school_id', auth()->user()->school_id)
+    $this->graduations = Graduation::query()
         ->with(['studentRecord.user', 'academicYear', 'graduationClass', 'graduationSection'])
         ->latest('graduation_date')
         ->get()
@@ -333,7 +370,7 @@ public function loadGraduations()
 }
 public function viewGraduation($graduationId)
 {
-    $this->selectedGraduation = Graduation::with([
+    $this->selectedGraduation = Graduation::query()->with([
         'studentRecord.user',
         'academicYear',
         'graduationClass',
@@ -353,14 +390,9 @@ public function viewGraduation($graduationId)
     public function reverseGraduation($graduationId)
     {
         try {
-            $graduation = Graduation::with(['studentRecord' => function($query) {
+            $graduation = Graduation::query()->with(['studentRecord' => function($query) {
                 $query->withTrashed();
             }])->findOrFail($graduationId);
-    
-            if ($graduation->school_id != auth()->user()->school_id) {
-                session()->flash('error', 'Unauthorized action.');
-                return;
-            }
     
             // Check if student record exists
             if (!$graduation->studentRecord) {
@@ -411,7 +443,7 @@ public function viewGraduation($graduationId)
     public function cleanupOrphanedGraduations()
 {
     try {
-        $orphanedCount = Graduation::where('school_id', auth()->user()->school_id)
+        $orphanedCount = Graduation::query()
             ->whereDoesntHave('studentRecord')
             ->delete();
             
@@ -449,6 +481,33 @@ public function viewGraduation($graduationId)
         }
 
         return $alumniClass;
+    }
+
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function sectionBelongsToClassInCurrentSchool($sectionId, $classId): bool
+    {
+        if (!$sectionId || !$classId) {
+            return false;
+        }
+
+        return Section::where('id', $sectionId)
+            ->where('my_class_id', $classId)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
     }
 
     private function generateCertificateNumber()
@@ -497,7 +556,7 @@ public function viewGraduation($graduationId)
         return view('livewire.students.graduate-students', [
             'studentsToGraduate' => $filteredStudents, // Use filtered students
         ])
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => $breadcrumbs,
                 'page_heading' => 'Graduate Students'
             ])

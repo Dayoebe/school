@@ -92,6 +92,9 @@ class ManageStudents extends Component
     public function updatedSelectedClass()
     {
         $this->sections = Section::where('my_class_id', $this->selectedClass)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
             ->orderBy('name')->get();
         $this->selectedSection = '';
     }
@@ -99,6 +102,9 @@ class ManageStudents extends Component
     public function updatedMyClassId()
     {
         $this->sections = Section::where('my_class_id', $this->my_class_id)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
             ->orderBy('name')->get();
         $this->section_id = '';
     }
@@ -106,6 +112,9 @@ class ManageStudents extends Component
     public function updatedBulkClass()
     {
         $this->bulkClassSections = Section::where('my_class_id', $this->bulkClass)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
             ->orderBy('name')->get();
         $this->bulkSection = '';
     }
@@ -137,7 +146,11 @@ class ManageStudents extends Component
 
     public function loadStudentForEdit()
     {
-        $student = User::with('studentRecord')->findOrFail($this->studentId);
+        $student = User::with('studentRecord')
+            ->role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->studentId);
+
         $this->authorize('update', [$student, 'student']);
         
         $this->fill([
@@ -182,6 +195,31 @@ class ManageStudents extends Component
             'phone' => 'nullable|string|max:20',
             'admission_date' => 'nullable|date',
         ]);
+
+        $classExistsForSchool = MyClass::where('id', $this->my_class_id)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+
+        if (!$classExistsForSchool) {
+            $this->addError('my_class_id', 'Selected class does not belong to your current school.');
+            return;
+        }
+
+        if ($this->section_id) {
+            $sectionExistsForClass = Section::where('id', $this->section_id)
+                ->where('my_class_id', $this->my_class_id)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$sectionExistsForClass) {
+                $this->addError('section_id', 'Selected section does not belong to your current school/class.');
+                return;
+            }
+        }
 
         DB::transaction(function () use ($validated) {
             $user = User::create([
@@ -229,7 +267,10 @@ class ManageStudents extends Component
 
     public function updateStudent()
     {
-        $student = User::findOrFail($this->studentId);
+        $student = User::role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->studentId);
+
         $this->authorize('update', [$student, 'student']);
         
         $this->validate([
@@ -240,6 +281,31 @@ class ManageStudents extends Component
             'birthday' => 'nullable|date|before:today',
             'phone' => 'nullable|string|max:20',
         ]);
+
+        $classExistsForSchool = MyClass::where('id', $this->my_class_id)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+
+        if (!$classExistsForSchool) {
+            $this->addError('my_class_id', 'Selected class does not belong to your current school.');
+            return;
+        }
+
+        if ($this->section_id) {
+            $sectionExistsForClass = Section::where('id', $this->section_id)
+                ->where('my_class_id', $this->my_class_id)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$sectionExistsForClass) {
+                $this->addError('section_id', 'Selected section does not belong to your current school/class.');
+                return;
+            }
+        }
 
         DB::transaction(function () use ($student) {
             $student->update([
@@ -291,7 +357,10 @@ class ManageStudents extends Component
 
     public function deleteStudent($studentId)
     {
-        $student = User::findOrFail($studentId);
+        $student = User::role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($studentId);
+
         $this->authorize('delete', [$student, 'student']);
         
         DB::transaction(function () use ($student) {
@@ -421,22 +490,35 @@ class ManageStudents extends Component
 
     protected function getStudentsQuery()
     {
+        $schoolId = auth()->user()->school_id;
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
         
-        $pivotData = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $currentAcademicYearId)
-            ->when($this->appliedClass, fn($q) => $q->where('my_class_id', $this->appliedClass))
-            ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-            ->select('student_record_id', 'my_class_id', 'section_id')
-            ->get()
-            ->keyBy('student_record_id');
-    
-        $studentRecordIds = $pivotData->pluck('student_record_id');
-    
-        return User::role('student')
+        $query = User::role('student')
             ->select('users.*')
             ->join('student_records', 'student_records.user_id', '=', 'users.id')
-            ->when($studentRecordIds->isNotEmpty(), fn($q) => $q->whereIn('student_records.id', $studentRecordIds))
+            ->where('users.school_id', $schoolId);
+
+        if ($currentAcademicYearId) {
+            $pivotData = DB::table('academic_year_student_record')
+                ->where('academic_year_id', $currentAcademicYearId)
+                ->when($this->appliedClass, fn($q) => $q->where('my_class_id', $this->appliedClass))
+                ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
+                ->select('student_record_id')
+                ->get();
+
+            $studentRecordIds = $pivotData->pluck('student_record_id')->filter()->values();
+
+            if ($studentRecordIds->isEmpty()) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('student_records.id', $studentRecordIds);
+            }
+        } else {
+            $query->when($this->appliedClass, fn($q) => $q->where('student_records.my_class_id', $this->appliedClass))
+                ->when($this->selectedSection, fn($q) => $q->where('student_records.section_id', $this->selectedSection));
+        }
+
+        return $query
             ->when($this->search, function($q) {
                 $q->where(function($query) {
                     $query->where('users.name', 'like', '%' . $this->search . '%')
@@ -514,7 +596,7 @@ class ManageStudents extends Component
         }
     
         return view('livewire.students.manage-students', compact('students'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('students.index'), 'text' => 'Students', 'active' => true]

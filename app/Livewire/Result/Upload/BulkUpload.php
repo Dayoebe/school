@@ -4,9 +4,8 @@ namespace App\Livewire\Result\Upload;
 
 use Livewire\Component;
 use Livewire\Attributes\On;
-use App\Models\{StudentRecord, Subject, Result, MyClass, Section};
+use App\Models\{AcademicYear, StudentRecord, Subject, Result, MyClass, Section, Semester};
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Collection;
 
 class BulkUpload extends Component
 {
@@ -24,8 +23,21 @@ class BulkUpload extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id');
+        $schoolId = auth()->user()->school_id;
+
+        $this->academicYearId = session('result_academic_year_id')
+            ?? auth()->user()->school?->academic_year_id
+            ?? AcademicYear::query()
+                ->orderBy('start_year', 'desc')
+                ->value('id');
         $this->semesterId = session('result_semester_id');
+
+        if (!$this->semesterId && $this->academicYearId) {
+            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)
+                ->orderBy('name')
+                ->value('id');
+        }
+
         $this->students = collect();
     }
 
@@ -42,9 +54,40 @@ class BulkUpload extends Component
 
     public function updatedSelectedClass()
     {
-        $this->subjects = Subject::where('my_class_id', $this->selectedClass)
-            ->orderBy('name')
-            ->get();
+        $this->subjects = collect();
+
+        if ($this->selectedClass) {
+            if (!$this->classBelongsToCurrentSchool($this->selectedClass)) {
+                $this->selectedClass = null;
+                $this->dispatch('error', 'Selected class is not in your current school.');
+            } else {
+            $this->subjects = Subject::where(function ($query) {
+                    $query->where('my_class_id', $this->selectedClass)
+                        ->orWhereHas('classes', function ($classQuery) {
+                            $classQuery->where('my_classes.id', $this->selectedClass);
+                        })
+                        ->orWhereIn('subjects.id', function ($subQuery) {
+                            $subQuery->from('student_subject')
+                                ->where('my_class_id', $this->selectedClass)
+                                ->select('subject_id');
+                        })
+                        ->orWhereIn('subjects.id', function ($subQuery) {
+                            $subQuery->from('student_subject as ss')
+                                ->join('academic_year_student_record as aysr', 'aysr.student_record_id', '=', 'ss.student_record_id')
+                                ->where('aysr.my_class_id', $this->selectedClass)
+                                ->when($this->academicYearId, function ($q) {
+                                    $q->where('aysr.academic_year_id', $this->academicYearId);
+                                })
+                                ->select('ss.subject_id');
+                        });
+                })
+                ->where('subjects.school_id', auth()->user()->school_id)
+                ->orderBy('name')
+                ->distinct()
+                ->get();
+            }
+        }
+
         $this->reset(['selectedSubject']);
         $this->students = collect();
         $this->bulkResults = [];
@@ -58,9 +101,86 @@ class BulkUpload extends Component
             return;
         }
 
+        if (!$this->academicYearId) {
+            $this->academicYearId = session('result_academic_year_id')
+                ?? auth()->user()->school?->academic_year_id
+                ?? AcademicYear::query()
+                    ->orderBy('start_year', 'desc')
+                    ->value('id');
+        }
+
+        if (!$this->academicYearId) {
+            $this->dispatch('error', 'Please select an academic year first');
+            return;
+        }
+
+        if (!$this->semesterId) {
+            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
+                ->orderBy('name')
+                ->value('id');
+
+            if ($this->semesterId) {
+                session(['result_semester_id' => $this->semesterId]);
+            }
+        }
+
+        if (!$this->semesterId) {
+            $this->dispatch('error', 'No term found for this academic year. Please create/select a term first.');
+            return;
+        }
+
+        if (!$this->classBelongsToCurrentSchool($this->selectedClass)) {
+            $this->dispatch('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if ($this->selectedSection && !$this->sectionBelongsToCurrentSchoolClass($this->selectedSection, $this->selectedClass)) {
+            $this->dispatch('error', 'Selected section is not valid for your current school/class.');
+            return;
+        }
+
+        $academicYearValid = AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        if (!$academicYearValid) {
+            $this->dispatch('error', 'Selected academic year is not in your current school.');
+            return;
+        }
+
+        $semesterValid = Semester::where('id', $this->semesterId)
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        if (!$semesterValid) {
+            $this->dispatch('error', 'Selected term is not in your current school.');
+            return;
+        }
+
         // Validate subject belongs to class
-        $subject = Subject::find($this->selectedSubject);
-        if (!$subject || $subject->my_class_id != $this->selectedClass) {
+        $subject = Subject::query()->find($this->selectedSubject);
+        $subjectFromStudentClassPivot = DB::table('student_subject')
+            ->where('subject_id', $this->selectedSubject)
+            ->where('my_class_id', $this->selectedClass)
+            ->exists();
+
+        $subjectFromStudentYearClassPivot = DB::table('student_subject as ss')
+            ->join('academic_year_student_record as aysr', 'aysr.student_record_id', '=', 'ss.student_record_id')
+            ->where('ss.subject_id', $this->selectedSubject)
+            ->where('aysr.my_class_id', $this->selectedClass)
+            ->when($this->academicYearId, function ($q) {
+                $q->where('aysr.academic_year_id', $this->academicYearId);
+            })
+            ->exists();
+
+        $subjectBelongsToClass = $subject && (
+            (int) $subject->my_class_id === (int) $this->selectedClass
+            || $subject->classes()->where('my_classes.id', $this->selectedClass)->exists()
+            || $subjectFromStudentClassPivot
+            || $subjectFromStudentYearClassPivot
+        );
+
+        if (!$subjectBelongsToClass) {
             $this->dispatch('error', 'Invalid subject for selected class');
             $this->students = collect();
             return;
@@ -73,6 +193,22 @@ class BulkUpload extends Component
             ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
             ->pluck('student_record_id');
 
+        // Fallback for students not yet promoted/mapped in academic_year_student_record.
+        if ($studentRecordIds->isEmpty()) {
+            $studentRecordIds = StudentRecord::where('my_class_id', $this->selectedClass)
+                ->whereHas('user', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at');
+                })
+                ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
+                ->withActiveUser()
+                ->pluck('student_records.id');
+
+            if ($studentRecordIds->isNotEmpty()) {
+                $this->syncAcademicYearRecords($studentRecordIds);
+            }
+        }
+
         if ($studentRecordIds->isEmpty()) {
             $this->dispatch('error', 'No students found for this class in current academic year');
             $this->students = collect();
@@ -82,10 +218,11 @@ class BulkUpload extends Component
         // Load students enrolled in this subject with eager loading to prevent N+1
         $this->students = StudentRecord::whereIn('student_records.id', $studentRecordIds)
             ->whereHas('studentSubjects', fn($q) => $q->where('subject_id', $this->selectedSubject))
-            ->whereHas('user', fn($q) => $q->whereNull('deleted_at'))
+            ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
             ->with([
                 'user' => function($query) {
-                    $query->whereNull('deleted_at');
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at');
                 }, 
                 'myClass', 
                 'section',
@@ -153,12 +290,12 @@ class BulkUpload extends Component
         // Split the key into parts safely
         $parts = explode('.', $key);
         
-        // Ensure we have exactly 3 parts: bulkResults, studentId, field
-        if (count($parts) !== 3) {
+        // In updatedBulkResults, key format is "studentId.field"
+        if (count($parts) !== 2) {
             return;
         }
         
-        [$prefix, $studentId, $field] = $parts;
+        [$studentId, $field] = $parts;
     
         // Validate individual field
         if (in_array($field, ['ca1_score', 'ca2_score', 'ca3_score', 'ca4_score'])) {
@@ -180,7 +317,7 @@ class BulkUpload extends Component
             DB::beginTransaction();
     
             // Validate student is enrolled in the subject
-            $student = StudentRecord::find($studentId);
+            $student = $this->getStudentRecordForCurrentSchool($studentId);
             if (!$student) {
                 DB::rollBack();
                 return;
@@ -197,13 +334,7 @@ class BulkUpload extends Component
             }
     
             // Validate student has academic year record
-            $yearRecord = DB::table('academic_year_student_record')
-                ->where('student_record_id', $studentId)
-                ->where('academic_year_id', $this->academicYearId)
-                ->where('my_class_id', $this->selectedClass)
-                ->first();
-    
-            if (!$yearRecord) {
+            if (!$this->ensureAcademicYearRecord($studentId, $student)) {
                 DB::rollBack();
                 return;
             }
@@ -254,6 +385,7 @@ class BulkUpload extends Component
     
             // Validate all students are still enrolled in this subject
             $enrolledStudentIds = StudentRecord::whereIn('id', array_keys($this->bulkResults))
+                ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
                 ->whereHas('studentSubjects', fn($q) => $q->where('subject_id', $this->selectedSubject))
                 ->pluck('id')
                 ->toArray();
@@ -262,22 +394,17 @@ class BulkUpload extends Component
                 try {
                     // Check if student is enrolled in the subject
                     if (!in_array($studentId, $enrolledStudentIds)) {
-                        $student = StudentRecord::find($studentId);
-                        $subjectName = Subject::find($this->selectedSubject)?->name ?? 'this subject';
-                        $errors[] = $student->user->name . " - Not enrolled in {$subjectName}";
+                        $student = $this->getStudentRecordForCurrentSchool($studentId);
+                        $subjectName = Subject::query()
+                            ->find($this->selectedSubject)?->name ?? 'this subject';
+                        $errors[] = ($student?->user?->name ?? "Student {$studentId}") . " - Not enrolled in {$subjectName}";
                         continue;
                     }
     
                     // Validate student record exists for this academic year
-                    $yearRecord = DB::table('academic_year_student_record')
-                        ->where('student_record_id', $studentId)
-                        ->where('academic_year_id', $this->academicYearId)
-                        ->where('my_class_id', $this->selectedClass)
-                        ->first();
-    
-                    if (!$yearRecord) {
-                        $student = StudentRecord::find($studentId);
-                        $errors[] = $student->user->name . ' - No academic year record';
+                    if (!$this->ensureAcademicYearRecord($studentId)) {
+                        $student = $this->getStudentRecordForCurrentSchool($studentId);
+                        $errors[] = ($student?->user?->name ?? "Student {$studentId}") . ' - No academic year record';
                         continue;
                     }
     
@@ -312,21 +439,23 @@ class BulkUpload extends Component
                         $savedCount++;
                     }
                 } catch (\Exception $e) {
-                    $student = StudentRecord::find($studentId);
-                    $errors[] = $student->user->name . ' - ' . $e->getMessage();
+                    $student = $this->getStudentRecordForCurrentSchool($studentId);
+                    $errors[] = ($student?->user?->name ?? "Student {$studentId}") . ' - ' . $e->getMessage();
                 }
             }
     
             DB::commit();
             
             if (empty($errors)) {
-                $subjectName = Subject::find($this->selectedSubject)?->name ?? 'Subject';
+                $subjectName = Subject::query()
+                    ->find($this->selectedSubject)?->name ?? 'Subject';
                 session()->flash('success', "Bulk upload successful! Results saved for {$savedCount} student(s) in {$subjectName}");
                 
                 return redirect()->route('result');
             } else {
                 $errorCount = count($errors);
-                $subjectName = Subject::find($this->selectedSubject)?->name ?? 'Subject';
+                $subjectName = Subject::query()
+                    ->find($this->selectedSubject)?->name ?? 'Subject';
                 
                 session()->flash('warning', "Partially saved. Results saved for {$savedCount} student(s) in {$subjectName}, but {$errorCount} error(s) occurred.");
                 session()->flash('error_details', array_slice($errors, 0, 5)); // Store first 5 errors
@@ -345,6 +474,12 @@ class BulkUpload extends Component
     public function deleteResult($studentId)
     {
         try {
+            $student = $this->getStudentRecordForCurrentSchool($studentId);
+            if (!$student) {
+                $this->dispatch('error', 'Student not found in your current school.');
+                return;
+            }
+
             Result::where('student_record_id', $studentId)
                 ->where('subject_id', $this->selectedSubject)
                 ->where('academic_year_id', $this->academicYearId)
@@ -369,13 +504,136 @@ class BulkUpload extends Component
         }
     }
 
+    protected function ensureAcademicYearRecord($studentId, ?StudentRecord $student = null): bool
+    {
+        if (!$this->academicYearId || !$this->selectedClass) {
+            return false;
+        }
+
+        if (!$this->classBelongsToCurrentSchool($this->selectedClass)) {
+            return false;
+        }
+
+        if ($this->selectedSection && !$this->sectionBelongsToCurrentSchoolClass($this->selectedSection, $this->selectedClass)) {
+            return false;
+        }
+
+        $exists = DB::table('academic_year_student_record')
+            ->where('student_record_id', $studentId)
+            ->where('academic_year_id', $this->academicYearId)
+            ->exists();
+
+        if ($exists) {
+            return true;
+        }
+
+        $student ??= $this->getStudentRecordForCurrentSchool($studentId);
+        if (!$student) {
+            return false;
+        }
+
+        DB::table('academic_year_student_record')->updateOrInsert(
+            [
+                'student_record_id' => $studentId,
+                'academic_year_id' => $this->academicYearId,
+            ],
+            [
+                'my_class_id' => $this->selectedClass,
+                'section_id' => $this->selectedSection ?: $student->section_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
+
+        return true;
+    }
+
+    protected function syncAcademicYearRecords($studentRecordIds): void
+    {
+        if (!$this->academicYearId || !$this->selectedClass) {
+            return;
+        }
+
+        if (!$this->classBelongsToCurrentSchool($this->selectedClass)) {
+            return;
+        }
+
+        $sectionByStudent = StudentRecord::whereIn('id', $studentRecordIds)
+            ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
+            ->pluck('section_id', 'id');
+
+        foreach ($studentRecordIds as $studentId) {
+            DB::table('academic_year_student_record')->updateOrInsert(
+                [
+                    'student_record_id' => $studentId,
+                    'academic_year_id' => $this->academicYearId,
+                ],
+                [
+                    'my_class_id' => $this->selectedClass,
+                    'section_id' => $this->selectedSection ?: ($sectionByStudent[$studentId] ?? null),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+    }
+
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function sectionBelongsToCurrentSchoolClass($sectionId, $classId): bool
+    {
+        if (!$sectionId || !$classId) {
+            return false;
+        }
+
+        return Section::where('id', $sectionId)
+            ->where('my_class_id', $classId)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function getStudentRecordForCurrentSchool($studentId): ?StudentRecord
+    {
+        return StudentRecord::whereHas('user', function ($query) {
+            $query->where('school_id', auth()->user()->school_id)
+                ->whereNull('deleted_at');
+        })->find($studentId);
+    }
+
     public function render()
     {
-        $classes = MyClass::orderBy('name')->get();
-        $sections = Section::when($this->selectedClass, fn($q) => $q->where('my_class_id', $this->selectedClass))->get();
+        $classesQuery = MyClass::query();
+
+        if (auth()->user()->school_id) {
+            $classesQuery->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            });
+        }
+
+        $classes = $classesQuery->orderBy('name')->get();
+
+        $sections = Section::when($this->selectedClass, function ($q) {
+            $q->where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                });
+        })->get();
     
         return view('livewire.result.upload.bulk-upload', compact('classes', 'sections'))
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'Bulk Result Upload',
                 'page_heading' => 'Bulk Result Upload'
             ]);

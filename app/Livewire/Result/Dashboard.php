@@ -78,7 +78,7 @@ class Dashboard extends Component
     public function render()
     {
         return view('livewire.result.dashboard')
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'Results Dashboard',
                 'page_heading' => 'Results Dashboard'
             ]);

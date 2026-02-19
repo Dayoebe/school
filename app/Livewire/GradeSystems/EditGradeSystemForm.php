@@ -16,7 +16,7 @@ class EditGradeSystemForm extends Component
 
     public function mount()
     {
-        $this->classGroups = ClassGroup::where('school_id', auth()->user()->school_id)
+        $this->classGroups = ClassGroup::query()
             ->orderBy('name')
             ->get();
         $this->classGroup = $this->grade->class_group_id;

@@ -24,6 +24,11 @@
                             $currentItems = [];
                         }
 
+                        if (!$this->isVisible($item)) {
+                            $currentHeader = null;
+                            continue;
+                        }
+
                         $currentHeader = $item['header'];
                         continue;
                     }

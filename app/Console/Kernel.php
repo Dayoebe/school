@@ -33,6 +33,7 @@ class Kernel extends ConsoleKernel
     }
 
     protected $commands = [
+        \App\Console\Commands\BaselineMigrations::class,
         \App\Console\Commands\AssignSubjectsCommand::class,
         \App\Console\Commands\SetDefaultPassword::class,
         \App\Console\Commands\CleanupDeletedStudents::class,

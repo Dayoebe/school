@@ -103,12 +103,14 @@ class ManageClasses extends Component
     public function mount()
     {
         $action = request()->query('action');
-        $viewId = request()->query('view');
+        $classId = request()->query('class') ?? request()->query('view');
 
         if ($action === 'create') {
             $this->showCreate();
-        } elseif ($viewId) {
-            $this->showView($viewId);
+        } elseif ($action === 'edit' && $classId) {
+            $this->showEdit($classId);
+        } elseif ($classId) {
+            $this->showView($classId);
         }
     }
 
@@ -130,7 +132,7 @@ class ManageClasses extends Component
 
     public function showEdit($id)
     {
-        $this->selectedClass = MyClass::with('classGroup')->findOrFail($id);
+        $this->selectedClass = $this->getClassForCurrentSchool($id, ['classGroup']);
         $this->authorize('update', $this->selectedClass);
         $this->name = $this->selectedClass->name;
         $this->class_group_id = $this->selectedClass->class_group_id;
@@ -139,12 +141,12 @@ class ManageClasses extends Component
 
     public function showView($id)
     {
-        $this->selectedClass = MyClass::with([
+        $this->selectedClass = $this->getClassForCurrentSchool($id, [
             'classGroup', 
             'sections', 
             'subjects.teachers',
             'subjects.classes.classGroup' // Also load the classes for each subject
-        ])->findOrFail($id);
+        ]);
         
         $this->authorize('view', $this->selectedClass);
         
@@ -165,6 +167,11 @@ class ManageClasses extends Component
         $this->authorize('create', MyClass::class);
         $this->validate();
 
+        if (!$this->classGroupBelongsToCurrentSchool($this->class_group_id)) {
+            $this->addError('class_group_id', 'Selected class group is not in your current school.');
+            return;
+        }
+
         $class = MyClass::create([
             'name' => $this->name,
             'class_group_id' => $this->class_group_id,
@@ -179,6 +186,11 @@ class ManageClasses extends Component
         $this->authorize('update', $this->selectedClass);
         $this->validate();
 
+        if (!$this->classGroupBelongsToCurrentSchool($this->class_group_id)) {
+            $this->addError('class_group_id', 'Selected class group is not in your current school.');
+            return;
+        }
+
         $this->selectedClass->update([
             'name' => $this->name,
             'class_group_id' => $this->class_group_id,
@@ -190,7 +202,7 @@ class ManageClasses extends Component
 
     public function delete($id)
     {
-        $class = MyClass::findOrFail($id);
+        $class = $this->getClassForCurrentSchool($id);
         $this->authorize('delete', $class);
 
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
@@ -262,8 +274,14 @@ class ManageClasses extends Component
         $classIds = $pivotData->pluck('my_class_id')->unique();
         $sectionIds = $pivotData->pluck('section_id')->filter()->unique();
         
-        $classes = MyClass::whereIn('id', $classIds)->get()->keyBy('id');
-        $sections = Section::whereIn('id', $sectionIds)->get()->keyBy('id');
+        $classes = MyClass::whereIn('id', $classIds)
+            ->whereHas('classGroup', fn ($q) => $q->where('school_id', auth()->user()->school_id))
+            ->get()
+            ->keyBy('id');
+        $sections = Section::whereIn('id', $sectionIds)
+            ->whereHas('myClass.classGroup', fn ($q) => $q->where('school_id', auth()->user()->school_id))
+            ->get()
+            ->keyBy('id');
     
         $query = StudentRecord::whereIn('student_records.id', $studentRecordIds)
             ->with(['user', 'studentSubjects'])
@@ -305,7 +323,12 @@ class ManageClasses extends Component
     
     public function showEditStudentSection($studentId)
     {
-        $student = StudentRecord::findOrFail($studentId);
+        $student = $this->getStudentRecordForCurrentSchool($studentId);
+        if (!$student) {
+            session()->flash('error', 'Student record not found for current school.');
+            return;
+        }
+
         $this->editingStudentSectionId = $student->id;
         $this->editingStudentSection = $student->section_id;
         $this->dispatch('open-modal', id: 'student-section-modal');
@@ -315,7 +338,12 @@ class ManageClasses extends Component
     {
         if (!$this->editingStudentSectionId) return;
 
-        $student = StudentRecord::findOrFail($this->editingStudentSectionId);
+        $student = $this->getStudentRecordForCurrentSchool($this->editingStudentSectionId);
+        if (!$student) {
+            session()->flash('error', 'Student record not found for current school.');
+            return;
+        }
+
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
 
         $isInClass = DB::table('academic_year_student_record')
@@ -354,12 +382,31 @@ class ManageClasses extends Component
             return;
         }
 
+        $targetSection = Section::where('id', $this->targetSectionId)
+            ->where('my_class_id', $this->selectedClass->id)
+            ->whereHas('myClass.classGroup', fn ($q) => $q->where('school_id', auth()->user()->school_id))
+            ->first();
+
+        if (!$targetSection) {
+            session()->flash('error', 'Selected section is not valid for this class/school.');
+            return;
+        }
+
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
         $updatedCount = 0;
 
         foreach ($this->selectedStudents as $studentRecordId) {
-            $student = StudentRecord::find($studentRecordId);
+            $student = $this->getStudentRecordForCurrentSchool($studentRecordId);
             if (!$student) continue;
+
+            $belongsToSelectedClass = DB::table('academic_year_student_record')
+                ->where('student_record_id', $studentRecordId)
+                ->where('academic_year_id', $currentAcademicYearId)
+                ->where('my_class_id', $this->selectedClass->id)
+                ->exists();
+            if (!$belongsToSelectedClass) {
+                continue;
+            }
 
             DB::table('academic_year_student_record')
                 ->where('student_record_id', $studentRecordId)
@@ -383,26 +430,54 @@ class ManageClasses extends Component
             return;
         }
 
+        $targetClass = $this->getClassForCurrentSchool($this->targetClassId);
+        $targetSectionId = null;
+
+        if ($this->targetSectionId) {
+            $targetSection = Section::where('id', $this->targetSectionId)
+                ->where('my_class_id', $targetClass->id)
+                ->whereHas('myClass.classGroup', fn ($q) => $q->where('school_id', auth()->user()->school_id))
+                ->first();
+
+            if (!$targetSection) {
+                session()->flash('error', 'Selected target section is not valid for the target class.');
+                return;
+            }
+
+            $targetSectionId = $targetSection->id;
+        }
+
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
 
         foreach ($this->selectedStudents as $studentRecordId) {
+            $student = $this->getStudentRecordForCurrentSchool($studentRecordId);
+            if (!$student) {
+                continue;
+            }
+
+            $belongsToSelectedClass = DB::table('academic_year_student_record')
+                ->where('student_record_id', $studentRecordId)
+                ->where('academic_year_id', $currentAcademicYearId)
+                ->where('my_class_id', $this->selectedClass->id)
+                ->exists();
+            if (!$belongsToSelectedClass) {
+                continue;
+            }
+
             DB::table('academic_year_student_record')
                 ->where('student_record_id', $studentRecordId)
                 ->where('academic_year_id', $currentAcademicYearId)
                 ->update([
-                    'my_class_id' => $this->targetClassId,
-                    'section_id' => $this->targetSectionId,
+                    'my_class_id' => $targetClass->id,
+                    'section_id' => $targetSectionId,
                 ]);
 
             StudentRecord::where('id', $studentRecordId)->update([
-                'my_class_id' => $this->targetClassId,
-                'section_id' => $this->targetSectionId,
+                'my_class_id' => $targetClass->id,
+                'section_id' => $targetSectionId,
             ]);
 
-            $student = StudentRecord::find($studentRecordId);
-            if ($student) {
-                $student->assignSubjectsAutomatically();
-            }
+            $student->assignSubjectsAutomatically();
         }
 
         session()->flash('success', count($this->selectedStudents) . ' students moved successfully!');
@@ -418,11 +493,24 @@ class ManageClasses extends Component
         }
 
         foreach ($this->selectedStudents as $studentRecordId) {
-            $studentRecord = StudentRecord::find($studentRecordId);
+            $studentRecord = $this->getStudentRecordForCurrentSchool($studentRecordId);
             if ($studentRecord) {
+                $belongsToSelectedClass = DB::table('academic_year_student_record')
+                    ->where('student_record_id', $studentRecordId)
+                    ->where('academic_year_id', auth()->user()->school->academic_year_id)
+                    ->where('my_class_id', $this->selectedClass->id)
+                    ->exists();
+
+                if (!$belongsToSelectedClass) {
+                    continue;
+                }
+
                 $user = $studentRecord->user;
                 $studentRecord->delete();
-                $user->delete();
+
+                if ($user && $user->school_id === auth()->user()->school_id && $user->hasRole('student')) {
+                    $user->delete();
+                }
             }
         }
 
@@ -441,7 +529,7 @@ class ManageClasses extends Component
         // Get subjects not already in this class
         $currentSubjectIds = $this->selectedClass->subjects->pluck('id')->toArray();
         
-        $this->availableSubjects = Subject::where('school_id', auth()->user()->school_id)
+        $this->availableSubjects = Subject::query()
             ->active()
             ->whereNotIn('id', $currentSubjectIds)
             ->with('classes')
@@ -475,7 +563,7 @@ class ManageClasses extends Component
         
         DB::transaction(function() use (&$addedCount) {
             foreach ($this->selectedSubjectIds as $subjectId) {
-                $subject = Subject::find($subjectId);
+                $subject = Subject::query()->find($subjectId);
                 
                 if ($subject) {
                     // Add this class to the subject's classes
@@ -500,7 +588,7 @@ class ManageClasses extends Component
     {
         $this->authorize('update', $this->selectedClass);
         
-        $subject = Subject::findOrFail($subjectId);
+        $subject = Subject::query()->findOrFail($subjectId);
         
         // Remove this class from the subject
         $subject->removeFromClass($this->selectedClass->id);
@@ -532,7 +620,12 @@ class ManageClasses extends Component
 
     public function showEditSection($sectionId)
     {
-        $section = Section::findOrFail($sectionId);
+        $section = $this->getSectionForCurrentSchool($sectionId);
+        if ($section->my_class_id !== $this->selectedClass->id) {
+            session()->flash('error', 'Section does not belong to selected class.');
+            return;
+        }
+
         $this->editingSectionId = $section->id;
         $this->sectionName = $section->name;
         $this->showSectionModal = true;
@@ -545,7 +638,12 @@ class ManageClasses extends Component
         ]);
 
         if ($this->editingSectionId) {
-            $section = Section::findOrFail($this->editingSectionId);
+            $section = $this->getSectionForCurrentSchool($this->editingSectionId);
+            if ($section->my_class_id !== $this->selectedClass->id) {
+                session()->flash('error', 'Section does not belong to selected class.');
+                return;
+            }
+
             $section->update(['name' => $this->sectionName]);
             session()->flash('success', 'Section updated successfully!');
         } else {
@@ -562,7 +660,11 @@ class ManageClasses extends Component
 
     public function deleteSection($sectionId)
     {
-        $section = Section::findOrFail($sectionId);
+        $section = $this->getSectionForCurrentSchool($sectionId);
+        if ($section->my_class_id !== $this->selectedClass->id) {
+            session()->flash('error', 'Section does not belong to selected class.');
+            return;
+        }
 
         if ($section->studentsCount() > 0) {
             session()->flash('error', 'Cannot delete section with students.');
@@ -591,6 +693,7 @@ class ManageClasses extends Component
         $this->classTeachers = DB::table('class_teacher')
             ->where('class_id', $this->selectedClass->id)
             ->join('users', 'class_teacher.teacher_id', '=', 'users.id')
+            ->where('users.school_id', auth()->user()->school_id)
             ->select('users.*')
             ->get()
             ->toArray();
@@ -600,9 +703,15 @@ class ManageClasses extends Component
     {
         $this->authorize('update', $this->selectedClass);
 
+        $validTeacherIds = User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $this->selectedTeachers)
+            ->pluck('id')
+            ->toArray();
+
         DB::table('class_teacher')->where('class_id', $this->selectedClass->id)->delete();
 
-        foreach ($this->selectedTeachers as $teacherId) {
+        foreach ($validTeacherIds as $teacherId) {
             DB::table('class_teacher')->insert([
                 'class_id' => $this->selectedClass->id,
                 'teacher_id' => $teacherId,
@@ -614,6 +723,38 @@ class ManageClasses extends Component
         $this->loadClassTeachers();
         $this->showTeacherModal = false;
         session()->flash('success', 'Class teachers updated successfully!');
+    }
+
+    protected function classGroupBelongsToCurrentSchool($classGroupId): bool
+    {
+        if (!$classGroupId) {
+            return false;
+        }
+
+        return ClassGroup::query()
+            ->where('id', $classGroupId)
+            ->exists();
+    }
+
+    protected function getClassForCurrentSchool($id, array $with = []): MyClass
+    {
+        return MyClass::with($with)
+            ->whereHas('classGroup', fn ($q) => $q->where('school_id', auth()->user()->school_id))
+            ->findOrFail($id);
+    }
+
+    protected function getSectionForCurrentSchool($id): Section
+    {
+        return Section::whereHas('myClass.classGroup', fn ($q) => $q->where('school_id', auth()->user()->school_id))
+            ->findOrFail($id);
+    }
+
+    protected function getStudentRecordForCurrentSchool($id): ?StudentRecord
+    {
+        return StudentRecord::whereHas('user', function ($query) {
+            $query->where('school_id', auth()->user()->school_id)
+                ->whereNull('deleted_at');
+        })->find($id);
     }
 
     // ============================================
@@ -628,7 +769,7 @@ class ManageClasses extends Component
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->paginate(12);
     
-        $classGroups = ClassGroup::where('school_id', auth()->user()->school_id)->get();
+        $classGroups = ClassGroup::query()->get();
         
         $students = null;
         if ($this->view === 'view') {
@@ -649,6 +790,6 @@ class ManageClasses extends Component
             'students' => $students,
             'allClasses' => $allClasses,
             'teachers' => $teachers,
-        ])->layout('layouts.new');
+        ])->layout('layouts.dashboard');
     }
 }

@@ -21,7 +21,7 @@ class SchoolDetail extends Component
     public function render()
     {
         return view('livewire.schools.school-detail')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('schools.index'), 'text' => 'Schools'],

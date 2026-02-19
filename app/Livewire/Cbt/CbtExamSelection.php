@@ -4,6 +4,7 @@ namespace App\Livewire\Cbt;
 
 use Livewire\Component;
 use App\Models\Assessment\Assessment;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 
@@ -13,9 +14,7 @@ class CbtExamSelection extends Component
     public function render()
     {
         // Get only standalone CBT assessments
-        $availableAssessments = Assessment::where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id')
+        $availableAssessments = $this->assessmentsForCurrentSchool()
             ->with(['questions', 'course'])
             ->whereHas('questions') // Only show assessments that have questions
             ->get()
@@ -44,8 +43,9 @@ class CbtExamSelection extends Component
 
     public function startExam($assessmentId)
     {
-        
-        $assessment = Assessment::with('questions')->find($assessmentId);
+        $assessment = $this->assessmentsForCurrentSchool()
+            ->with('questions')
+            ->find($assessmentId);
         
         if (!$assessment || $assessment->questions->count() === 0) {
             session()->flash('error', 'Assessment not found or has no questions.');
@@ -68,5 +68,27 @@ class CbtExamSelection extends Component
     public function viewResults($assessmentId)
     {
         return redirect()->route('cbt.viewer');
+    }
+
+    protected function currentSchoolId(): ?int
+    {
+        return auth()->user()?->school_id;
+    }
+
+    protected function assessmentsForCurrentSchool(): Builder
+    {
+        $query = Assessment::query()
+            ->where('type', 'quiz')
+            ->whereNull('section_id')
+            ->whereNull('lesson_id');
+
+        $schoolId = $this->currentSchoolId();
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
+            $classGroupQuery->where('school_id', $schoolId);
+        });
     }
 }

@@ -1,57 +1,60 @@
-@extends('layouts.guest')
+@extends('layouts.app', ['mode' => 'guest'])
 
 @section('title', 'Two Factor Challenge')
 
 @section('body')
     <x-partials.authentication-card>
-        <div class="p-4">
-            <x-display-validation-errors />
-            <div x-data="{ recovery: false }">
-                <div class="mb-3 text-sm md:text-base" x-show="! recovery">
-                    {{ __('Please confirm access to your account by entering the authentication code provided by your authenticator application.') }}
+        <x-slot:header>
+            <h1 class="text-2xl font-bold text-gray-900">Two-Factor Verification</h1>
+            <p class="text-gray-600 mt-2">Confirm access using your authentication code.</p>
+        </x-slot:header>
+
+        <x-display-validation-errors />
+
+        <div x-data="{ recovery: false }" class="space-y-4">
+            <p class="text-sm text-gray-600" x-show="!recovery">
+                {{ __('Enter the authentication code provided by your authenticator app.') }}
+            </p>
+
+            <p class="text-sm text-gray-600" x-show="recovery">
+                {{ __('Enter one of your emergency recovery codes.') }}
+            </p>
+
+            <form method="POST" action="{{ route('two-factor.login') }}" class="space-y-4">
+                @csrf
+
+                <div x-show="!recovery">
+                    <x-input id="code" label="Authentication Code" type="text" inputmode="numeric" name="code" autofocus x-ref="code" autocomplete="one-time-code" />
                 </div>
 
-                <div class="mb-3 text-sm md:text-base" x-show="recovery">
-                    {{ __('Please confirm access to your account by entering one of your emergency recovery codes.') }}
+                <div x-show="recovery">
+                    <x-input id="recovery-code" label="Recovery Code" type="text" name="recovery_code" x-ref="recovery_code" autocomplete="one-time-code" />
                 </div>
 
-                <form method="POST" action="{{ route('two-factor.login') }}">
-                    @csrf
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                        x-show="!recovery"
+                        x-on:click="recovery = true; $nextTick(() => { $refs.recovery_code.focus() })"
+                    >
+                        {{ __('Use a recovery code') }}
+                    </button>
 
-                    <div class="form-group" x-show="! recovery">
-                        <x-input id="code" label="Code" type="text" inputmode="numeric" name="code" autofocus x-ref="code" autocomplete="one-time-code" />
-                    </div>
+                    <button
+                        type="button"
+                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+                        x-show="recovery"
+                        x-on:click="recovery = false; $nextTick(() => { $refs.code.focus() })"
+                    >
+                        {{ __('Use an authentication code') }}
+                    </button>
 
-                    <div class="form-group" x-show="recovery">
-                        <x-input label="Recovery Code" id="recovery-code" type="text" name="recovery_code" x-ref="recovery_code" autocomplete="one-time-code" />
-                    </div>
-
-                    <div class="flex justify-end mt-3">
-                        <x-button type="button" class="bg-gray-800"
-                                x-show="! recovery"
-                                x-on:click="
-                                            recovery = true;
-                                            $nextTick(() => { $refs.recovery_code.focus() })
-                                        ">
-                            {{ __('Use a recovery code') }}
-                        </x-button>
-
-                        <x-button type="button" class="bg-gray-800 text-xs md:text-base px-2"
-                                x-show="recovery"
-                                x-on:click="
-                                            recovery = false;
-                                            $nextTick(() => { $refs.code.focus() })
-                                        ">
-                            {{ __('Use an authentication code') }}
-                        </x-button>
-
-                        <x-button class="px-2 md:px-6">
-                            {{ __('Log in') }}
-                        </x-button>
-                    </div>
-                </form>
-            </div>
+                    <button type="submit" class="sm:ml-auto rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition-colors">
+                        {{ __('Log in') }}
+                    </button>
+                </div>
+            </form>
         </div>
     </x-partials.authentication-card>
 @endsection
-           

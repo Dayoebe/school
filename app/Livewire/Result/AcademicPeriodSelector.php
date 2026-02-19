@@ -15,12 +15,19 @@ class AcademicPeriodSelector extends Component
 
     public function mount()
     {
-        $this->academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
+        $this->academicYears = AcademicYear::query()
+            ->orderBy('start_year', 'desc')
+            ->get();
         
         // Set defaults: first check session, then fall back to school's current settings
-        $this->academicYearId = session('result_academic_year_id') 
-            ?? auth()->user()->school->academic_year_id
+        $sessionAcademicYearId = session('result_academic_year_id');
+        $this->academicYearId = $sessionAcademicYearId 
+            ?? auth()->user()->school?->academic_year_id
             ?? $this->academicYears->first()?->id;
+
+        if ($this->academicYearId && !$this->academicYears->contains('id', $this->academicYearId)) {
+            $this->academicYearId = $this->academicYears->first()?->id;
+        }
         
         $this->loadSemesters();
         
@@ -33,8 +40,8 @@ class AcademicPeriodSelector extends Component
             $this->semesterId = $this->semesters->first()?->id;
         }
         
-        // Save the defaults to session if not already set
-        if ($this->academicYearId && $this->semesterId) {
+        // Save the defaults to session and notify listeners.
+        if ($this->academicYearId) {
             $this->savePeriod();
         }
     }
@@ -55,6 +62,7 @@ class AcademicPeriodSelector extends Component
     {
         $this->semesters = $this->academicYearId 
             ? Semester::where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
                 ->orderBy('name')
                 ->get() 
             : collect();
@@ -62,6 +70,14 @@ class AcademicPeriodSelector extends Component
 
     protected function savePeriod()
     {
+        if ($this->academicYearId && !$this->academicYears->contains('id', $this->academicYearId)) {
+            return;
+        }
+
+        if ($this->semesterId && !$this->semesters->contains('id', $this->semesterId)) {
+            $this->semesterId = null;
+        }
+
         session([
             'result_academic_year_id' => $this->academicYearId,
             'result_semester_id' => $this->semesterId,

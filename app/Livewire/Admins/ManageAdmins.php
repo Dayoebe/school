@@ -68,7 +68,10 @@ class ManageAdmins extends Component
 
     public function loadAdminForEdit()
     {
-        $admin = User::role('admin')->findOrFail($this->adminId);
+        $admin = User::role('admin')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->adminId);
+
         $this->authorize('update', [$admin, 'admin']);
         
         $this->fill([
@@ -132,7 +135,10 @@ class ManageAdmins extends Component
 
     public function updateAdmin()
     {
-        $admin = User::role('admin')->findOrFail($this->adminId);
+        $admin = User::role('admin')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->adminId);
+
         $this->authorize('update', [$admin, 'admin']);
         
         $this->validate([
@@ -177,7 +183,10 @@ class ManageAdmins extends Component
 
     public function deleteAdmin($adminId)
     {
-        $admin = User::role('admin')->findOrFail($adminId);
+        $admin = User::role('admin')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($adminId);
+
         $this->authorize('delete', [$admin, 'admin']);
         
         $admin->delete();
@@ -186,7 +195,9 @@ class ManageAdmins extends Component
 
     public function toggleLock($adminId)
     {
-        $admin = User::findOrFail($adminId);
+        $admin = User::role('admin')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($adminId);
         
         if (auth()->user()->can('lock user')) {
             $admin->update(['locked' => !$admin->locked]);
@@ -231,7 +242,7 @@ class ManageAdmins extends Component
         }
 
         return view('livewire.admins.manage-admins', compact('admins'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('admins.index'), 'text' => 'Admins', 'active' => true]

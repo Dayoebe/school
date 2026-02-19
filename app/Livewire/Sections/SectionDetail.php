@@ -30,7 +30,9 @@ class SectionDetail extends Component
 
     public function mount($sectionId)
     {
-        $this->section = Section::with([
+        $this->section = Section::whereHas('myClass.classGroup', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->with([
             'myClass',
             'subjects.teachers',
             'studentRecords.user'
@@ -52,7 +54,8 @@ class SectionDetail extends Component
 
     public function loadAvailableSubjects()
     {
-        $this->availableSubjects = Subject::where('my_class_id', $this->section->my_class_id)
+        $this->availableSubjects = Subject::query()
+            ->where('my_class_id', $this->section->my_class_id)
             ->whereDoesntHave('sections', function ($query) {
                 $query->where('sections.id', $this->section->id);
             })
@@ -81,7 +84,17 @@ class SectionDetail extends Component
         $this->authorize('update', $this->section);
         $this->validate();
 
-        $this->section->subjects()->syncWithoutDetaching($this->selectedSubjects);
+        $validSubjectIds = Subject::query()
+            ->whereIn('id', $this->selectedSubjects)
+            ->pluck('id')
+            ->toArray();
+
+        if (count($validSubjectIds) !== count($this->selectedSubjects)) {
+            session()->flash('error', 'One or more selected subjects are not in your current school.');
+            return;
+        }
+
+        $this->section->subjects()->syncWithoutDetaching($validSubjectIds);
 
         // Update students' subject assignments
         foreach ($this->section->studentRecords as $record) {
@@ -97,6 +110,14 @@ class SectionDetail extends Component
     public function detachSubject($subjectId)
     {
         $this->authorize('update', $this->section);
+
+        $subjectExists = Subject::query()
+            ->where('id', $subjectId)
+            ->exists();
+        if (!$subjectExists) {
+            session()->flash('error', 'Subject not found in your current school.');
+            return;
+        }
         
         $this->section->subjects()->detach($subjectId);
 
@@ -124,7 +145,7 @@ class SectionDetail extends Component
     public function render()
     {
         return view('livewire.sections.section-detail')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('sections.index'), 'text' => 'Sections'],

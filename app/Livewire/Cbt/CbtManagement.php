@@ -8,6 +8,7 @@ use App\Models\Assessment\Question;
 use App\Models\Assessment\StudentAnswer;
 use App\Models\MyClass;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
 
@@ -54,7 +55,7 @@ class CbtManagement extends Component
         'max_attempts' => 'nullable|integer|min:1|max:100',
         'shuffle_questions' => 'boolean',
         'shuffle_options' => 'boolean',
-        'course_id' => 'nullable|exists:my_classes,id',
+        'course_id' => 'required|exists:my_classes,id',
         'question_text' => 'required|string',
         'question_type' => 'required|string',
         'points' => 'required|numeric|min:0.1',
@@ -80,14 +81,12 @@ class CbtManagement extends Component
 
     public function render()
     {
-        $assessments = Assessment::where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id')
+        $assessments = $this->assessmentsForCurrentSchool()
             ->with(['questions', 'course'])
             ->latest()
             ->paginate(10);
 
-        $courses = MyClass::query()
+        $courses = $this->coursesForCurrentSchool()
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(function (MyClass $class) {
@@ -111,8 +110,13 @@ class CbtManagement extends Component
             'max_attempts' => 'nullable|integer|min:1|max:100',
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
-            'course_id' => 'nullable|exists:my_classes,id',
+            'course_id' => 'required|exists:my_classes,id',
         ]);
+
+        if (!$this->isCourseInCurrentSchool($this->course_id)) {
+            session()->flash('error', 'Selected class does not belong to your school.');
+            return;
+        }
 
         Assessment::create([
             'course_id' => $this->course_id,
@@ -137,7 +141,12 @@ class CbtManagement extends Component
 
     public function editAssessment($assessmentId)
     {
-        $this->editingAssessment = Assessment::findOrFail($assessmentId);
+        $this->editingAssessment = $this->getAssessmentForCurrentSchool($assessmentId);
+        if (!$this->editingAssessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
         $this->title = $this->editingAssessment->title;
         $this->description = $this->editingAssessment->description;
         $this->pass_percentage = $this->editingAssessment->pass_percentage;
@@ -162,7 +171,7 @@ class CbtManagement extends Component
             'max_attempts' => 'nullable|integer|min:1|max:100',
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
-            'course_id' => 'nullable|exists:my_classes,id',
+            'course_id' => 'required|exists:my_classes,id',
         ]);
 
         if (!$this->editingAssessment) {
@@ -170,7 +179,18 @@ class CbtManagement extends Component
             return;
         }
 
-        $this->editingAssessment->update([
+        if (!$this->isCourseInCurrentSchool($this->course_id)) {
+            session()->flash('error', 'Selected class does not belong to your school.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($this->editingAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $assessment->update([
             'title' => $this->title,
             'description' => $this->description,
             'pass_percentage' => $this->pass_percentage,
@@ -189,7 +209,7 @@ class CbtManagement extends Component
 
     public function deleteAssessment($assessmentId)
     {
-        $assessment = Assessment::find($assessmentId);
+        $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
         if ($assessment) {
             $assessment->delete();
             session()->flash('message', 'CBT Assessment deleted successfully!');
@@ -198,7 +218,10 @@ class CbtManagement extends Component
 
     public function manageQuestions($assessmentId)
     {
-        $this->selectedAssessment = Assessment::with('questions')->find($assessmentId);
+        $this->selectedAssessment = $this->assessmentsForCurrentSchool()
+            ->with('questions')
+            ->find($assessmentId);
+
         if (!$this->selectedAssessment) {
             session()->flash('error', 'Assessment not found.');
             return;
@@ -211,6 +234,12 @@ class CbtManagement extends Component
     {
         if (!$this->selectedAssessment) {
             session()->flash('error', 'No assessment selected.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
             return;
         }
 
@@ -237,7 +266,7 @@ class CbtManagement extends Component
         }
 
         Question::create([
-            'assessment_id' => $this->selectedAssessment->id,
+            'assessment_id' => $assessment->id,
             'question_text' => $this->question_text,
             'question_type' => $this->question_type,
             'points' => $this->points,
@@ -247,13 +276,33 @@ class CbtManagement extends Component
         ]);
 
         $this->resetQuestionForm();
-        $this->selectedAssessment->refresh();
+        $this->selectedAssessment = $assessment->fresh('questions');
         session()->flash('message', 'Question added successfully!');
     }
 
     public function editQuestion($questionId)
     {
-        $this->editingQuestion = Question::findOrFail($questionId);
+        if (!$this->selectedAssessment) {
+            session()->flash('error', 'No assessment selected.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $this->selectedAssessment = $assessment;
+        $this->editingQuestion = Question::query()
+            ->where('assessment_id', $assessment->id)
+            ->find($questionId);
+
+        if (!$this->editingQuestion) {
+            session()->flash('error', 'Question not found.');
+            return;
+        }
+
         $this->question_text = $this->editingQuestion->question_text;
         $this->question_type = $this->editingQuestion->question_type;
         $this->points = $this->editingQuestion->points;
@@ -267,6 +316,26 @@ class CbtManagement extends Component
     public function updateQuestion()
     {
         if (!$this->editingQuestion) {
+            session()->flash('error', 'Question not found.');
+            return;
+        }
+
+        if (!$this->selectedAssessment) {
+            session()->flash('error', 'No assessment selected.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $question = Question::query()
+            ->where('assessment_id', $assessment->id)
+            ->find($this->editingQuestion->id);
+
+        if (!$question) {
             session()->flash('error', 'Question not found.');
             return;
         }
@@ -288,7 +357,7 @@ class CbtManagement extends Component
             }));
         }
 
-        $this->editingQuestion->update([
+        $question->update([
             'question_text' => $this->question_text,
             'question_type' => $this->question_type,
             'points' => $this->points,
@@ -299,42 +368,86 @@ class CbtManagement extends Component
 
         $this->resetQuestionForm();
         $this->showEditQuestionModal = false;
-        $this->selectedAssessment->refresh();
+        $this->selectedAssessment = $assessment->fresh('questions');
         session()->flash('message', 'Question updated successfully!');
     }
 
     public function reorderQuestions($orderedIds)
     {
-        foreach ($orderedIds as $index => $id) {
-            Question::where('id', $id)->update(['order' => $index + 1]);
+        if (!$this->selectedAssessment) {
+            session()->flash('error', 'No assessment selected.');
+            return;
         }
 
-        $this->selectedAssessment->refresh();
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $validQuestionIds = Question::query()
+            ->where('assessment_id', $assessment->id)
+            ->pluck('id')
+            ->flip();
+
+        $order = 1;
+        foreach ($orderedIds as $id) {
+            if (!$validQuestionIds->has($id)) {
+                continue;
+            }
+
+            Question::where('id', $id)->update(['order' => $order]);
+            $order++;
+        }
+
+        $this->selectedAssessment = $assessment->fresh('questions');
         session()->flash('message', 'Questions reordered successfully!');
     }
 
     public function deleteQuestion($questionId)
     {
-        $question = Question::find($questionId);
+        if (!$this->selectedAssessment) {
+            session()->flash('error', 'No assessment selected.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $question = Question::query()
+            ->where('assessment_id', $assessment->id)
+            ->find($questionId);
+
         if ($question) {
             $question->delete();
-            if ($this->selectedAssessment) {
-                $this->selectedAssessment->refresh();
-            }
+            $this->selectedAssessment = $assessment->fresh('questions');
             session()->flash('message', 'Question deleted successfully!');
         }
     }
 
     public function viewParticipants($assessmentId)
     {
-        $this->selectedAssessment = Assessment::with([
+        $schoolId = $this->currentSchoolId();
+
+        $this->selectedAssessment = $this->assessmentsForCurrentSchool()->with([
             'studentAnswers' => function ($query) {
                 $query->whereNotNull('submitted_at')
-                    ->with('user')
+                    ->whereHas('user', function ($userQuery) {
+                        $userQuery->where('school_id', $this->currentSchoolId());
+                    })
+                    ->with('user', 'question')
                     ->orderBy('user_id')
                     ->orderBy('attempt_number', 'desc');
             }
-        ])->findOrFail($assessmentId);
+        ])->find($assessmentId);
+
+        if (!$this->selectedAssessment || !$schoolId) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
 
         $this->showParticipantsModal = true;
     }
@@ -346,6 +459,7 @@ class CbtManagement extends Component
         }
 
         $participants = $this->selectedAssessment->studentAnswers
+            ->filter(fn ($answer) => $answer->user !== null)
             ->groupBy('user_id')
             ->map(function ($answers, $userId) {
                 $user = $answers->first()->user;
@@ -389,19 +503,31 @@ class CbtManagement extends Component
             return;
         }
 
-        $user = User::find($userId);
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $user = User::role('student')
+            ->where('school_id', $this->currentSchoolId())
+            ->find($userId);
+
         if (!$user) {
             session()->flash('error', 'User not found.');
             return;
         }
 
         $deleted = StudentAnswer::where('user_id', $userId)
-            ->where('assessment_id', $this->selectedAssessment->id)
+            ->where('assessment_id', $assessment->id)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', $this->currentSchoolId());
+            })
             ->where('attempt_number', $attemptNumber)
             ->delete();
 
         if ($deleted > 0) {
-            $this->selectedAssessment->refresh();
+            $this->selectedAssessment = $assessment->fresh('studentAnswers');
             session()->flash('message', "Attempt #{$attemptNumber} cleared for {$user->name}");
         } else {
             session()->flash('error', 'Failed to clear attempt.');
@@ -415,18 +541,30 @@ class CbtManagement extends Component
             return;
         }
 
-        $user = User::find($userId);
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $user = User::role('student')
+            ->where('school_id', $this->currentSchoolId())
+            ->find($userId);
+
         if (!$user) {
             session()->flash('error', 'User not found.');
             return;
         }
 
         $deleted = StudentAnswer::where('user_id', $userId)
-            ->where('assessment_id', $this->selectedAssessment->id)
+            ->where('assessment_id', $assessment->id)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', $this->currentSchoolId());
+            })
             ->delete();
 
         if ($deleted > 0) {
-            $this->selectedAssessment->refresh();
+            $this->selectedAssessment = $assessment->fresh('studentAnswers');
             session()->flash('message', "All attempts cleared for {$user->name} ({$deleted} answer(s) removed)");
         } else {
             session()->flash('error', 'No attempts found to clear.');
@@ -468,5 +606,61 @@ class CbtManagement extends Component
         $this->selectedAssessment = null;
         $this->resetForm();
         $this->resetQuestionForm();
+    }
+
+    protected function currentSchoolId(): ?int
+    {
+        return auth()->user()?->school_id;
+    }
+
+    protected function assessmentsForCurrentSchool(): Builder
+    {
+        $query = Assessment::query()
+            ->where('type', 'quiz')
+            ->whereNull('section_id')
+            ->whereNull('lesson_id');
+
+        $schoolId = $this->currentSchoolId();
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
+            $classGroupQuery->where('school_id', $schoolId);
+        });
+    }
+
+    protected function coursesForCurrentSchool(): Builder
+    {
+        $schoolId = $this->currentSchoolId();
+        $query = MyClass::query();
+
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('classGroup', function ($classGroupQuery) use ($schoolId) {
+            $classGroupQuery->where('school_id', $schoolId);
+        });
+    }
+
+    protected function getAssessmentForCurrentSchool($assessmentId): ?Assessment
+    {
+        if (!$assessmentId) {
+            return null;
+        }
+
+        return $this->assessmentsForCurrentSchool()->find($assessmentId);
+    }
+
+    protected function isCourseInCurrentSchool($courseId): bool
+    {
+        if (!$courseId) {
+            return false;
+        }
+
+        return $this->coursesForCurrentSchool()
+            ->whereKey($courseId)
+            ->exists();
     }
 }

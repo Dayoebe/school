@@ -40,6 +40,14 @@
                         <option value="{{ $subject->id }}">{{ $subject->name }}</option>
                     @endforeach
                 </select>
+
+                @if($selectedClass && $subjects->isEmpty())
+                    <p class="mt-2 text-sm text-amber-600">No subjects found for this class. Assign class subjects or student subjects first.</p>
+                @endif
+
+                @if($selectedClass && !$semesterId)
+                    <p class="mt-2 text-sm text-red-600">No term is configured for this academic year. Set it in Result Term Settings first.</p>
+                @endif
             </div>
 
             <div class="flex items-end">

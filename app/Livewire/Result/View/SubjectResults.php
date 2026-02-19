@@ -20,8 +20,8 @@ class SubjectResults extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
         $this->subjects = collect(); // ADD THIS
         $this->subjectResults = collect(); // ADD THIS
         $this->subjectStats = []; // Keep as array for stats
@@ -38,7 +38,20 @@ class SubjectResults extends Component
 
     public function updatedSelectedClass()
     {
-        $this->subjects = Subject::where('my_class_id', $this->selectedClass)
+        $classExists = MyClass::where('id', $this->selectedClass)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+
+        if (!$classExists) {
+            $this->subjects = collect();
+            $this->selectedClass = null;
+            return;
+        }
+
+        $this->subjects = Subject::query()
+            ->where('my_class_id', $this->selectedClass)
             ->orderBy('name')
             ->get();
         $this->reset(['selectedSubject']);
@@ -49,6 +62,24 @@ class SubjectResults extends Component
     {
         if (!$this->selectedClass || !$this->selectedSubject) {
             $this->dispatch('error', 'Please select both class and subject');
+            return;
+        }
+
+        $classExists = MyClass::where('id', $this->selectedClass)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+        if (!$classExists) {
+            $this->dispatch('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        $subjectExists = Subject::where('id', $this->selectedSubject)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        if (!$subjectExists) {
+            $this->dispatch('error', 'Selected subject is not in your current school.');
             return;
         }
 
@@ -69,7 +100,14 @@ class SubjectResults extends Component
             ->where('academic_year_id', $this->academicYearId)
             ->where('semester_id', $this->semesterId)
             ->whereIn('student_record_id', $studentRecordIds)
-            ->with(['student.user'])
+            ->whereHas('student.user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->with(['student.user' => function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            }])
             ->get();
 
         // Calculate statistics
@@ -140,10 +178,14 @@ class SubjectResults extends Component
 
     public function render()
     {
-        $classes = MyClass::orderBy('name')->get();
+        $classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
     
         return view('livewire.result.view.subject-results', compact('classes'))
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'View Subject Results',
                 'page_heading' => 'View Subject Results'
             ]);

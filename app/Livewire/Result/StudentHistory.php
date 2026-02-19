@@ -28,12 +28,17 @@ class StudentHistory extends Component
     public function viewHistory($studentId)
     {
         $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
             ->findOrFail($studentId);
 
         // Get all academic years this student has results for
         $this->academicYears = AcademicYear::whereHas('semesters.results', function($q) use ($studentId) {
             $q->where('student_record_id', $studentId);
         })
+        ->where('school_id', auth()->user()->school_id)
         ->with(['semesters' => function($q) use ($studentId) {
             $q->whereHas('results', function($query) use ($studentId) {
                 $query->where('student_record_id', $studentId);
@@ -128,19 +133,30 @@ class StudentHistory extends Component
 
     public function render()
     {
-        $classes = MyClass::orderBy('name')->get();
-        $sections = Section::when($this->selectedClass, fn($q) => $q->where('my_class_id', $this->selectedClass))->get();
+        $classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
+        $sections = Section::when($this->selectedClass, function ($q) {
+            $q->where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                });
+        })->get();
     
         $students = collect();
         
         if ($this->selectedClass && !$this->viewingHistory) {
             $students = StudentRecord::with(['user' => function($query) {
-                    $query->whereNull('deleted_at');
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at');
                 }, 'myClass'])
                 ->where('my_class_id', $this->selectedClass)
                 ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
                 ->whereHas('user', function($query) {
-                    $query->whereNull('deleted_at')
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at')
                         ->when($this->searchTerm, function($q) {
                             $q->where('name', 'like', '%' . $this->searchTerm . '%');
                         });
@@ -151,7 +167,7 @@ class StudentHistory extends Component
         }
     
         return view('livewire.result.student-history', compact('classes', 'sections', 'students'))
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'Student Academic History',
                 'page_heading' => 'Student Academic History'
             ]);

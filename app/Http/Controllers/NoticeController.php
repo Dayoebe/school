@@ -21,7 +21,7 @@ class NoticeController extends Controller
      */
     public function index(): View
     {
-        return view('pages.notice.index');
+        return view('livewire.notices.pages.index');
     }
 
     /**
@@ -29,7 +29,7 @@ class NoticeController extends Controller
      */
     public function create(): View
     {
-        return view('pages.notice.create');
+        return view('livewire.notices.pages.create');
     }
 
     /**
@@ -59,7 +59,7 @@ class NoticeController extends Controller
      */
     public function show(Notice $notice): View
     {
-        return view('pages.notice.show', compact('notice'));
+        return view('livewire.notices.pages.show', compact('notice'));
     }
 
     /**

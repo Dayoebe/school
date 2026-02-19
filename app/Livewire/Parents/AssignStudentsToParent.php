@@ -22,12 +22,11 @@ class AssignStudentsToParent extends Component
 
     public function mount($parent)
     {
-        // Accept both User model and ID
-        if ($parent instanceof User) {
-            $this->parent = $parent;
-        } else {
-            $this->parent = User::findOrFail($parent);
-        }
+        $parentId = $parent instanceof User ? $parent->id : $parent;
+
+        $this->parent = User::role('parent')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($parentId);
         
         // Verify parent role
         if (!$this->parent->hasRole('parent')) {
@@ -51,7 +50,23 @@ class AssignStudentsToParent extends Component
     public function updatedSelectedClass()
     {
         if ($this->selectedClass) {
+            $classInSchool = \App\Models\MyClass::where('id', $this->selectedClass)
+                ->whereHas('classGroup', function ($q) {
+                    $q->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$classInSchool) {
+                $this->sections = collect();
+                $this->selectedSection = '';
+                $this->resetPage();
+                return;
+            }
+
             $this->sections = \App\Models\Section::where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($q) {
+                    $q->where('school_id', auth()->user()->school_id);
+                })
                 ->orderBy('name')->get();
         } else {
             $this->sections = collect(); // Empty collection
@@ -67,7 +82,9 @@ class AssignStudentsToParent extends Component
 
     public function assignStudent($studentId)
     {
-        $student = User::findOrFail($studentId);
+        $student = User::role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($studentId);
         
         // Verify student role
         if (!$student->hasRole('student')) {
@@ -157,7 +174,7 @@ class AssignStudentsToParent extends Component
             'assignedStudents' => $assignedStudents,
             'availableStudents' => $availableStudents,
         ])
-        ->layout('layouts.new', [
+        ->layout('layouts.dashboard', [
             'breadcrumbs' => [
                 ['href' => route('dashboard'), 'text' => 'Dashboard'],
                 ['href' => route('parents.index'), 'text' => 'Parents'],

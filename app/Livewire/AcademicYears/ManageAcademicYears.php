@@ -77,9 +77,9 @@ class ManageAcademicYears extends Component
 
     public function edit($id)
     {
-        $this->authorize('update', AcademicYear::find($id));
-        
-        $academicYear = $this->academicYears->firstWhere('id', $id);
+        $academicYear = $this->getAcademicYearForCurrentSchool($id);
+        $this->authorize('update', $academicYear);
+
         $this->editingId = $id;
         $this->startYear = $academicYear->start_year;
         $this->stopYear = $academicYear->stop_year;
@@ -89,7 +89,7 @@ class ManageAcademicYears extends Component
 
     public function update()
     {
-        $academicYear = AcademicYear::find($this->editingId);
+        $academicYear = $this->getAcademicYearForCurrentSchool($this->editingId);
         $this->authorize('update', $academicYear);
 
         $this->validate();
@@ -106,7 +106,7 @@ class ManageAcademicYears extends Component
 
     public function delete($id)
     {
-        $academicYear = AcademicYear::find($id);
+        $academicYear = $this->getAcademicYearForCurrentSchool($id);
         $this->authorize('delete', $academicYear);
 
         // Prevent deleting current academic year
@@ -130,7 +130,7 @@ class ManageAcademicYears extends Component
         ]);
 
         $school = auth()->user()->school;
-        $academicYear = AcademicYear::where('school_id', $school->id)->findOrFail($this->selectedAcademicYearId);
+        $academicYear = AcademicYear::query()->findOrFail($this->selectedAcademicYearId);
 
         $semesterId = $academicYear->semesters()->value('id');
         if (!$semesterId) {
@@ -151,6 +151,12 @@ class ManageAcademicYears extends Component
         $this->dispatch('$refresh');
     }
 
+    protected function getAcademicYearForCurrentSchool($id): AcademicYear
+    {
+        return AcademicYear::query()
+            ->findOrFail($id);
+    }
+
     public function resetForm()
     {
         $this->startYear = '';
@@ -164,6 +170,6 @@ class ManageAcademicYears extends Component
     public function render()
     {
         return view('livewire.academic-years.manage-academic-years')
-            ->layout('layouts.new');
+            ->layout('layouts.dashboard');
     }
 }

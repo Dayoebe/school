@@ -56,12 +56,7 @@ class ManageFeeCategories extends Component
 
     public function loadFeeCategoryForEdit()
     {
-        $feeCategory = FeeCategory::findOrFail($this->feeCategoryId);
-        
-        // Simple authorization check
-        if ($feeCategory->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $feeCategory = $this->getFeeCategoryForCurrentSchool($this->feeCategoryId);
         
         $this->fill([
             'name' => $feeCategory->name,
@@ -90,11 +85,7 @@ class ManageFeeCategories extends Component
 
     public function updateFeeCategory()
     {
-        $feeCategory = FeeCategory::findOrFail($this->feeCategoryId);
-        
-        if ($feeCategory->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $feeCategory = $this->getFeeCategoryForCurrentSchool($this->feeCategoryId);
         
         $this->validate([
             'name' => 'required|string|max:255',
@@ -114,11 +105,7 @@ class ManageFeeCategories extends Component
 
     public function deleteFeeCategory($feeCategoryId)
     {
-        $feeCategory = FeeCategory::findOrFail($feeCategoryId);
-        
-        if ($feeCategory->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $feeCategory = $this->getFeeCategoryForCurrentSchool($feeCategoryId);
         
         DB::transaction(function () use ($feeCategory) {
             // Check if category has fees
@@ -128,8 +115,10 @@ class ManageFeeCategories extends Component
             }
             $feeCategory->delete();
         });
-        
-        session()->flash('success', 'Fee Category deleted successfully');
+
+        if (!$feeCategory->exists) {
+            session()->flash('success', 'Fee Category deleted successfully');
+        }
     }
 
     public function clearFilters()
@@ -155,9 +144,15 @@ class ManageFeeCategories extends Component
         ]);
     }
 
+    protected function getFeeCategoryForCurrentSchool($feeCategoryId): FeeCategory
+    {
+        return FeeCategory::query()
+            ->findOrFail($feeCategoryId);
+    }
+
     protected function getFeeCategoriesQuery()
     {
-        return FeeCategory::where('school_id', auth()->user()->school_id)
+        return FeeCategory::query()
             ->when($this->search, function($q) {
                 $q->where(function($query) {
                     $query->where('name', 'like', '%' . $this->search . '%')
@@ -178,7 +173,7 @@ class ManageFeeCategories extends Component
         }
 
         return view('livewire.fees.manage-fee-categories', compact('feeCategories'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('fee-categories.index'), 'text' => 'Fee Categories', 'active' => true]

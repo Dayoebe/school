@@ -1,9 +1,9 @@
 @isset($roles)
-    <form action="{{route('register')}}" method="POST" enctype="multipart/form-data" class="w-full">
-        <div class="card-body" >
+    <form action="{{route('register')}}" method="POST" enctype="multipart/form-data" class="w-full space-y-3">
+        <div class="w-full">
             <x-select id="role" name="role" label="Register as" class="capitalize">    
                     @foreach ($roles as $item)
-                        <option value="{{$item['id']}}">{{$item['name']}}</option>
+                        <option value="{{$item['name']}}">{{$item['name']}}</option>
                     @endforeach
             </x-select>
             <x-select id="school" name="school" label="School" class="text-capitalize">    
@@ -13,9 +13,10 @@
             </x-select>
             <livewire:create-user-fields/>
             @csrf
-            <x-button label="Register" icon="fas fa-key" type="submit" class="w-full md:w-3/12"/>
+            <button type="submit" class="w-full rounded-lg bg-blue-600 py-3 text-white font-semibold hover:bg-blue-700 transition-colors">
+                Register
+            </button>
         </div>
-        <hr>
     </form>
 @else
    <p>Couldn't create user, Roles not found.</p> 

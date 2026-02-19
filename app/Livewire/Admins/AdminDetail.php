@@ -14,14 +14,16 @@ class AdminDetail extends Component
 
     public function mount($adminId)
     {
-        $this->admin = User::role('admin')->findOrFail($adminId);
+        $this->admin = User::role('admin')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($adminId);
         $this->authorize('view', [$this->admin, 'admin']);
     }
 
     public function render()
     {
         return view('livewire.admins.admin-detail')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('admins.index'), 'text' => 'Admins'],

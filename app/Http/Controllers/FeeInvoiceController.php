@@ -19,7 +19,7 @@ class FeeInvoiceController extends Controller
             abort(403);
         }
 
-        $pdf = Pdf::loadView('pages.fee-invoice.print', [
+        $pdf = Pdf::loadView('livewire.fees.pages.invoice-print', [
             'feeInvoice' => $feeInvoice,
         ]);
 

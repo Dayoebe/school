@@ -74,7 +74,7 @@ class ManageFeeInvoices extends Component
             $q->where('school_id', auth()->user()->school_id);
         })->get();
         
-        $this->feeCategories = FeeCategory::where('school_id', auth()->user()->school_id)->get();
+        $this->feeCategories = FeeCategory::query()->get();
         
         $this->issue_date = date('Y-m-d');
         $this->due_date = date('Y-m-d', strtotime('+30 days'));
@@ -83,8 +83,10 @@ class ManageFeeInvoices extends Component
     public function updatedSelectedClass()
     {
         if ($this->selectedClass) {
-            $class = MyClass::find($this->selectedClass);
-            $this->sections = $class ? $class->sections : collect();
+            $class = $this->getClassForCurrentSchool($this->selectedClass);
+            $this->sections = $class
+                ? $class->sections()->orderBy('name')->get()
+                : collect();
             $this->selectedSection = '';
             $this->selectedStudent = '';
             $this->updateStudentsList();
@@ -100,10 +102,10 @@ class ManageFeeInvoices extends Component
     public function updateStudentsList()
     {
         if ($this->selectedSection) {
-            $section = Section::find($this->selectedSection);
+            $section = $this->getSectionForCurrentSchool($this->selectedSection, $this->selectedClass ?: null);
             $this->students = $section ? $section->students : collect();
         } elseif ($this->selectedClass) {
-            $class = MyClass::find($this->selectedClass);
+            $class = $this->getClassForCurrentSchool($this->selectedClass);
             $this->students = $class ? $class->students() : collect();
         } else {
             $this->students = collect();
@@ -113,7 +115,7 @@ class ManageFeeInvoices extends Component
     public function addStudent()
     {
         if ($this->selectedStudent) {
-            $student = User::with('studentRecord')->find($this->selectedStudent);
+            $student = $this->getStudentForCurrentSchool($this->selectedStudent);
             if ($student && !isset($this->selectedStudents[$student->id])) {
                 $this->selectedStudents[$student->id] = [
                     'id' => $student->id,
@@ -122,7 +124,7 @@ class ManageFeeInvoices extends Component
                 ];
             }
         } elseif ($this->selectedSection) {
-            $section = Section::find($this->selectedSection);
+            $section = $this->getSectionForCurrentSchool($this->selectedSection, $this->selectedClass ?: null);
             if ($section) {
                 foreach ($section->students as $student) {
                     if (!isset($this->selectedStudents[$student->id])) {
@@ -135,7 +137,7 @@ class ManageFeeInvoices extends Component
                 }
             }
         } elseif ($this->selectedClass) {
-            $class = MyClass::find($this->selectedClass);
+            $class = $this->getClassForCurrentSchool($this->selectedClass);
             if ($class) {
                 foreach ($class->students() as $student) {
                     if (!isset($this->selectedStudents[$student->id])) {
@@ -158,7 +160,7 @@ class ManageFeeInvoices extends Component
     public function updatedSelectedFeeCategory()
     {
         if ($this->selectedFeeCategory) {
-            $category = FeeCategory::find($this->selectedFeeCategory);
+            $category = $this->getFeeCategoryForCurrentSchool($this->selectedFeeCategory);
             $this->fees = $category ? $category->fees : collect();
             $this->selectedFee = '';
         }
@@ -167,7 +169,7 @@ class ManageFeeInvoices extends Component
     public function addFee()
     {
         if ($this->selectedFee) {
-            $fee = Fee::find($this->selectedFee);
+            $fee = $this->getFeeForCurrentSchool($this->selectedFee);
             if ($fee && !isset($this->selectedFees[$fee->id])) {
                 $this->selectedFees[$fee->id] = [
                     'id' => $fee->id,
@@ -178,7 +180,7 @@ class ManageFeeInvoices extends Component
                 ];
             }
         } elseif ($this->selectedFeeCategory) {
-            $category = FeeCategory::find($this->selectedFeeCategory);
+            $category = $this->getFeeCategoryForCurrentSchool($this->selectedFeeCategory);
             if ($category) {
                 foreach ($category->fees as $fee) {
                     if (!isset($this->selectedFees[$fee->id])) {
@@ -216,12 +218,7 @@ class ManageFeeInvoices extends Component
 
     public function loadFeeInvoiceForEdit()
     {
-        $feeInvoice = FeeInvoice::with(['user', 'feeInvoiceRecords.fee'])
-            ->findOrFail($this->feeInvoiceId);
-        
-        if ($feeInvoice->user->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $feeInvoice = $this->getFeeInvoiceForCurrentSchool($this->feeInvoiceId);
         
         $this->fill([
             'issue_date' => $feeInvoice->issue_date->format('Y-m-d'),
@@ -248,8 +245,38 @@ class ManageFeeInvoices extends Component
             return;
         }
 
-        DB::transaction(function () {
-            foreach ($this->selectedStudents as $student) {
+        $studentIds = collect($this->selectedStudents)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $students = User::role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $studentIds)
+            ->get(['id', 'name', 'email'])
+            ->keyBy('id');
+
+        if ($students->count() !== $studentIds->count()) {
+            session()->flash('error', 'One or more selected students are not in your current school.');
+            return;
+        }
+
+        $selectedFeesById = collect($this->selectedFees)->keyBy('id');
+        $feeIds = $selectedFeesById->keys()->map(fn ($id) => (int) $id)->values();
+        $fees = Fee::whereIn('id', $feeIds)
+            ->whereHas('feeCategory', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->get(['id', 'name'])
+            ->keyBy('id');
+
+        if ($fees->count() !== $feeIds->count()) {
+            session()->flash('error', 'One or more selected fees are not in your current school.');
+            return;
+        }
+
+        DB::transaction(function () use ($students, $fees, $selectedFeesById) {
+            foreach ($students as $student) {
                 $invoiceName = $this->generateInvoiceNumber();
                 
                 $invoice = FeeInvoice::create([
@@ -257,15 +284,16 @@ class ManageFeeInvoices extends Component
                     'issue_date' => $this->issue_date,
                     'due_date' => $this->due_date,
                     'note' => $this->note ?: null,
-                    'user_id' => $student['id'],
+                    'user_id' => $student->id,
                 ]);
 
-                foreach ($this->selectedFees as $fee) {
+                foreach ($fees as $fee) {
+                    $feeData = $selectedFeesById->get($fee->id, []);
                     $invoice->feeInvoiceRecords()->create([
-                        'fee_id' => $fee['id'],
-                        'amount' => $fee['amount'] ?? 0,
-                        'waiver' => $fee['waiver'] ?? 0,
-                        'fine' => $fee['fine'] ?? 0,
+                        'fee_id' => $fee->id,
+                        'amount' => $feeData['amount'] ?? 0,
+                        'waiver' => $feeData['waiver'] ?? 0,
+                        'fine' => $feeData['fine'] ?? 0,
                         'paid' => 0,
                     ]);
                 }
@@ -278,11 +306,7 @@ class ManageFeeInvoices extends Component
 
     public function updateFeeInvoice()
     {
-        $feeInvoice = FeeInvoice::findOrFail($this->feeInvoiceId);
-        
-        if ($feeInvoice->user->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $feeInvoice = $this->getFeeInvoiceForCurrentSchool($this->feeInvoiceId);
         
         $this->validate([
             'issue_date' => 'required|date',
@@ -304,11 +328,7 @@ class ManageFeeInvoices extends Component
 
     public function deleteFeeInvoice($feeInvoiceId)
     {
-        $feeInvoice = FeeInvoice::findOrFail($feeInvoiceId);
-        
-        if ($feeInvoice->user->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        $feeInvoice = $this->getFeeInvoiceForCurrentSchool($feeInvoiceId);
         
         DB::transaction(function () use ($feeInvoice) {
             $feeInvoice->delete();
@@ -389,6 +409,74 @@ class ManageFeeInvoices extends Component
         return $query->orderBy($this->sortField, $this->sortDirection);
     }
 
+    protected function getClassForCurrentSchool($classId): ?MyClass
+    {
+        if (!$classId) {
+            return null;
+        }
+
+        return MyClass::whereHas('classGroup', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->find($classId);
+    }
+
+    protected function getSectionForCurrentSchool($sectionId, $classId = null): ?Section
+    {
+        if (!$sectionId) {
+            return null;
+        }
+
+        $query = Section::whereHas('myClass.classGroup', function ($q) {
+            $q->where('school_id', auth()->user()->school_id);
+        })->where('id', $sectionId);
+
+        if ($classId) {
+            $query->where('my_class_id', $classId);
+        }
+
+        return $query->first();
+    }
+
+    protected function getStudentForCurrentSchool($studentId): ?User
+    {
+        if (!$studentId) {
+            return null;
+        }
+
+        return User::role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->with('studentRecord')
+            ->find($studentId);
+    }
+
+    protected function getFeeCategoryForCurrentSchool($feeCategoryId): ?FeeCategory
+    {
+        if (!$feeCategoryId) {
+            return null;
+        }
+
+        return FeeCategory::query()
+            ->find($feeCategoryId);
+    }
+
+    protected function getFeeForCurrentSchool($feeId): ?Fee
+    {
+        if (!$feeId) {
+            return null;
+        }
+
+        return Fee::whereHas('feeCategory', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->find($feeId);
+    }
+
+    protected function getFeeInvoiceForCurrentSchool($feeInvoiceId): FeeInvoice
+    {
+        return FeeInvoice::whereHas('user', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->with(['user', 'feeInvoiceRecords.fee'])->findOrFail($feeInvoiceId);
+    }
+
     public function render()
     {
         $feeInvoices = collect();
@@ -398,7 +486,7 @@ class ManageFeeInvoices extends Component
         }
 
         return view('livewire.fees.manage-fee-invoices', compact('feeInvoices'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('fee-invoices.index'), 'text' => 'Fee Invoices', 'active' => true]

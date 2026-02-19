@@ -34,4 +34,40 @@
         @apply md:text-lg capitalize font-semibold
     }
 
-}
+    /* Shared themed tokens used heavily across CBT views */
+    .bg-themed-primary { @apply bg-gray-100 dark:bg-gray-900; }
+    .bg-themed-secondary { @apply bg-white dark:bg-gray-800; }
+    .bg-themed-tertiary { @apply bg-gray-50 dark:bg-gray-700; }
+
+    .text-themed-primary { @apply text-gray-900 dark:text-gray-100; }
+    .text-themed-secondary { @apply text-gray-600 dark:text-gray-300; }
+    .text-themed-tertiary { @apply text-gray-500 dark:text-gray-400; }
+
+    .border-themed-primary { @apply border-gray-200 dark:border-gray-700; }
+    .border-themed-secondary { @apply border-gray-300 dark:border-gray-600; }
+
+    .bg-accent-themed-primary { @apply bg-indigo-600; }
+    .bg-accent-themed-secondary { @apply bg-indigo-700; }
+    .text-accent-themed-primary { @apply text-indigo-600 dark:text-indigo-400; }
+
+    .border-l-accent-themed-primary { @apply border-l-indigo-600; }
+
+    .hover\:bg-themed-secondary:hover { @apply bg-white dark:bg-gray-800; }
+    .hover\:bg-themed-tertiary:hover { @apply bg-gray-50 dark:bg-gray-700; }
+    .hover\:bg-accent-themed-primary:hover { @apply bg-indigo-600; }
+    .hover\:bg-accent-themed-secondary:hover { @apply bg-indigo-700; }
+
+    .hover\:text-themed-primary:hover { @apply text-gray-900 dark:text-gray-100; }
+    .hover\:text-themed-secondary:hover { @apply text-gray-600 dark:text-gray-300; }
+    .hover\:text-accent-themed-secondary:hover { @apply text-indigo-700 dark:text-indigo-300; }
+
+    .focus\:border-accent-themed-primary:focus { @apply border-indigo-600; }
+    .focus\:ring-accent-themed-primary:focus { @apply ring-indigo-500; }
+
+    .placeholder-themed-tertiary::placeholder { @apply text-gray-500 dark:text-gray-400; }
+
+    .divide-themed-primary > :not([hidden]) ~ :not([hidden]) {
+        @apply border-gray-200 dark:border-gray-700;
+    }
+
+} 

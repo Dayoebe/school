@@ -22,7 +22,7 @@ class SyllabusController extends Controller
      */
     public function index(): View
     {
-        return view('pages.syllabus.index');
+        return view('livewire.syllabi.pages.index');
     }
 
     /**
@@ -30,7 +30,7 @@ class SyllabusController extends Controller
      */
     public function create(): View
     {
-        return view('pages.syllabus.create');
+        return view('livewire.syllabi.pages.create');
     }
 
     /**
@@ -58,7 +58,7 @@ class SyllabusController extends Controller
      */
     public function show(Syllabus $syllabus): View
     {
-        return view('pages.syllabus.show', compact('syllabus'));
+        return view('livewire.syllabi.pages.show', compact('syllabus'));
     }
 
     /**

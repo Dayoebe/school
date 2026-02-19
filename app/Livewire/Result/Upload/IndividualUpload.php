@@ -4,7 +4,7 @@ namespace App\Livewire\Result\Upload;
 
 use Livewire\Component;
 use Livewire\Attributes\On;
-use App\Models\{StudentRecord, Subject, Result, TermReport, MyClass, Section};
+use App\Models\{AcademicYear, StudentRecord, Subject, Result, TermReport, MyClass, Section, Semester};
 use Illuminate\Support\Facades\DB;
 
 class IndividualUpload extends Component
@@ -31,13 +31,19 @@ class IndividualUpload extends Component
 
     public function mount()
     {
+        $schoolId = auth()->user()->school_id;
+
         // First check session, then fall back to school's current academic year/semester
         $this->academicYearId = session('result_academic_year_id') 
-            ?? auth()->user()->school->academic_year_id;
+            ?? auth()->user()->school?->academic_year_id
+            ?? AcademicYear::query()
+                ->orderBy('start_year', 'desc')
+                ->value('id');
         
         // Get current semester for the academic year
         if (!session('result_semester_id') && $this->academicYearId) {
-            $currentSemester = \App\Models\Semester::where('academic_year_id', $this->academicYearId)
+            $currentSemester = Semester::where('academic_year_id', $this->academicYearId)
+                ->orderBy('name')
                 ->first();
             $this->semesterId = $currentSemester?->id;
         } else {
@@ -71,47 +77,155 @@ class IndividualUpload extends Component
             $this->dispatch('error', 'Please select a student');
             return;
         }
-    
+
+        if (!$this->academicYearId) {
+            $this->academicYearId = session('result_academic_year_id')
+                ?? auth()->user()->school?->academic_year_id
+                ?? AcademicYear::query()
+                    ->orderBy('start_year', 'desc')
+                    ->value('id');
+        }
+
         if (!$this->academicYearId) {
             $this->dispatch('error', 'Please select an academic year');
             return;
         }
-    
+
+        // Ensure a semester is available for the selected academic year
+        if (!$this->semesterId && $this->academicYearId) {
+            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
+                ->orderBy('name')
+                ->value('id');
+
+            if ($this->semesterId) {
+                session(['result_semester_id' => $this->semesterId]);
+            }
+        }
+
         if (!$this->semesterId) {
-            $this->dispatch('error', 'Please select a semester/term');
+            $this->dispatch('error', 'No term found for this academic year. Please create/select a term first.');
             return;
         }
-    
+
+        $academicYearValid = AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        if (!$academicYearValid) {
+            $this->dispatch('error', 'Selected academic year is not in your current school.');
+            return;
+        }
+
+        $semesterValid = Semester::where('id', $this->semesterId)
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+        if (!$semesterValid) {
+            $this->dispatch('error', 'Selected term is not in your current school.');
+            return;
+        }
+
         try {
-            // ✅ VALIDATION 1: Validate student has academic year record
+            $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
+                ->whereHas('user', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id)
+                        ->whereNull('deleted_at');
+                })
+                ->findOrFail($this->selectedStudent);
+
+            if ($this->selectedClass && !$this->classBelongsToCurrentSchool($this->selectedClass)) {
+                $this->dispatch('error', 'Selected class is not in your current school.');
+                return;
+            }
+
+            if ($this->selectedSection && !$this->sectionBelongsToCurrentSchoolClass($this->selectedSection, $this->selectedClass ?: $this->studentRecord->my_class_id)) {
+                $this->dispatch('error', 'Selected section is not valid for your current school/class.');
+                return;
+            }
+
+            // Validate/backfill student academic year record
             $yearRecord = DB::table('academic_year_student_record')
                 ->where('student_record_id', $this->selectedStudent)
                 ->where('academic_year_id', $this->academicYearId)
                 ->first();
-    
+
             if (!$yearRecord) {
-                $this->dispatch('error', 'Student has no record for this academic year. Please check student enrollment.');
+                $fallbackClassId = $this->selectedClass ?: $this->studentRecord->my_class_id;
+                $fallbackSectionId = $this->selectedSection ?: $this->studentRecord->section_id;
+
+                if (!$fallbackClassId) {
+                    $this->dispatch('error', 'Student has no class record for this academic year.');
+                    return;
+                }
+
+                if (!$this->classBelongsToCurrentSchool($fallbackClassId)) {
+                    $this->dispatch('error', 'Student class does not belong to your current school.');
+                    return;
+                }
+
+                if ($fallbackSectionId && !$this->sectionBelongsToCurrentSchoolClass($fallbackSectionId, $fallbackClassId)) {
+                    $fallbackSectionId = null;
+                }
+
+                DB::table('academic_year_student_record')->updateOrInsert(
+                    [
+                        'student_record_id' => $this->selectedStudent,
+                        'academic_year_id' => $this->academicYearId,
+                    ],
+                    [
+                        'my_class_id' => $fallbackClassId,
+                        'section_id' => $fallbackSectionId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]
+                );
+
+                $yearRecord = (object) [
+                    'my_class_id' => $fallbackClassId,
+                    'section_id' => $fallbackSectionId,
+                ];
+            }
+
+            // Get class from academic year record (fallback to selected/current class)
+            $classId = $yearRecord->my_class_id ?: $this->selectedClass ?: $this->studentRecord->my_class_id;
+            if (!$this->classBelongsToCurrentSchool($classId)) {
+                $this->dispatch('error', 'Class for this student is not in your current school.');
                 return;
             }
-    
-            $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
-                ->findOrFail($this->selectedStudent);
-    
-            // Get the class from the academic year record (not the base student record)
-            $classId = $yearRecord->my_class_id;
-    
-            // ✅ LOAD ONLY SUBJECTS THE STUDENT IS ENROLLED IN
-            $this->subjects = Subject::where('my_class_id', $classId)
-                ->whereHas('studentRecords', function($q) {
-                    $q->where('student_records.id', $this->selectedStudent);
+
+            // Start with subjects directly assigned to this student.
+            $studentSubjectIds = $this->studentRecord->studentSubjects()
+                ->select('subjects.id')
+                ->where('subjects.school_id', auth()->user()->school_id)
+                ->pluck('subjects.id');
+
+            // Prefer subjects tied to the selected/derived class.
+            $this->subjects = Subject::whereIn('subjects.id', $studentSubjectIds)
+                ->where('subjects.school_id', auth()->user()->school_id)
+                ->where(function ($query) use ($classId) {
+                    $query->where('subjects.my_class_id', $classId)
+                        ->orWhereHas('classes', function ($classQuery) use ($classId) {
+                            $classQuery->where('my_classes.id', $classId);
+                        })
+                        ->orWhereExists(function ($subQuery) use ($classId) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('student_subject as ss')
+                                ->whereColumn('ss.subject_id', 'subjects.id')
+                                ->where('ss.student_record_id', $this->selectedStudent)
+                                ->where('ss.my_class_id', $classId);
+                        });
                 })
-                ->orderBy('name')
+                ->orderBy('subjects.name')
+                ->distinct()
                 ->get();
-    
-            if ($this->subjects->isEmpty()) {
-                $this->dispatch('error', 'No subjects found for this student. Please ensure subjects are assigned.');
-                $this->studentRecord = null;
-                return;
+
+            // Fallback: if class mappings are incomplete, still use student's assigned subjects.
+            if ($this->subjects->isEmpty() && $studentSubjectIds->isNotEmpty()) {
+                $this->subjects = Subject::whereIn('subjects.id', $studentSubjectIds)
+                    ->where('subjects.school_id', auth()->user()->school_id)
+                    ->orderBy('subjects.name')
+                    ->distinct()
+                    ->get();
             }
     
             // Load existing results
@@ -162,7 +276,11 @@ class IndividualUpload extends Component
                 $this->initializeScores();
             }
     
-            $this->dispatch('success', 'Student loaded successfully');
+            if ($this->subjects->isEmpty()) {
+                $this->dispatch('error', 'Student loaded, but no assigned subjects were found. Assign subjects to this student/class first.');
+            } else {
+                $this->dispatch('success', 'Student loaded successfully');
+            }
     
         } catch (\Exception $e) {
             \Log::error('Load student error: ' . $e->getMessage(), [
@@ -222,7 +340,7 @@ class IndividualUpload extends Component
     
             if (!$isEnrolled) {
                 DB::rollBack();
-                $subject = Subject::find($subjectId);
+                $subject = Subject::query()->find($subjectId);
                 \Log::warning('Attempted to save result for non-enrolled subject', [
                     'student_id' => $this->studentRecord->id,
                     'subject_id' => $subjectId,
@@ -400,43 +518,94 @@ class IndividualUpload extends Component
         return ['Athletics' => null, 'Football' => null, 'Volley Ball' => null, 'Table Tennis' => null];
     }
 
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function sectionBelongsToCurrentSchoolClass($sectionId, $classId): bool
+    {
+        if (!$sectionId || !$classId) {
+            return false;
+        }
+
+        return Section::where('id', $sectionId)
+            ->where('my_class_id', $classId)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
     public function render()
     {
-        $classes = MyClass::orderBy('name')->get();
+        $classesQuery = MyClass::query();
+
+        if (auth()->user()->school_id) {
+            $classesQuery->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            });
+        }
+
+        $classes = $classesQuery->orderBy('name')->get();
+
         $sections = Section::when($this->selectedClass, function($q) {
-            $q->where('my_class_id', $this->selectedClass);
+            $q->where('my_class_id', $this->selectedClass)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                });
         })->get();
-        
+
         $students = collect();
-        
-        // Only load students if class is selected and we have academic year/semester
-        if ($this->selectedClass && $this->academicYearId && $this->semesterId) {
-            // Get student IDs from academic_year_student_record pivot table
-            $query = DB::table('academic_year_student_record')
-                ->where('academic_year_id', $this->academicYearId)
-                ->where('my_class_id', $this->selectedClass);
-            
-            if ($this->selectedSection) {
-                $query->where('section_id', $this->selectedSection);
+
+        if ($this->selectedClass) {
+            // Prefer academic-year specific class/section, fallback to current student_records assignment.
+            if ($this->academicYearId) {
+                $query = DB::table('academic_year_student_record')
+                    ->where('academic_year_id', $this->academicYearId)
+                    ->where('my_class_id', $this->selectedClass);
+
+                if ($this->selectedSection) {
+                    $query->where('section_id', $this->selectedSection);
+                }
+
+                $studentIds = $query->pluck('student_record_id');
+
+                if ($studentIds->isNotEmpty()) {
+                    $students = StudentRecord::whereIn('student_records.id', $studentIds)
+                        ->whereHas('user', function ($query) {
+                            $query->where('school_id', auth()->user()->school_id)
+                                ->whereNull('deleted_at');
+                        })
+                        ->withActiveUser()
+                        ->orderByName()
+                        ->get();
+                }
             }
-            
-            $studentIds = $query->pluck('student_record_id');
-            
-            if ($studentIds->isNotEmpty()) {
-                $students = StudentRecord::whereIn('student_records.id', $studentIds)
-                    ->with(['user' => function($query) {
-                        $query->whereNull('deleted_at');
-                    }])
-                    ->whereHas('user', function($q) {
-                        $q->whereNull('deleted_at');
+
+            if ($students->isEmpty()) {
+                $students = StudentRecord::where('my_class_id', $this->selectedClass)
+                    ->whereHas('user', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at');
                     })
+                    ->when($this->selectedSection, fn ($q) => $q->where('section_id', $this->selectedSection))
+                    ->withActiveUser()
                     ->orderByName()
                     ->get();
             }
         }
     
         return view('livewire.result.upload.individual-upload', compact('classes', 'sections', 'students'))
-            ->layout('layouts.new', [
+            ->layout('layouts.result', [
                 'title' => 'Individual Result Upload',
                 'page_heading' => 'Individual Result Upload'
             ]);

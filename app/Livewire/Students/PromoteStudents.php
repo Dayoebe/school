@@ -54,7 +54,7 @@ class PromoteStudents extends Component
             $query->where('school_id', auth()->user()->school_id);
         })->with('sections')->orderBy('name')->get();
 
-        $this->academicYears = AcademicYear::where('school_id', auth()->user()->school_id)
+        $this->academicYears = AcademicYear::query()
             ->orderBy('start_year', 'desc')
             ->get();
 
@@ -133,8 +133,25 @@ class PromoteStudents extends Component
             return;
         }
 
-        $fromYear = AcademicYear::find($this->fromAcademicYear);
-        $toYear = $this->toAcademicYear ? AcademicYear::find($this->toAcademicYear) : null;
+        if (!$this->classBelongsToCurrentSchool($this->oldClass) || !$this->classBelongsToCurrentSchool($this->newClass)) {
+            session()->flash('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if ($this->oldSection && $this->oldSection !== 'all' && !$this->sectionBelongsToClassInCurrentSchool($this->oldSection, $this->oldClass)) {
+            session()->flash('error', 'Selected source section is not valid for the selected class.');
+            return;
+        }
+
+        if ($this->newSection && $this->newSection !== 'none' && !$this->sectionBelongsToClassInCurrentSchool($this->newSection, $this->newClass)) {
+            session()->flash('error', 'Selected target section is not valid for the selected class.');
+            return;
+        }
+
+        $fromYear = AcademicYear::query()->find($this->fromAcademicYear);
+        $toYear = $this->toAcademicYear
+            ? AcademicYear::query()->find($this->toAcademicYear)
+            : null;
 
         if (!$fromYear) {
             session()->flash('error', 'Invalid academic year selected.');
@@ -169,8 +186,18 @@ class PromoteStudents extends Component
         $classIds = $pivotRecords->pluck('my_class_id')->unique();
         $sectionIds = $pivotRecords->pluck('section_id')->filter()->unique();
 
-        $classes = MyClass::whereIn('id', $classIds)->get()->keyBy('id');
-        $sections = Section::whereIn('id', $sectionIds)->get()->keyBy('id');
+        $classes = MyClass::whereIn('id', $classIds)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->get()
+            ->keyBy('id');
+        $sections = Section::whereIn('id', $sectionIds)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->get()
+            ->keyBy('id');
 
         $toYearClassInfo = collect();
         if ($toYear && $alreadyInToYearAndClass->isNotEmpty()) {
@@ -183,8 +210,18 @@ class PromoteStudents extends Component
             $toYearClassIds = $toYearRecords->pluck('my_class_id')->unique();
             $toYearSectionIds = $toYearRecords->pluck('section_id')->filter()->unique();
 
-            $toYearClasses = MyClass::whereIn('id', $toYearClassIds)->get()->keyBy('id');
-            $toYearSections = Section::whereIn('id', $toYearSectionIds)->get()->keyBy('id');
+            $toYearClasses = MyClass::whereIn('id', $toYearClassIds)
+                ->whereHas('classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->get()
+                ->keyBy('id');
+            $toYearSections = Section::whereIn('id', $toYearSectionIds)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->get()
+                ->keyBy('id');
 
             $toYearClassInfo = [
                 'records' => $toYearRecords,
@@ -193,7 +230,7 @@ class PromoteStudents extends Component
             ];
         }
 
-        $users = User::whereIn('id', function ($q) use ($studentRecordIds) {
+        $users = User::role('student')->whereIn('id', function ($q) use ($studentRecordIds) {
             $q->select('user_id')
                 ->from('student_records')
                 ->whereIn('id', $studentRecordIds);
@@ -254,7 +291,6 @@ class PromoteStudents extends Component
         } else {
             $message = count($this->students) . " student(s) found";
             if ($promotedCount > 0) {
-                $toYear = AcademicYear::find($this->toAcademicYear);
                 $message .= " ({$notPromotedCount} ready, {$promotedCount} already in {$toYear->name})";
             }
             session()->flash('success', $message);
@@ -291,8 +327,23 @@ class PromoteStudents extends Component
             return;
         }
 
-        $fromYear = AcademicYear::find($this->fromAcademicYear);
-        $toYear = AcademicYear::find($this->toAcademicYear);
+        if (!$this->classBelongsToCurrentSchool($this->oldClass) || !$this->classBelongsToCurrentSchool($this->newClass)) {
+            session()->flash('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if ($this->oldSection && $this->oldSection !== 'all' && !$this->sectionBelongsToClassInCurrentSchool($this->oldSection, $this->oldClass)) {
+            session()->flash('error', 'Selected source section is not valid for the selected class.');
+            return;
+        }
+
+        if ($this->newSection && $this->newSection !== 'none' && !$this->sectionBelongsToClassInCurrentSchool($this->newSection, $this->newClass)) {
+            session()->flash('error', 'Selected target section is not valid for the selected class.');
+            return;
+        }
+
+        $fromYear = AcademicYear::query()->find($this->fromAcademicYear);
+        $toYear = AcademicYear::query()->find($this->toAcademicYear);
 
         if (!$fromYear || !$toYear) {
             session()->flash('error', 'Invalid academic year selected.');
@@ -306,14 +357,27 @@ class PromoteStudents extends Component
 
         $successCount = 0;
         $promotedStudents = [];
+        $allowedStudentIds = collect($this->students)
+            ->where('already_promoted', false)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->toArray();
+        $selectedStudents = array_values(array_intersect(array_map('intval', $this->selectedStudents), $allowedStudentIds));
 
-        DB::transaction(function () use ($fromYear, $toYear, &$successCount, &$promotedStudents) {
-            $students = User::whereIn('id', $this->selectedStudents)
+        if (empty($selectedStudents)) {
+            session()->flash('error', 'Selected students are not valid for this promotion context.');
+            return;
+        }
+
+        DB::transaction(function () use ($fromYear, $toYear, $selectedStudents, &$successCount, &$promotedStudents) {
+            $students = User::role('student')
+                ->where('school_id', auth()->user()->school_id)
+                ->whereIn('id', $selectedStudents)
                 ->with('studentRecord')
                 ->get()
                 ->keyBy('id');
 
-            foreach ($this->selectedStudents as $userId) {
+            foreach ($selectedStudents as $userId) {
                 $student = $students->get($userId);
                 if (!$student || !$student->studentRecord) continue;
 
@@ -379,7 +443,7 @@ class PromoteStudents extends Component
 
     public function loadPromotions()
     {
-        $this->promotions = Promotion::where('school_id', auth()->user()->school_id)
+        $this->promotions = Promotion::query()
             ->with(['oldClass', 'newClass', 'oldSection', 'newSection', 'academicYear'])
             ->latest()
             ->get();
@@ -387,12 +451,7 @@ class PromoteStudents extends Component
 
     public function resetPromotion($promotionId)
     {
-        $promotion = Promotion::findOrFail($promotionId);
-
-        if ($promotion->school_id != auth()->user()->school_id) {
-            session()->flash('error', 'Unauthorized action.');
-            return;
-        }
+        $promotion = Promotion::query()->findOrFail($promotionId);
 
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
 
@@ -403,7 +462,9 @@ class PromoteStudents extends Component
                 throw new \Exception('Invalid promotion data.');
             }
 
-            $students = User::whereIn('id', $studentIds)
+            $students = User::role('student')
+                ->where('school_id', auth()->user()->school_id)
+                ->whereIn('id', $studentIds)
                 ->with('studentRecord')
                 ->get()
                 ->keyBy('id');
@@ -452,13 +513,43 @@ class PromoteStudents extends Component
 
     public function viewPromotion($promotionId)
     {
-        $this->selectedPromotion = Promotion::with(['oldClass', 'newClass', 'oldSection', 'newSection', 'academicYear'])
+        $this->selectedPromotion = Promotion::query()
+            ->with(['oldClass', 'newClass', 'oldSection', 'newSection', 'academicYear'])
             ->findOrFail($promotionId);
 
-        $this->promotionStudents = User::whereIn('id', $this->selectedPromotion->students)
+        $this->promotionStudents = User::role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $this->selectedPromotion->students)
             ->with('studentRecord')
             ->get();
         $this->currentView = 'view';
+    }
+
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function sectionBelongsToClassInCurrentSchool($sectionId, $classId): bool
+    {
+        if (!$sectionId || !$classId) {
+            return false;
+        }
+
+        return Section::where('id', $sectionId)
+            ->where('my_class_id', $classId)
+            ->whereHas('myClass.classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
     }
 
     public function backToHistory()
@@ -475,7 +566,7 @@ class PromoteStudents extends Component
         return view('livewire.students.promote-students', [
             'students' => $filteredStudents,
         ])
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('students.index'), 'text' => 'Students'],

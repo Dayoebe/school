@@ -98,7 +98,7 @@ class ManageSections extends Component
 
     public function openEditModal($sectionId)
     {
-        $section = Section::findOrFail($sectionId);
+        $section = $this->getSectionForCurrentSchool($sectionId);
         $this->authorize('update', $section);
         
         $this->editingSectionId = $section->id;
@@ -137,6 +137,11 @@ class ManageSections extends Component
             'my_class_id.required' => 'Please select a class',
         ]);
 
+        if (!$this->classBelongsToCurrentSchool($this->my_class_id)) {
+            $this->addError('my_class_id', 'Selected class is not in your current school.');
+            return;
+        }
+
         Section::create([
             'name' => $this->name,
             'my_class_id' => $this->my_class_id,
@@ -149,7 +154,7 @@ class ManageSections extends Component
 
     public function updateSection()
     {
-        $section = Section::findOrFail($this->editingSectionId);
+        $section = $this->getSectionForCurrentSchool($this->editingSectionId);
         $this->authorize('update', $section);
 
         $this->validate([
@@ -171,7 +176,7 @@ class ManageSections extends Component
 
     public function deleteSection($sectionId)
     {
-        $section = Section::findOrFail($sectionId);
+        $section = $this->getSectionForCurrentSchool($sectionId);
         $this->authorize('delete', $section);
         
         if ($section->studentRecords()->count() > 0) {
@@ -184,10 +189,26 @@ class ManageSections extends Component
         $this->loadSections();
     }
 
+    protected function classBelongsToCurrentSchool($classId): bool
+    {
+        return MyClass::where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function getSectionForCurrentSchool($sectionId): Section
+    {
+        return Section::whereHas('myClass.classGroup', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->findOrFail($sectionId);
+    }
+
     public function render()
     {
         return view('livewire.sections.manage-sections')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('sections.index'), 'text' => 'Sections', 'active' => true]

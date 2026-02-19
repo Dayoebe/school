@@ -5,6 +5,7 @@ namespace App\Livewire\Cbt;
 use Livewire\Component;
 use App\Models\Assessment\Assessment;
 use App\Models\Assessment\StudentAnswer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -41,10 +42,18 @@ class CbtExamInterface extends Component
 
     public function mount($assessment)
     {
-        $this->assessment = Assessment::with('questions')->findOrFail($assessment);
+        $this->assessment = $this->assessmentsForCurrentSchool()
+            ->with('questions')
+            ->find($assessment);
         
         if (!$this->assessment || $this->assessment->questions->count() === 0) {
             session()->flash('error', 'Invalid assessment.');
+            return redirect()->route('cbt.exams');
+        }
+
+        [$canTake, $message] = $this->assessment->canUserTakeAssessment(Auth::id());
+        if (!$canTake) {
+            session()->flash('error', $message);
             return redirect()->route('cbt.exams');
         }
 
@@ -484,5 +493,27 @@ class CbtExamInterface extends Component
         } catch (\Exception $e) {
             // Silent fail - email not critical
         }
+    }
+
+    protected function currentSchoolId(): ?int
+    {
+        return auth()->user()?->school_id;
+    }
+
+    protected function assessmentsForCurrentSchool(): Builder
+    {
+        $query = Assessment::query()
+            ->where('type', 'quiz')
+            ->whereNull('section_id')
+            ->whereNull('lesson_id');
+
+        $schoolId = $this->currentSchoolId();
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
+            $classGroupQuery->where('school_id', $schoolId);
+        });
     }
 }

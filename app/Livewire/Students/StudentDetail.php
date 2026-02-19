@@ -16,7 +16,10 @@ class StudentDetail extends Component
             'studentRecord.myClass',
             'studentRecord.section',
             'feeInvoices'
-        ])->findOrFail($studentId);
+        ])
+            ->role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($studentId);
 
         // Check if parent accessing their child
         if (auth()->user()->hasRole('parent')) {
@@ -40,7 +43,7 @@ class StudentDetail extends Component
     public function render()
     {
         return view('livewire.students.student-detail')
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('students.index'), 'text' => 'Students'],

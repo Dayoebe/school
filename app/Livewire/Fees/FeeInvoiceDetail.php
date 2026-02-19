@@ -39,23 +39,20 @@ class FeeInvoiceDetail extends Component
 
     public function mount($feeInvoiceId)
     {
-        $this->feeInvoice = FeeInvoice::with([
+        $this->feeInvoice = FeeInvoice::whereHas('user', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->with([
             'user.studentRecord.myClass',
             'user.studentRecord.section',
             'feeInvoiceRecords.fee'
         ])->findOrFail($feeInvoiceId);
-
-        // Authorization check
-        if ($this->feeInvoice->user->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
         
         $this->loadFeeCategories();
     }
 
     public function loadFeeCategories()
     {
-        $this->feeCategories = FeeCategory::where('school_id', auth()->user()->school_id)->get();
+        $this->feeCategories = FeeCategory::query()->get();
         
         if ($this->feeCategories->isNotEmpty() && !$this->selectedFeeCategory) {
             $this->selectedFeeCategory = $this->feeCategories->first()->id;
@@ -66,7 +63,7 @@ class FeeInvoiceDetail extends Component
     public function updatedSelectedFeeCategory()
     {
         if ($this->selectedFeeCategory) {
-            $category = FeeCategory::find($this->selectedFeeCategory);
+            $category = $this->getFeeCategoryForCurrentSchool($this->selectedFeeCategory);
             
             // Get fees not already in this invoice
             $existingFeeIds = $this->feeInvoice->feeInvoiceRecords->pluck('fee_id')->toArray();
@@ -83,7 +80,7 @@ class FeeInvoiceDetail extends Component
 
     public function startEditingRecord($recordId)
     {
-        $record = FeeInvoiceRecord::findOrFail($recordId);
+        $record = $this->getInvoiceRecordForCurrentInvoice($recordId);
         
         $this->editingRecordId = $recordId;
         $this->editAmount = $record->amount->getAmount()->toInt();
@@ -105,7 +102,7 @@ class FeeInvoiceDetail extends Component
             'editFine' => 'required|numeric|min:0',
         ]);
 
-        $record = FeeInvoiceRecord::findOrFail($this->editingRecordId);
+        $record = $this->getInvoiceRecordForCurrentInvoice($this->editingRecordId);
         
         $amount = Money::ofMinor($this->editAmount, config('app.currency'));
         $waiver = Money::ofMinor($this->editWaiver, config('app.currency'));
@@ -141,6 +138,20 @@ class FeeInvoiceDetail extends Component
             'newFeeFine' => 'nullable|numeric|min:0',
         ]);
 
+        $fee = $this->getFeeForCurrentSchool($this->selectedFee);
+        if (!$fee) {
+            session()->flash('error', 'Selected fee is not in your current school.');
+            return;
+        }
+
+        $alreadyExists = $this->feeInvoice->feeInvoiceRecords()
+            ->where('fee_id', $fee->id)
+            ->exists();
+        if ($alreadyExists) {
+            session()->flash('error', 'Selected fee is already attached to this invoice.');
+            return;
+        }
+
         DB::transaction(function () {
             $this->feeInvoice->feeInvoiceRecords()->create([
                 'fee_id' => $this->selectedFee,
@@ -160,7 +171,7 @@ class FeeInvoiceDetail extends Component
 
     public function deleteRecord($recordId)
     {
-        $record = FeeInvoiceRecord::findOrFail($recordId);
+        $record = $this->getInvoiceRecordForCurrentInvoice($recordId);
         
         DB::transaction(function () use ($record) {
             $record->delete();
@@ -188,7 +199,7 @@ class FeeInvoiceDetail extends Component
             'paymentAmount' => 'required|numeric|min:0.01',
         ]);
 
-        $record = FeeInvoiceRecord::findOrFail($this->payingRecordId);
+        $record = $this->getInvoiceRecordForCurrentInvoice($this->payingRecordId);
         
         $pay = Money::of($this->paymentAmount, config('app.currency'));
         $paid = $record->paid;
@@ -212,12 +223,42 @@ class FeeInvoiceDetail extends Component
         session()->flash('success', 'Payment added successfully');
     }
 
+    protected function getFeeCategoryForCurrentSchool($feeCategoryId): ?FeeCategory
+    {
+        if (!$feeCategoryId) {
+            return null;
+        }
+
+        return FeeCategory::query()
+            ->find($feeCategoryId);
+    }
+
+    protected function getFeeForCurrentSchool($feeId): ?Fee
+    {
+        if (!$feeId) {
+            return null;
+        }
+
+        return Fee::whereHas('feeCategory', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })->find($feeId);
+    }
+
+    protected function getInvoiceRecordForCurrentInvoice($recordId): FeeInvoiceRecord
+    {
+        return FeeInvoiceRecord::where('fee_invoice_id', $this->feeInvoice->id)
+            ->whereHas('feeInvoice.user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->findOrFail($recordId);
+    }
+
     public function render()
     {
         return view('livewire.fees.fee-invoice-detail', [
             'feeInvoice' => $this->feeInvoice,
         ])
-        ->layout('layouts.new', [
+        ->layout('layouts.dashboard', [
             'breadcrumbs' => [
                 ['href' => route('dashboard'), 'text' => 'Dashboard'],
                 ['href' => route('fee-invoices.index'), 'text' => 'Fee Invoices'],

@@ -20,9 +20,13 @@ class AwardsManager extends Component
 
     public function mount()
     {
-        $this->classes = MyClass::orderBy('name')->get();
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
         
         $this->loadSemesters();
         $this->loadTopPerformers();
@@ -50,7 +54,9 @@ class AwardsManager extends Component
     protected function loadSemesters()
     {
         if ($this->academicYearId) {
-            $this->semesters = Semester::where('academic_year_id', $this->academicYearId)->get();
+            $this->semesters = Semester::where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
+                ->get();
         }
     }
 
@@ -72,6 +78,17 @@ class AwardsManager extends Component
             ->where('academic_year_id', $this->academicYearId);
 
         if ($this->selectedClassId) {
+            $classExists = MyClass::where('id', $this->selectedClassId)
+                ->whereHas('classGroup', function ($q) {
+                    $q->where('school_id', auth()->user()->school_id);
+                })
+                ->exists();
+
+            if (!$classExists) {
+                $this->topPerformers = [];
+                return;
+            }
+
             $query->where('my_class_id', $this->selectedClassId);
         }
 
@@ -84,7 +101,11 @@ class AwardsManager extends Component
 
         // Get results based on view type
         $resultsQuery = Result::whereIn('student_record_id', $studentRecordIds)
-            ->where('academic_year_id', $this->academicYearId);
+            ->where('academic_year_id', $this->academicYearId)
+            ->whereHas('studentRecord.user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            });
 
         if ($this->viewType === 'termly') {
             $resultsQuery->where('semester_id', $this->semesterId);
@@ -95,7 +116,11 @@ class AwardsManager extends Component
 
         $results = $resultsQuery->with([
             'studentRecord' => function($query) {
-                $query->with(['user', 'myClass']);
+                $query->with(['user', 'myClass'])
+                    ->whereHas('user', function ($q) {
+                        $q->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at');
+                    });
             }, 
             'subject'
         ])
@@ -247,7 +272,11 @@ class AwardsManager extends Component
  */
 protected function getTotalSubjectsPerClass()
 {
-    $classes = MyClass::withCount('subjects')->get();
+    $classes = MyClass::whereHas('classGroup', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })
+        ->withCount('subjects')
+        ->get();
     $subjectCounts = [];
     
     foreach ($classes as $class) {

@@ -73,7 +73,7 @@ class SubjectIntegrityChecker extends Component
             ];
             
             // 2. Check for subjects with no classes assigned
-            $subjectsWithoutClasses = Subject::where('school_id', $schoolId)
+            $subjectsWithoutClasses = Subject::query()
                 ->where('is_legacy', false)
                 ->whereDoesntHave('classes')
                 ->get(['id', 'name', 'short_name']);
@@ -141,7 +141,7 @@ class SubjectIntegrityChecker extends Component
             ];
             
             // 6. Check for legacy subjects that should be cleaned up
-            $legacySubjects = Subject::where('school_id', $schoolId)
+            $legacySubjects = Subject::query()
                 ->where('is_legacy', true)
                 ->whereDoesntHave('results')
                 ->get(['id', 'name', 'short_name']);
@@ -152,7 +152,7 @@ class SubjectIntegrityChecker extends Component
             ];
             
             // 7. Check for subjects with invalid school_id
-            $invalidSchool = Subject::where('school_id', $schoolId)
+            $invalidSchool = Subject::query()
                 ->where('is_legacy', false)
                 ->whereNotExists(function($query) {
                     $query->select(DB::raw(1))
@@ -276,7 +276,7 @@ class SubjectIntegrityChecker extends Component
             $this->fixResults['orphaned_students_removed'] = $orphanedStudentsRemoved;
             
             // 5. Delete unused legacy subjects (with no results)
-            $legacyDeleted = Subject::where('school_id', $schoolId)
+            $legacyDeleted = Subject::query()
                 ->where('is_legacy', true)
                 ->whereDoesntHave('results')
                 ->forceDelete();
@@ -284,7 +284,7 @@ class SubjectIntegrityChecker extends Component
             $this->fixResults['legacy_deleted'] = $legacyDeleted;
             
             // 6. Re-assign subjects to students in classes
-            $subjects = Subject::where('school_id', $schoolId)
+            $subjects = Subject::query()
                 ->where('is_legacy', false)
                 ->with('classes')
                 ->get();

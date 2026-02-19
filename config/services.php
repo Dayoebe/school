@@ -30,4 +30,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'cloudinary' => [
+        'url' => env('CLOUDINARY_URL'),
+        'folder' => env('CLOUDINARY_FOLDER', 'School/gallery'),
+    ],
+
 ];

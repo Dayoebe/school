@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\SchoolContext;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -63,7 +64,16 @@ class User extends Authenticatable
 
     public function scopeInSchool($query, $schoolId = null)
     {
-        $schoolId = $schoolId ?? auth()->user()?->school_id;
+        $schoolId = $schoolId ?? SchoolContext::id();
+
+        if ($schoolId === null) {
+            if (SchoolContext::hasAuthenticatedUserWithoutSchool()) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query;
+        }
+
         return $query->where('school_id', $schoolId);
     }
 
@@ -94,7 +104,9 @@ class User extends Authenticatable
     }
     public function subjects()
 {
-    return $this->belongsToMany(Subject::class, 'subject_user', 'user_id', 'subject_id');
+    return $this->belongsToMany(Subject::class, 'subject_teacher', 'user_id', 'subject_id')
+        ->withPivot('my_class_id', 'school_id', 'is_general')
+        ->withTimestamps();
 }
 
 public function teachingSubjects()

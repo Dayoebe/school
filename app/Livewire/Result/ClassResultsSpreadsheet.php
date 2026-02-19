@@ -4,8 +4,11 @@ namespace App\Livewire\Result;
 
 use Livewire\Component;
 use Livewire\Attributes\On;
+use App\Exports\ClassResultsExport;
 use App\Models\{MyClass, AcademicYear, Semester, Result, StudentRecord, Subject};
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ClassResultsSpreadsheet extends Component
 {
@@ -25,11 +28,17 @@ class ClassResultsSpreadsheet extends Component
     
     public function mount()
     {
-        $this->classes = MyClass::orderBy('name')->get();
-        $this->academicYears = AcademicYear::orderBy('start_year', 'desc')->get();
+        $this->classes = MyClass::whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->get();
+        $this->academicYears = AcademicYear::query()
+            ->orderBy('start_year', 'desc')
+            ->get();
         
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
+        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
         
         $this->loadSemesters();
     }
@@ -78,13 +87,30 @@ class ClassResultsSpreadsheet extends Component
     protected function loadSemesters()
     {
         $this->semesters = $this->academicYearId 
-            ? Semester::where('academic_year_id', $this->academicYearId)->orderBy('name')->get() 
+            ? Semester::where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
+                ->orderBy('name')
+                ->get() 
             : collect();
     }
 
     public function loadSpreadsheet()
     {
         if (!$this->selectedClassId || !$this->academicYearId) {
+            return;
+        }
+
+        $classExists = MyClass::where('id', $this->selectedClassId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+        $yearExists = AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->exists();
+
+        if (!$classExists || !$yearExists) {
+            $this->spreadsheetData = [];
             return;
         }
 
@@ -108,13 +134,16 @@ class ClassResultsSpreadsheet extends Component
             ->pluck('student_record_id');
 
         $this->students = StudentRecord::with(['user' => function($q) {
-                $q->whereNull('deleted_at');
+                $q->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
             }])
             ->whereIn('student_records.id', $studentRecordIds)
             ->whereHas('user', function($q) {
-                $q->whereNull('deleted_at');
+                $q->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
             })
             ->join('users', 'student_records.user_id', '=', 'users.id')
+            ->where('users.school_id', auth()->user()->school_id)
             ->whereNull('users.deleted_at')
             ->orderBy('users.name')
             ->select('student_records.*')
@@ -122,6 +151,7 @@ class ClassResultsSpreadsheet extends Component
 
         // Get subjects for this class
         $this->subjects = Subject::where('my_class_id', $this->selectedClassId)
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
             ->get();
 
@@ -196,7 +226,9 @@ class ClassResultsSpreadsheet extends Component
 
     protected function loadAnnualResults()
     {
-        $allSemesters = Semester::where('academic_year_id', $this->academicYearId)->get();
+        $allSemesters = Semester::where('academic_year_id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->get();
         
         if ($allSemesters->isEmpty()) {
             return;
@@ -209,13 +241,16 @@ class ClassResultsSpreadsheet extends Component
             ->pluck('student_record_id');
 
         $this->students = StudentRecord::with(['user' => function($q) {
-                $q->whereNull('deleted_at');
+                $q->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
             }])
             ->whereIn('student_records.id', $studentRecordIds)
             ->whereHas('user', function($q) {
-                $q->whereNull('deleted_at');
+                $q->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
             })
             ->join('users', 'student_records.user_id', '=', 'users.id')
+            ->where('users.school_id', auth()->user()->school_id)
             ->whereNull('users.deleted_at')
             ->orderBy('users.name')
             ->select('student_records.*')
@@ -223,6 +258,7 @@ class ClassResultsSpreadsheet extends Component
 
         // Get subjects
         $this->subjects = Subject::where('my_class_id', $this->selectedClassId)
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
             ->get();
 
@@ -393,17 +429,54 @@ class ClassResultsSpreadsheet extends Component
             return;
         }
 
-        $params = [
-            'view_type' => $this->viewType,
-            'class_id' => $this->selectedClassId,
-            'academic_year_id' => $this->academicYearId,
-        ];
+        $this->loadSpreadsheet();
 
-        if ($this->viewType === 'termly') {
-            $params['semester_id'] = $this->semesterId;
+        $class = MyClass::where('id', $this->selectedClassId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->first();
+        $academicYear = AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->first();
+
+        if (!$class || !$academicYear) {
+            session()->flash('error', 'Selected class or academic year was not found');
+            return;
         }
 
-        return redirect()->route('class-spreadsheet.export-excel', $params);
+        if ($this->viewType === 'termly') {
+            $semester = Semester::where('id', $this->semesterId)
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
+                ->first();
+            if (!$semester) {
+                session()->flash('error', 'Selected term was not found');
+                return;
+            }
+
+            $export = ClassResultsExport::forTermly(
+                $this->spreadsheetData,
+                $this->subjects,
+                $class->name,
+                $semester->name,
+                $academicYear->name
+            );
+
+            $filename = "{$class->name}_{$semester->name}_{$academicYear->name}.xlsx";
+        } else {
+            $export = ClassResultsExport::forAnnual(
+                $this->spreadsheetData,
+                $this->subjects,
+                $this->semesters,
+                $class->name,
+                $academicYear->name
+            );
+
+            $filename = "{$class->name}_Annual_{$academicYear->name}.xlsx";
+        }
+
+        return Excel::download($export, str_replace(' ', '_', $filename));
     }
 
     public function exportToPdf()
@@ -418,17 +491,50 @@ class ClassResultsSpreadsheet extends Component
             return;
         }
 
-        $params = [
-            'view_type' => $this->viewType,
-            'class_id' => $this->selectedClassId,
-            'academic_year_id' => $this->academicYearId,
+        $this->loadSpreadsheet();
+
+        $class = MyClass::where('id', $this->selectedClassId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->first();
+        $academicYear = AcademicYear::where('id', $this->academicYearId)
+            ->where('school_id', auth()->user()->school_id)
+            ->first();
+
+        if (!$class || !$academicYear) {
+            session()->flash('error', 'Selected class or academic year was not found');
+            return;
+        }
+
+        $data = [
+            'class' => $class,
+            'academicYear' => $academicYear,
+            'subjects' => $this->subjects,
+            'semesters' => $this->semesters,
+            'spreadsheetData' => $this->spreadsheetData,
+            'viewType' => $this->viewType,
         ];
 
         if ($this->viewType === 'termly') {
-            $params['semester_id'] = $this->semesterId;
+            $semester = Semester::where('id', $this->semesterId)
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('school_id', auth()->user()->school_id)
+                ->first();
+            if (!$semester) {
+                session()->flash('error', 'Selected term was not found');
+                return;
+            }
+            $data['semester'] = $semester;
         }
 
-        return redirect()->route('class-spreadsheet.export-pdf', $params);
+        $pdf = Pdf::loadView('livewire.result.pages.class-spreadsheet-pdf', $data)->setPaper('A4', 'landscape');
+
+        $filename = $this->viewType === 'termly'
+            ? "{$class->name}_{$data['semester']->name}_{$academicYear->name}.pdf"
+            : "{$class->name}_Annual_{$academicYear->name}.pdf";
+
+        return $pdf->download(str_replace(' ', '_', $filename));
     }
 
     public function render()

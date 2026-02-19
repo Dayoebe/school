@@ -23,7 +23,7 @@ class ManageClassGroups extends Component
                 'required',
                 'max:255',
                 function ($attribute, $value, $fail) {
-                    $query = ClassGroup::where('school_id', auth()->user()->school_id)
+                    $query = ClassGroup::query()
                         ->where('name', $value);
                     
                     if ($this->view === 'edit' && $this->selectedClassGroup) {
@@ -63,7 +63,7 @@ class ManageClassGroups extends Component
 
     public function showEdit($id)
     {
-        $this->selectedClassGroup = ClassGroup::findOrFail($id);
+        $this->selectedClassGroup = $this->getClassGroupForCurrentSchool($id);
         $this->authorize('update', $this->selectedClassGroup);
         $this->name = $this->selectedClassGroup->name;
         $this->view = 'edit';
@@ -71,7 +71,9 @@ class ManageClassGroups extends Component
 
     public function showView($id)
     {
-        $this->selectedClassGroup = ClassGroup::with('classes.sections')->findOrFail($id);
+        $this->selectedClassGroup = ClassGroup::query()
+            ->with('classes.sections')
+            ->findOrFail($id);
         $this->authorize('view', $this->selectedClassGroup);
         $this->view = 'view';
     }
@@ -103,7 +105,7 @@ class ManageClassGroups extends Component
 
     public function delete($id)
     {
-        $classGroup = ClassGroup::findOrFail($id);
+        $classGroup = $this->getClassGroupForCurrentSchool($id);
         $this->authorize('delete', $classGroup);
 
         if ($classGroup->classes()->count() > 0) {
@@ -115,15 +117,21 @@ class ManageClassGroups extends Component
         session()->flash('success', 'Class Group deleted successfully!');
     }
 
+    protected function getClassGroupForCurrentSchool($id): ClassGroup
+    {
+        return ClassGroup::query()
+            ->findOrFail($id);
+    }
+
     public function render()
     {
-        $classGroups = ClassGroup::where('school_id', auth()->user()->school_id)
+        $classGroups = ClassGroup::query()
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->withCount('classes')
             ->paginate(12);
 
         return view('livewire.classes.manage-class-groups', [
             'classGroups' => $classGroups,
-        ])->layout('layouts.new');
+        ])->layout('layouts.dashboard');
     }
 }

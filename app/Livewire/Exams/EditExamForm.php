@@ -14,7 +14,7 @@ class EditExamForm extends Component
 
     public function mount()
     {
-        $this->semesters = Semester::where('school_id', auth()->user()->school_id)
+        $this->semesters = Semester::query()
             ->where('academic_year_id', auth()->user()->school->academic_year_id)
             ->orderBy('id')
             ->get();

@@ -88,7 +88,9 @@ class ManageParents extends Component
 
     public function loadParentForEdit()
     {
-        $parent = User::findOrFail($this->parentId);
+        $parent = User::role('parent')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->parentId);
         
         // Check if user is actually a parent
         if (!$parent->hasRole('parent')) {
@@ -155,7 +157,9 @@ class ManageParents extends Component
 
     public function updateParent()
     {
-        $parent = User::findOrFail($this->parentId);
+        $parent = User::role('parent')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($this->parentId);
         
         if (!$parent->hasRole('parent')) {
             abort(404);
@@ -196,7 +200,9 @@ class ManageParents extends Component
 
     public function deleteParent($parentId)
     {
-        $parent = User::findOrFail($parentId);
+        $parent = User::role('parent')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($parentId);
         
         if (!$parent->hasRole('parent')) {
             abort(404);
@@ -213,7 +219,9 @@ class ManageParents extends Component
 
     public function toggleLock($parentId)
     {
-        $parent = User::findOrFail($parentId);
+        $parent = User::role('parent')
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($parentId);
         
         if (!$parent->hasRole('parent')) {
             abort(404);
@@ -281,7 +289,7 @@ class ManageParents extends Component
         }
 
         return view('livewire.parents.manage-parents', compact('parents'))
-            ->layout('layouts.new', [
+            ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],
                     ['href' => route('parents.index'), 'text' => 'Parents', 'active' => true]

@@ -5,6 +5,7 @@ namespace App\Livewire\Cbt;
 use Livewire\Component;
 use App\Models\Assessment\Assessment;
 use App\Models\Assessment\StudentAnswer;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
@@ -21,9 +22,7 @@ class CbtViewer extends Component
     public function render()
     {
         // Get ONLY standalone CBT assessments where user has attempted
-        $userAssessments = Assessment::where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id')
+        $userAssessments = $this->assessmentsForCurrentSchool()
             ->whereHas('studentAnswers', function($query) {
                 $query->where('user_id', Auth::id())
                       ->whereNotNull('submitted_at');
@@ -40,7 +39,7 @@ class CbtViewer extends Component
 
     public function viewAssessmentDetails($assessmentId)
     {
-        $this->selectedAssessment = Assessment::with([
+        $this->selectedAssessment = $this->assessmentsForCurrentSchool()->with([
             'studentAnswers' => function($query) {
                 $query->where('user_id', Auth::id())
                       ->whereNotNull('submitted_at')
@@ -48,7 +47,12 @@ class CbtViewer extends Component
                       ->orderBy('attempt_number', 'desc');
             },
             'questions'
-        ])->findOrFail($assessmentId);
+        ])->find($assessmentId);
+
+        if (!$this->selectedAssessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
 
         $this->viewDetails = true;
     }
@@ -105,5 +109,27 @@ class CbtViewer extends Component
             ->values();
 
         return $attempts;
+    }
+
+    protected function currentSchoolId(): ?int
+    {
+        return auth()->user()?->school_id;
+    }
+
+    protected function assessmentsForCurrentSchool(): Builder
+    {
+        $query = Assessment::query()
+            ->where('type', 'quiz')
+            ->whereNull('section_id')
+            ->whereNull('lesson_id');
+
+        $schoolId = $this->currentSchoolId();
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
+            $classGroupQuery->where('school_id', $schoolId);
+        });
     }
 }

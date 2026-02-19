@@ -6,23 +6,23 @@ use Illuminate\Http\Request;
 class PageController extends Controller
 {
     public function home() {
-        return view('pages.home');
+        return view('livewire.site.home');
     }
 
     public function about() {
-        return view('pages.about');
+        return view('livewire.site.about');
     }
 
     public function contact() {
-        return view('pages.contact');
+        return view('livewire.site.contact');
     }
 
     public function admission() {
-        return view('pages.admission');
+        return view('livewire.site.admission');
     }
 
     public function gallery() {
-        return view('pages.gallery');
+        return view('livewire.site.gallery');
     }
 
     // Add more as needed...

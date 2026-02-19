@@ -114,13 +114,13 @@
             </div>
         @endif
 
-        @can('read custom timetable items')
+        @canany(['read custom timetable items', 'read custom timetable item'])
             <div class="mt-6 pt-6 border-t border-gray-200">
                 <button wire:click="switchMode('custom-items')" 
                         class="px-4 py-2 border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition">
                     <i class="fas fa-cog mr-2"></i>Manage Custom Items
                 </button>
             </div>
-        @endcan
+        @endcanany
     </div>
 </div>

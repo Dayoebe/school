@@ -49,7 +49,7 @@ class ExamRecordController extends Controller
             abort(403, 'No school context found for this account.');
         }
 
-        $subject = Subject::where('school_id', $schoolId)->findOrFail($data['subject_id']);
+        $subject = Subject::query()->findOrFail($data['subject_id']);
         $section = Section::whereHas('myClass.classGroup', function ($query) use ($schoolId) {
             $query->where('school_id', $schoolId);
         })->findOrFail($data['section_id']);
