@@ -23,7 +23,7 @@ class ExamSlotController extends Controller
      */
     public function index(Exam $exam): View
     {
-        return view('pages.exam.exam-slot.index', compact('exam'));
+        return view('livewire.exams.pages.exam-slot.index', compact('exam'));
     }
 
     /**
@@ -31,7 +31,7 @@ class ExamSlotController extends Controller
      */
     public function create(Exam $exam): View
     {
-        return view('pages.exam.exam-slot.create', compact('exam'));
+        return view('livewire.exams.pages.exam-slot.create', compact('exam'));
     }
 
     /**
@@ -64,7 +64,7 @@ class ExamSlotController extends Controller
      */
     public function edit(Exam $exam, ExamSlot $examSlot): View
     {
-        return view('pages.exam.exam-slot.edit', compact('examSlot', 'exam'));
+        return view('livewire.exams.pages.exam-slot.edit', compact('examSlot', 'exam'));
     }
 
     /**

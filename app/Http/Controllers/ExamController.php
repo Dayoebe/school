@@ -22,7 +22,7 @@ class ExamController extends Controller
      */
     public function index(): View
     {
-        return view('pages.exam.index');
+        return view('livewire.exams.pages.index');
     }
 
     /**
@@ -30,7 +30,7 @@ class ExamController extends Controller
      */
     public function create(): View
     {
-        return view('pages.exam.create');
+        return view('livewire.exams.pages.create');
     }
 
     /**
@@ -63,7 +63,7 @@ class ExamController extends Controller
      */
     public function edit(Exam $exam): View
     {
-        return view('pages.exam.edit', compact('exam'));
+        return view('livewire.exams.pages.edit', compact('exam'));
     }
 
     /**
@@ -100,7 +100,7 @@ class ExamController extends Controller
     {
         $this->authorize('viewAny', Exam::class);
 
-        return view('pages.exam.tabulation');
+        return view('livewire.exams.pages.tabulation');
     }
 
     /**
@@ -110,7 +110,7 @@ class ExamController extends Controller
     {
         $this->authorize('viewAny', Exam::class);
 
-        return view('pages.exam.semester-result-tabulation');
+        return view('livewire.exams.pages.semester-result-tabulation');
     }
 
     /**
@@ -120,7 +120,7 @@ class ExamController extends Controller
     {
         $this->authorize('viewAny', Exam::class);
 
-        return view('pages.exam.academic-year-result-tabulation');
+        return view('livewire.exams.pages.academic-year-result-tabulation');
     }
 
     /**
@@ -130,7 +130,7 @@ class ExamController extends Controller
     {
         $this->authorize('checkResult', Exam::class);
 
-        return view('pages.exam.result-checker');
+        return view('livewire.exams.pages.result-checker');
     }
 
     /**

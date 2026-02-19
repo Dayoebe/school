@@ -130,7 +130,7 @@ class ExamTabulation extends Component
     public function print()
     {
         //used pdf class directly
-        $pdf = Pdf::loadView('pages.exam.print-exam-tabulation', ['tabulatedRecords' => $this->tabulatedRecords, 'totalMarksAttainableInEachSubject' => $this->totalMarksAttainableInEachSubject, 'subjects' => $this->subjects])->output();
+        $pdf = Pdf::loadView('livewire.exams.pages.print-exam-tabulation', ['tabulatedRecords' => $this->tabulatedRecords, 'totalMarksAttainableInEachSubject' => $this->totalMarksAttainableInEachSubject, 'subjects' => $this->subjects])->output();
 
         //save as pdf
         return response()->streamDownload(

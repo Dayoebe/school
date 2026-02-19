@@ -6,7 +6,9 @@ use App\Http\Requests\StoreExamRecordRequest;
 use App\Http\Requests\UpdateExamRecordRequest;
 use App\Models\ExamRecord;
 use App\Models\ExamSlot;
+use App\Models\Section;
 use App\Models\Subject;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -25,15 +27,15 @@ class ExamRecordController extends Controller
      */
     public function index(): View
     {
-        return view('pages.exam.exam-record.index');
+        return view('livewire.exams.pages.exam-record.index');
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('pages.exam.exam-record.create');
+        return redirect()->route('exam-records.index');
     }
 
     /**
@@ -42,7 +44,28 @@ class ExamRecordController extends Controller
     public function store(StoreExamRecordRequest $request): RedirectResponse
     {
         $data = $request->except('_token');
-        $subject = Subject::findOrFail($data['subject_id']);
+        $schoolId = $this->currentSchoolId();
+        if (!$schoolId) {
+            abort(403, 'No school context found for this account.');
+        }
+
+        $subject = Subject::where('school_id', $schoolId)->findOrFail($data['subject_id']);
+        $section = Section::whereHas('myClass.classGroup', function ($query) use ($schoolId) {
+            $query->where('school_id', $schoolId);
+        })->findOrFail($data['section_id']);
+        $student = User::where('school_id', $schoolId)->findOrFail($data['user_id']);
+
+        if ((int) optional($student->studentRecord)->section_id !== (int) $section->id) {
+            throw ValidationException::withMessages([
+                'user_id' => 'Selected student does not belong to the selected section.',
+            ]);
+        }
+
+        if (!$this->subjectAllowedInSectionClass($subject, $section, $schoolId)) {
+            throw ValidationException::withMessages([
+                'subject_id' => 'Selected subject is not assigned to the selected section class.',
+            ]);
+        }
 
         if (
             auth()->user()->hasRole('teacher')
@@ -53,7 +76,9 @@ class ExamRecordController extends Controller
 
         DB::transaction(function () use ($data) {
             foreach ($data['exam_records'] as $record) {
-                $examSlot = ExamSlot::findOrFail($record['exam_slot_id']);
+                $examSlot = ExamSlot::whereHas('exam.semester', function ($query) {
+                    $query->where('school_id', $this->currentSchoolId());
+                })->findOrFail($record['exam_slot_id']);
                 $studentMarks = $record['student_marks'] ?? null;
 
                 if ($studentMarks !== null && $studentMarks !== '' && (float) $studentMarks > (float) $examSlot->total_marks) {
@@ -109,5 +134,27 @@ class ExamRecordController extends Controller
     public function destroy(ExamRecord $examRecord): Response
     {
         abort(404);
+    }
+
+    protected function currentSchoolId(): ?int
+    {
+        return auth()->user()?->school_id;
+    }
+
+    protected function subjectAllowedInSectionClass(Subject $subject, Section $section, int $schoolId): bool
+    {
+        if ($subject->is_general) {
+            return true;
+        }
+
+        if ((int) $subject->my_class_id === (int) $section->my_class_id) {
+            return true;
+        }
+
+        return DB::table('class_subject')
+            ->where('school_id', $schoolId)
+            ->where('subject_id', $subject->id)
+            ->where('my_class_id', $section->my_class_id)
+            ->exists();
     }
 }
