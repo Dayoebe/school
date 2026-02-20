@@ -20,17 +20,17 @@
             <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Pending</p>
             <p class="mt-1 text-2xl font-black text-amber-700">{{ $statusCounts['pending'] }}</p>
         </button>
-        <button wire:click="$set('statusFilter','contacted')" class="rounded-xl border p-4 text-left transition {{ $statusFilter === 'contacted' ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white' }}">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Contacted</p>
-            <p class="mt-1 text-2xl font-black text-blue-700">{{ $statusCounts['contacted'] }}</p>
+        <button wire:click="$set('statusFilter','reviewed')" class="rounded-xl border p-4 text-left transition {{ $statusFilter === 'reviewed' ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white' }}">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Reviewed</p>
+            <p class="mt-1 text-2xl font-black text-blue-700">{{ $statusCounts['reviewed'] }}</p>
         </button>
         <button wire:click="$set('statusFilter','rejected')" class="rounded-xl border p-4 text-left transition {{ $statusFilter === 'rejected' ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-white' }}">
             <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Rejected</p>
             <p class="mt-1 text-2xl font-black text-rose-700">{{ $statusCounts['rejected'] }}</p>
         </button>
-        <button wire:click="$set('statusFilter','enrolled')" class="rounded-xl border p-4 text-left transition {{ $statusFilter === 'enrolled' ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white' }}">
-            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Enrolled</p>
-            <p class="mt-1 text-2xl font-black text-emerald-700">{{ $statusCounts['enrolled'] }}</p>
+        <button wire:click="$set('statusFilter','approved')" class="rounded-xl border p-4 text-left transition {{ $statusFilter === 'approved' ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white' }}">
+            <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Approved</p>
+            <p class="mt-1 text-2xl font-black text-emerald-700">{{ $statusCounts['approved'] }}</p>
         </button>
     </div>
 
@@ -60,9 +60,9 @@
                     class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                     <option value="all">All</option>
                     <option value="pending">Pending</option>
-                    <option value="contacted">Contacted</option>
+                    <option value="reviewed">Reviewed</option>
                     <option value="rejected">Rejected</option>
-                    <option value="enrolled">Enrolled</option>
+                    <option value="approved">Approved</option>
                 </select>
             </div>
         </div>
@@ -111,9 +111,9 @@
                                 @php
                                     $statusClass = match($registration->status) {
                                         'pending' => 'bg-amber-100 text-amber-800',
-                                        'contacted' => 'bg-blue-100 text-blue-800',
+                                        'reviewed' => 'bg-blue-100 text-blue-800',
                                         'rejected' => 'bg-rose-100 text-rose-800',
-                                        'enrolled' => 'bg-emerald-100 text-emerald-800',
+                                        'approved' => 'bg-emerald-100 text-emerald-800',
                                         default => 'bg-slate-100 text-slate-800',
                                     };
                                 @endphp
@@ -124,21 +124,33 @@
                                 {{ $registration->created_at->format('h:i A') }}
                             </td>
                             <td class="px-4 py-3 align-top">
+                                @php
+                                    $canReview = auth()->user()->can('review admission registration');
+                                    $canReject = auth()->user()->can('reject admission registration');
+                                    $canApprove = auth()->user()->can('approve admission registration') && auth()->user()->can('create student');
+                                @endphp
                                 <div class="flex flex-wrap gap-2">
                                     <button wire:click="viewAdmission({{ $registration->id }})" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">
                                         View
                                     </button>
 
-                                    @if($registration->status !== 'enrolled')
-                                        <button wire:click="markStatus({{ $registration->id }}, 'contacted')" class="rounded-lg bg-blue-100 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200">
-                                            Contacted
+                                    @if($registration->status !== 'approved' && $canReview)
+                                        <button wire:click="markReviewed({{ $registration->id }})" class="rounded-lg bg-blue-100 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200">
+                                            Review
                                         </button>
-                                        <button wire:click="markStatus({{ $registration->id }}, 'rejected')" class="rounded-lg bg-rose-100 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200">
+                                    @endif
+
+                                    @if($registration->status !== 'approved' && $canReject)
+                                        <button wire:click="rejectAdmission({{ $registration->id }})" wire:confirm="Reject this admission registration?"
+                                            class="rounded-lg bg-rose-100 px-2.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200">
                                             Reject
                                         </button>
-                                        <button wire:click="enrollStudent({{ $registration->id }})" wire:confirm="Enroll this applicant as a student now?"
+                                    @endif
+
+                                    @if($registration->status !== 'approved' && $canApprove)
+                                        <button wire:click="approveAdmission({{ $registration->id }})" wire:confirm="Approve this applicant and create student record now?"
                                             class="rounded-lg bg-emerald-100 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200">
-                                            Enroll
+                                            Approve
                                         </button>
                                     @endif
                                 </div>
@@ -188,6 +200,7 @@
                     <p class="mt-1 text-sm text-slate-800"><strong>Relationship:</strong> {{ $selectedAdmission->guardian_relationship ?: 'N/A' }}</p>
                     <p class="mt-1 text-sm text-slate-800"><strong>Address:</strong> {{ $selectedAdmission->address ?: 'N/A' }}</p>
                     <p class="mt-1 text-sm text-slate-800"><strong>Previous School:</strong> {{ $selectedAdmission->previous_school ?: 'N/A' }}</p>
+                    <p class="mt-1 text-sm text-slate-800"><strong>Applicant Notes:</strong> {{ $selectedAdmission->notes ?: 'N/A' }}</p>
                     <p class="mt-1 text-sm text-slate-800">
                         <strong>Document:</strong>
                         @if($selectedAdmission->document_path)
@@ -205,11 +218,73 @@
                     <p class="mt-2 text-sm text-slate-800"><strong>Status:</strong> {{ ucfirst($selectedAdmission->status) }}</p>
                     <p class="mt-1 text-sm text-slate-800"><strong>Processed By:</strong> {{ $selectedAdmission->processedBy?->name ?: 'N/A' }}</p>
                     <p class="mt-1 text-sm text-slate-800"><strong>Processed At:</strong> {{ $selectedAdmission->processed_at?->format('M d, Y h:i A') ?: 'N/A' }}</p>
-                    <p class="mt-1 text-sm text-slate-800"><strong>Enrolled Student:</strong> {{ $selectedAdmission->enrolledUser?->name ?: 'Not enrolled yet' }}</p>
+                    <p class="mt-1 text-sm text-slate-800"><strong>Created Student:</strong> {{ $selectedAdmission->enrolledUser?->name ?: 'Not created yet' }}</p>
                     <p class="mt-1 text-sm text-slate-800"><strong>Admission Number:</strong> {{ $selectedAdmission->enrolledStudentRecord?->admission_number ?: 'N/A' }}</p>
-                    @if($selectedAdmission->notes)
-                        <p class="mt-3 text-sm text-slate-800"><strong>Notes:</strong> {{ $selectedAdmission->notes }}</p>
-                    @endif
+
+                    <div class="mt-4 rounded-xl border border-slate-200 bg-white p-3">
+                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-500">Admin Note</label>
+                        <textarea wire:model.defer="adminNote" rows="3" placeholder="Internal review notes, decision reasons, or next steps"
+                            class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"></textarea>
+
+                        @php
+                            $canManageNote = auth()->user()->can('update admission admin note');
+                            $canReview = auth()->user()->can('review admission registration');
+                            $canReject = auth()->user()->can('reject admission registration');
+                            $canApprove = auth()->user()->can('approve admission registration') && auth()->user()->can('create student');
+                        @endphp
+
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            @if($canManageNote)
+                                <button wire:click="saveAdminNote({{ $selectedAdmission->id }})"
+                                    class="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">
+                                    Save Note
+                                </button>
+                            @endif
+
+                            @if($selectedAdmission->status !== 'approved' && $canReview)
+                                <button wire:click="markReviewed({{ $selectedAdmission->id }})"
+                                    class="rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200">
+                                    Mark Reviewed
+                                </button>
+                            @endif
+
+                            @if($selectedAdmission->status !== 'approved' && $canReject)
+                                <button wire:click="rejectAdmission({{ $selectedAdmission->id }})" wire:confirm="Reject this admission registration?"
+                                    class="rounded-lg bg-rose-100 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-200">
+                                    Reject
+                                </button>
+                            @endif
+
+                            @if($selectedAdmission->status !== 'approved' && $canApprove)
+                                <button wire:click="approveAdmission({{ $selectedAdmission->id }})" wire:confirm="Approve this applicant and create student record now?"
+                                    class="rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200">
+                                    Approve + Create Student
+                                </button>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+                    <p class="text-xs font-bold uppercase tracking-wider text-slate-500">Status History</p>
+
+                    <div class="mt-3 space-y-2">
+                        @forelse($selectedAdmission->statusHistories as $history)
+                            <div class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
+                                <p class="font-semibold text-slate-800">
+                                    {{ ucfirst($history->from_status ?? 'new') }} -> {{ ucfirst($history->to_status) }}
+                                </p>
+                                <p class="text-xs text-slate-500">
+                                    {{ $history->changedBy?->name ?: 'System' }} • {{ $history->changed_at?->format('M d, Y h:i A') ?: $history->created_at?->format('M d, Y h:i A') }}
+                                </p>
+                                @if($history->note)
+                                    <p class="mt-1 text-sm text-slate-700">{{ $history->note }}</p>
+                                @endif
+                            </div>
+                        @empty
+                            <p class="text-sm text-slate-500">No status changes yet.</p>
+                        @endforelse
+                    </div>
                 </div>
             </div>
         </div>

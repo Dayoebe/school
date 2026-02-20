@@ -286,7 +286,7 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
 */
 
 Route::prefix('teacher')->middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:upload result'])->group(function () {
-    Route::resource('results', ResultController::class)->except(['show']);
+    Route::get('results', fn () => redirect()->route('result.upload.individual'))->name('results.index');
 });
 
 /*

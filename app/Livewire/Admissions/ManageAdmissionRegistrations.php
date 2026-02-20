@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admissions;
 
+use App\Models\AdmissionStatusHistory;
 use App\Models\AdmissionRegistration;
 use App\Models\MyClass;
 use App\Models\School;
@@ -26,6 +27,7 @@ class ManageAdmissionRegistrations extends Component
 
     public $classes = [];
     public ?AdmissionRegistration $selectedAdmission = null;
+    public string $adminNote = '';
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -33,12 +35,18 @@ class ManageAdmissionRegistrations extends Component
         'classFilter' => ['except' => ''],
     ];
 
-    protected array $allowedStatuses = ['pending', 'contacted', 'rejected', 'enrolled'];
+    protected array $allowedStatuses = ['pending', 'reviewed', 'rejected', 'approved'];
 
     public function mount(): void
     {
-        if (!auth()->check() || !auth()->user()->hasAnyRole(['super-admin', 'super_admin', 'admin', 'principal', 'teacher'])) {
+        if (!auth()->check() || !auth()->user()->can('read admission registration')) {
             abort(403);
+        }
+
+        if ($this->statusFilter === 'contacted') {
+            $this->statusFilter = 'reviewed';
+        } elseif ($this->statusFilter === 'enrolled') {
+            $this->statusFilter = 'approved';
         }
 
         $this->classes = $this->classesForCurrentContext();
@@ -63,47 +71,71 @@ class ManageAdmissionRegistrations extends Component
     {
         $admission = $this->admissionQuery()->findOrFail($admissionId);
         $this->selectedAdmission = $admission;
+        $this->adminNote = (string) ($admission->admin_notes ?? '');
     }
 
     public function clearSelected(): void
     {
         $this->selectedAdmission = null;
+        $this->adminNote = '';
     }
 
-    public function markStatus(int $admissionId, string $status): void
+    public function saveAdminNote(int $admissionId): void
     {
-        if (!in_array($status, ['pending', 'contacted', 'rejected'], true)) {
-            return;
-        }
+        $this->assertCanManageAdmission();
 
         $admission = $this->admissionQuery()->findOrFail($admissionId);
-
-        if ($admission->status === 'enrolled') {
-            session()->flash('error', 'Enrolled registrations cannot be changed to this status.');
-            return;
-        }
+        $note = $this->normalizedNote($this->adminNote);
 
         $admission->update([
-            'status' => $status,
+            'admin_notes' => $note,
             'processed_by' => auth()->id(),
             'processed_at' => now(),
         ]);
 
-        if ($this->selectedAdmission && $this->selectedAdmission->id === $admission->id) {
-            $this->selectedAdmission = $admission->fresh([
-                'school', 'myClass', 'section', 'processedBy', 'enrolledUser', 'enrolledStudentRecord',
-            ]);
-        }
-
-        session()->flash('success', 'Admission status updated successfully.');
+        $this->refreshSelectedAdmission($admission->id);
+        session()->flash('success', 'Admin note saved.');
     }
 
-    public function enrollStudent(int $admissionId): void
+    public function markReviewed(int $admissionId): void
     {
+        $this->assertCanReviewAdmission();
+
+        $admission = $this->admissionQuery()->findOrFail($admissionId);
+        if ($admission->status === 'approved') {
+            session()->flash('error', 'Approved admissions cannot be moved back to review.');
+            return;
+        }
+
+        $this->transitionStatus($admission, 'reviewed', $this->normalizedNote($this->adminNote));
+        $this->refreshSelectedAdmission($admission->id);
+        session()->flash('success', 'Admission marked as reviewed.');
+    }
+
+    public function rejectAdmission(int $admissionId): void
+    {
+        $this->assertCanRejectAdmission();
+
         $admission = $this->admissionQuery()->findOrFail($admissionId);
 
-        if ($admission->enrolled_user_id || $admission->status === 'enrolled') {
-            session()->flash('error', 'This registration has already been enrolled.');
+        if ($admission->status === 'approved') {
+            session()->flash('error', 'Approved admissions cannot be rejected.');
+            return;
+        }
+
+        $this->transitionStatus($admission, 'rejected', $this->normalizedNote($this->adminNote));
+        $this->refreshSelectedAdmission($admission->id);
+        session()->flash('success', 'Admission rejected.');
+    }
+
+    public function approveAdmission(int $admissionId): void
+    {
+        $this->assertCanApproveAdmission();
+
+        $admission = $this->admissionQuery()->findOrFail($admissionId);
+
+        if ($admission->status === 'approved' && $admission->enrolled_user_id && $admission->enrolled_student_record_id) {
+            session()->flash('error', 'This registration has already been approved and enrolled.');
             return;
         }
 
@@ -130,68 +162,77 @@ class ManageAdmissionRegistrations extends Component
 
         try {
             DB::transaction(function () use ($admission, $school) {
-                $email = $this->resolveStudentEmail($admission, $school);
+                $lockedAdmission = AdmissionRegistration::query()
+                    ->whereKey($admission->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-                if (User::where('email', $email)->exists()) {
-                    throw new \RuntimeException('Student email already exists. Update the admission email before enrollment.');
-                }
+                if (!$lockedAdmission->enrolled_user_id || !$lockedAdmission->enrolled_student_record_id) {
+                    $email = $this->resolveStudentEmail($lockedAdmission, $school);
 
-                $user = User::create([
-                    'name' => $admission->student_name,
-                    'email' => $email,
-                    'password' => Hash::make('12345678'),
-                    'gender' => $admission->gender,
-                    'birthday' => $admission->birthday,
-                    'phone' => $admission->guardian_phone,
-                    'address' => $admission->address,
-                    'school_id' => $admission->school_id,
-                ]);
+                    if (User::where('email', $email)->exists()) {
+                        throw new \RuntimeException('Student email already exists. Update the admission email before approval.');
+                    }
 
-                $user->assignRole('student');
+                    $user = User::create([
+                        'name' => $lockedAdmission->student_name,
+                        'email' => $email,
+                        'password' => Hash::make('12345678'),
+                        'gender' => $lockedAdmission->gender,
+                        'birthday' => $lockedAdmission->birthday,
+                        'phone' => $lockedAdmission->guardian_phone,
+                        'address' => $lockedAdmission->address,
+                        'school_id' => $lockedAdmission->school_id,
+                    ]);
 
-                $admissionNumber = $this->generateAdmissionNumber($school);
+                    $user->assignRole('student');
 
-                $studentRecord = $user->studentRecord()->create([
-                    'my_class_id' => $admission->my_class_id,
-                    'section_id' => $admission->section_id,
-                    'admission_number' => $admissionNumber,
-                    'admission_date' => now(),
-                ]);
+                    $admissionNumber = $this->generateAdmissionNumber($school);
 
-                if ($school->academicYear) {
-                    $studentRecord->academicYears()->syncWithoutDetaching([
-                        $school->academicYear->id => [
-                            'my_class_id' => $admission->my_class_id,
-                            'section_id' => $admission->section_id,
-                        ],
+                    $studentRecord = $user->studentRecord()->create([
+                        'my_class_id' => $lockedAdmission->my_class_id,
+                        'section_id' => $lockedAdmission->section_id,
+                        'admission_number' => $admissionNumber,
+                        'admission_date' => now(),
+                    ]);
+
+                    if ($school->academicYear) {
+                        $studentRecord->academicYears()->syncWithoutDetaching([
+                            $school->academicYear->id => [
+                                'my_class_id' => $lockedAdmission->my_class_id,
+                                'section_id' => $lockedAdmission->section_id,
+                            ],
+                        ]);
+                    }
+
+                    $studentRecord->assignSubjectsAutomatically();
+
+                    $lockedAdmission->update([
+                        'enrolled_user_id' => $user->id,
+                        'enrolled_student_record_id' => $studentRecord->id,
+                        'enrolled_at' => now(),
                     ]);
                 }
 
-                $admission->update([
-                    'status' => 'enrolled',
-                    'processed_by' => auth()->id(),
-                    'processed_at' => now(),
-                    'enrolled_user_id' => $user->id,
-                    'enrolled_student_record_id' => $studentRecord->id,
-                    'enrolled_at' => now(),
-                ]);
+                $this->transitionStatus(
+                    $lockedAdmission,
+                    'approved',
+                    $this->normalizedNote($this->adminNote)
+                );
             });
         } catch (Throwable $e) {
             report($e);
 
             $message = $e instanceof \RuntimeException
                 ? $e->getMessage()
-                : 'Could not enroll this registration right now. Please try again.';
+                : 'Could not approve this registration right now. Please try again.';
 
             session()->flash('error', $message);
             return;
         }
 
-        if ($this->selectedAdmission && $this->selectedAdmission->id === $admission->id) {
-            $this->selectedAdmission = $this->admissionQuery()->find($admission->id);
-        }
-
-        session()->flash('success', 'Student enrolled successfully. Default password: 12345678');
+        $this->refreshSelectedAdmission($admission->id);
+        session()->flash('success', 'Admission approved and student record created. Default password: 12345678');
     }
 
     protected function admissionQuery()
@@ -203,6 +244,7 @@ class ManageAdmissionRegistrations extends Component
             'processedBy:id,name',
             'enrolledUser:id,name,email',
             'enrolledStudentRecord:id,admission_number,user_id',
+            'statusHistories' => fn ($history) => $history->with('changedBy:id,name')->latest('changed_at'),
         ]);
 
         $schoolId = auth()->user()?->school_id;
@@ -276,6 +318,95 @@ class ManageAdmissionRegistrations extends Component
         return $number;
     }
 
+    protected function normalizedNote(?string $note): ?string
+    {
+        $trimmed = trim((string) $note);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    protected function refreshSelectedAdmission(?int $admissionId = null): void
+    {
+        if (!$this->selectedAdmission && !$admissionId) {
+            return;
+        }
+
+        $id = $admissionId ?: $this->selectedAdmission?->id;
+        if (!$id) {
+            return;
+        }
+
+        $fresh = $this->admissionQuery()->find($id);
+        $this->selectedAdmission = $fresh;
+        if ($fresh) {
+            $this->adminNote = (string) ($fresh->admin_notes ?? '');
+        }
+    }
+
+    protected function assertCanManageAdmission(): void
+    {
+        if (!auth()->user()?->can('update admission admin note')) {
+            abort(403);
+        }
+    }
+
+    protected function assertCanReviewAdmission(): void
+    {
+        if (!auth()->user()?->can('review admission registration')) {
+            abort(403);
+        }
+    }
+
+    protected function assertCanRejectAdmission(): void
+    {
+        if (!auth()->user()?->can('reject admission registration')) {
+            abort(403);
+        }
+    }
+
+    protected function assertCanApproveAdmission(): void
+    {
+        if (!auth()->user()?->can('approve admission registration')) {
+            abort(403);
+        }
+
+        if (!auth()->user()?->can('create student')) {
+            abort(403);
+        }
+    }
+
+    protected function transitionStatus(AdmissionRegistration $admission, string $toStatus, ?string $note = null): void
+    {
+        if (!in_array($toStatus, $this->allowedStatuses, true)) {
+            return;
+        }
+
+        $fromStatus = (string) $admission->status;
+        $payload = [
+            'status' => $toStatus,
+            'processed_by' => auth()->id(),
+            'processed_at' => now(),
+        ];
+
+        if ($note !== null) {
+            $payload['admin_notes'] = $note;
+        }
+
+        $admission->update($payload);
+
+        if ($fromStatus !== $toStatus) {
+            AdmissionStatusHistory::create([
+                'admission_registration_id' => $admission->id,
+                'school_id' => $admission->school_id,
+                'from_status' => $fromStatus,
+                'to_status' => $toStatus,
+                'note' => $note,
+                'changed_by' => auth()->id(),
+                'changed_at' => now(),
+            ]);
+        }
+    }
+
     public function render()
     {
         $query = $this->admissionQuery()
@@ -303,9 +434,9 @@ class ManageAdmissionRegistrations extends Component
         $statusCounts = [
             'all' => (clone $countBase)->count(),
             'pending' => (clone $countBase)->where('status', 'pending')->count(),
-            'contacted' => (clone $countBase)->where('status', 'contacted')->count(),
+            'reviewed' => (clone $countBase)->where('status', 'reviewed')->count(),
             'rejected' => (clone $countBase)->where('status', 'rejected')->count(),
-            'enrolled' => (clone $countBase)->where('status', 'enrolled')->count(),
+            'approved' => (clone $countBase)->where('status', 'approved')->count(),
         ];
 
         return view('livewire.admissions.manage-admission-registrations', [

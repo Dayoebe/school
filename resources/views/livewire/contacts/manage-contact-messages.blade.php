@@ -90,11 +90,16 @@
                                 {{ $message->created_at->format('h:i A') }}
                             </td>
                             <td class="px-4 py-3 align-top">
+                                @php
+                                    $canReply = auth()->user()->can('reply contact message');
+                                @endphp
                                 <div class="flex flex-wrap gap-2">
                                     <button wire:click="viewMessage({{ $message->id }})" class="rounded-lg bg-slate-100 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200">View</button>
-                                    <button wire:click="markStatus({{ $message->id }}, 'read')" class="rounded-lg bg-blue-100 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200">Read</button>
-                                    <button wire:click="markStatus({{ $message->id }}, 'in_progress')" class="rounded-lg bg-indigo-100 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-200">In Progress</button>
-                                    <button wire:click="markStatus({{ $message->id }}, 'resolved')" class="rounded-lg bg-emerald-100 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200">Resolve</button>
+                                    @if($canReply)
+                                        <button wire:click="markStatus({{ $message->id }}, 'read')" class="rounded-lg bg-blue-100 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-200">Read</button>
+                                        <button wire:click="markStatus({{ $message->id }}, 'in_progress')" class="rounded-lg bg-indigo-100 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-200">In Progress</button>
+                                        <button wire:click="markStatus({{ $message->id }}, 'resolved')" class="rounded-lg bg-emerald-100 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-200">Resolve</button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -145,9 +150,17 @@
                 </div>
             </div>
 
+            @php
+                $canReply = auth()->user()->can('reply contact message');
+            @endphp
+
             @if(!$replyColumnsReady)
                 <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">
                     Reply fields are missing in the database. Run the latest contact migration to enable dashboard replies.
+                </div>
+            @elseif(!$canReply)
+                <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+                    You have read-only access to contact messages.
                 </div>
             @else
                 <div class="mt-5 rounded-xl border border-slate-200 bg-white p-4">

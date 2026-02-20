@@ -6,6 +6,7 @@ use App\Traits\InSchool;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AdmissionRegistration extends Model
 {
@@ -28,6 +29,7 @@ class AdmissionRegistration extends Model
         'address',
         'previous_school',
         'notes',
+        'admin_notes',
         'document_path',
         'document_name',
         'status',
@@ -72,5 +74,10 @@ class AdmissionRegistration extends Model
     public function enrolledStudentRecord(): BelongsTo
     {
         return $this->belongsTo(StudentRecord::class, 'enrolled_student_record_id');
+    }
+
+    public function statusHistories(): HasMany
+    {
+        return $this->hasMany(AdmissionStatusHistory::class)->latest('changed_at');
     }
 }

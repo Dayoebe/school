@@ -50,7 +50,7 @@ class ManageGallery extends Component
 
     public function mount(): void
     {
-        if (!auth()->check() || !auth()->user()->hasAnyRole(['super-admin', 'super_admin', 'admin', 'principal', 'teacher'])) {
+        if (!auth()->check() || !auth()->user()->can('manage gallery')) {
             abort(403);
         }
     }

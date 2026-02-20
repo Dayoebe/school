@@ -33,7 +33,7 @@ class ManageContactMessages extends Component
 
     public function mount(): void
     {
-        if (!auth()->check() || !auth()->user()->hasAnyRole(['super-admin', 'super_admin', 'admin', 'principal', 'teacher'])) {
+        if (!auth()->check() || !auth()->user()->can('read contact message')) {
             abort(403);
         }
 
@@ -86,6 +86,8 @@ class ManageContactMessages extends Component
 
     public function markStatus(int $messageId, string $status): void
     {
+        $this->assertCanReply();
+
         if (!$this->contactTableReady) {
             return;
         }
@@ -119,6 +121,8 @@ class ManageContactMessages extends Component
 
     public function sendReply(int $messageId): void
     {
+        $this->assertCanReply();
+
         if (!$this->contactTableReady || !$this->replyColumnsReady) {
             session()->flash('error', 'Reply setup is incomplete. Please run latest migrations.');
             return;
@@ -293,6 +297,13 @@ class ManageContactMessages extends Component
         } catch (Throwable $e) {
             report($e);
             return false;
+        }
+    }
+
+    protected function assertCanReply(): void
+    {
+        if (!auth()->user()?->can('reply contact message')) {
+            abort(403);
         }
     }
 

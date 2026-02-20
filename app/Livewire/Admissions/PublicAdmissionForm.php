@@ -3,6 +3,7 @@
 namespace App\Livewire\Admissions;
 
 use App\Models\AdmissionRegistration;
+use App\Models\AdmissionStatusHistory;
 use App\Models\MyClass;
 use App\Models\School;
 use App\Models\Section;
@@ -124,7 +125,7 @@ class PublicAdmissionForm extends Component
                 $documentName = $this->document->getClientOriginalName();
             }
 
-            AdmissionRegistration::create([
+            $registration = AdmissionRegistration::create([
                 'school_id' => (int) $this->school_id,
                 'my_class_id' => (int) $this->my_class_id,
                 'section_id' => $this->section_id ? (int) $this->section_id : null,
@@ -146,6 +147,16 @@ class PublicAdmissionForm extends Component
                 'document_path' => $documentPath,
                 'document_name' => $documentName,
                 'status' => 'pending',
+            ]);
+
+            AdmissionStatusHistory::create([
+                'admission_registration_id' => $registration->id,
+                'school_id' => $registration->school_id,
+                'from_status' => null,
+                'to_status' => 'pending',
+                'note' => 'Admission form submitted.',
+                'changed_by' => null,
+                'changed_at' => now(),
             ]);
 
             return $referenceNo;
