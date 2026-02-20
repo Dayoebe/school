@@ -861,3 +861,18 @@
 #33 /opt/lampp/htdocs/elites/artisan(35): Illuminate\\Foundation\\Console\\Kernel->handle()
 #34 {main}
 "} 
+[2026-02-20 13:24:27] local.ERROR: The "--columns" option does not exist. {"exception":"[object] (Symfony\\Component\\Console\\Exception\\RuntimeException(code: 0): The \"--columns\" option does not exist. at /opt/lampp/htdocs/elites/vendor/symfony/console/Input/ArgvInput.php:223)
+[stacktrace]
+#0 /opt/lampp/htdocs/elites/vendor/symfony/console/Input/ArgvInput.php(150): Symfony\\Component\\Console\\Input\\ArgvInput->addLongOption()
+#1 /opt/lampp/htdocs/elites/vendor/symfony/console/Input/ArgvInput.php(85): Symfony\\Component\\Console\\Input\\ArgvInput->parseLongOption()
+#2 /opt/lampp/htdocs/elites/vendor/symfony/console/Input/ArgvInput.php(74): Symfony\\Component\\Console\\Input\\ArgvInput->parseToken()
+#3 /opt/lampp/htdocs/elites/vendor/symfony/console/Input/Input.php(56): Symfony\\Component\\Console\\Input\\ArgvInput->parse()
+#4 /opt/lampp/htdocs/elites/vendor/symfony/console/Command/Command.php(285): Symfony\\Component\\Console\\Input\\Input->bind()
+#5 /opt/lampp/htdocs/elites/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony\\Component\\Console\\Command\\Command->run()
+#6 /opt/lampp/htdocs/elites/vendor/symfony/console/Application.php(1106): Illuminate\\Console\\Command->run()
+#7 /opt/lampp/htdocs/elites/vendor/symfony/console/Application.php(324): Symfony\\Component\\Console\\Application->doRunCommand()
+#8 /opt/lampp/htdocs/elites/vendor/symfony/console/Application.php(175): Symfony\\Component\\Console\\Application->doRun()
+#9 /opt/lampp/htdocs/elites/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(201): Symfony\\Component\\Console\\Application->run()
+#10 /opt/lampp/htdocs/elites/artisan(35): Illuminate\\Foundation\\Console\\Kernel->handle()
+#11 {main}
+"} 

@@ -558,17 +558,6 @@ class CbtExamInterface extends Component
         return sprintf('%02d:%02d', $minutes, $secs);
     }
 
-    public function showSummary()
-    {
-        return view('livewire.cbt.exam.cbt-exam-summary', [
-            'questions' => $this->questions,
-            'answers' => $this->answers,
-            'currentQuestionIndex' => $this->currentQuestionIndex,
-            'flaggedQuestions' => $this->flaggedQuestions,
-            'timeRemaining' => $this->timeRemaining,
-        ]);
-    }
-
     protected function sendResultsEmail(): void
     {
         try {
@@ -773,4 +762,3 @@ class CbtExamInterface extends Component
         });
     }
 }
-
