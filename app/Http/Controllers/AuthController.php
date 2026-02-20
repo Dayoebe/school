@@ -31,7 +31,7 @@ class AuthController extends Controller
 
     public function showResetForm(Request $request, $token = null)
     {
-        return view('auth.change-password', [
+        return view('auth.reset-password', [
             'token' => $token,
             'email' => $request->email
         ]);

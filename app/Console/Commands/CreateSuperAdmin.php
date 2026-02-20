@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Actions\Fortify\PasswordValidationRules;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
@@ -13,8 +12,6 @@ use function Laravel\Prompts\text;
 
 class CreateSuperAdmin extends Command
 {
-    use PasswordValidationRules;
-
     /**
      * The name and signature of the console command.
      *
@@ -119,5 +116,15 @@ class CreateSuperAdmin extends Command
         }
 
         return 0;
+    }
+
+    /**
+     * Password validation rules for console-created users.
+     *
+     * @return array<int, string>
+     */
+    protected function passwordRules(): array
+    {
+        return ['required', 'string', 'min:8', 'confirmed'];
     }
 }
