@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
         // Student records
-        Schema::create('student_records', function (Blueprint $table) {
+        $createTable('student_records', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->string('admission_number')->nullable()->unique();
@@ -21,14 +27,14 @@ return new class extends Migration
         });
 
         // Teacher records
-        Schema::create('teacher_records', function (Blueprint $table) {
+        $createTable('teacher_records', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->timestamps();
         });
 
         // Parent records
-        Schema::create('parent_records', function (Blueprint $table) {
+        $createTable('parent_records', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
@@ -37,7 +43,7 @@ return new class extends Migration
         });
 
         // Parent record user pivot (for multiple students per parent)
-        Schema::create('parent_record_user', function (Blueprint $table) {
+        $createTable('parent_record_user', function (Blueprint $table) {
             $table->id();
             $table->foreignId('parent_record_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('user_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
@@ -46,7 +52,7 @@ return new class extends Migration
         });
 
         // Academic year student record pivot
-        Schema::create('academic_year_student_record', function (Blueprint $table) {
+        $createTable('academic_year_student_record', function (Blueprint $table) {
             $table->id();
             $table->foreignId('academic_year_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('student_record_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
@@ -57,7 +63,7 @@ return new class extends Migration
         });
 
         // Promotions
-        Schema::create('promotions', function (Blueprint $table) {
+        $createTable('promotions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('old_class_id')->constrained('my_classes')->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('new_class_id')->constrained('my_classes')->onDelete('cascade')->onUpdate('cascade');
@@ -70,7 +76,7 @@ return new class extends Migration
         });
 
         // Graduations
-        Schema::create('graduations', function (Blueprint $table) {
+        $createTable('graduations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_record_id')->constrained()->onDelete('cascade');
             $table->foreignId('academic_year_id')->constrained()->onDelete('cascade');

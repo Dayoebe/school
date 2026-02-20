@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
         // Timetables
-        Schema::create('timetables', function (Blueprint $table) {
+        $createTable('timetables', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->longText('description')->nullable();
@@ -19,7 +25,7 @@ return new class extends Migration
         });
 
         // Timetable time slots
-        Schema::create('timetable_time_slots', function (Blueprint $table) {
+        $createTable('timetable_time_slots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('timetable_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
             $table->time('start_time');
@@ -28,7 +34,7 @@ return new class extends Migration
         });
 
         // Custom timetable items (for breaks, assemblies, etc.)
-        Schema::create('custom_timetable_items', function (Blueprint $table) {
+        $createTable('custom_timetable_items', function (Blueprint $table) {
             $table->id();
             $table->string('name', 255);
             $table->foreignId('school_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
@@ -37,15 +43,15 @@ return new class extends Migration
         });
 
         // Timetable time slot weekday pivot (polymorphic for subjects or custom items)
-        Schema::create('timetable_time_slot_weekday', function (Blueprint $table) {
+        $createTable('timetable_time_slot_weekday', function (Blueprint $table) {
             $table->id();
             $table->foreignId('timetable_time_slot_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
             $table->foreignId('weekday_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
-            
+
             // Polymorphic relationship - can be Subject or CustomTimetableItem
             $table->string('timetable_time_slot_weekdayable_type');
             $table->unsignedBigInteger('timetable_time_slot_weekdayable_id');
-            
+
             $table->timestamps();
             $table->unique(['weekday_id', 'timetable_time_slot_id'], 'time_slot_weekday');
         });

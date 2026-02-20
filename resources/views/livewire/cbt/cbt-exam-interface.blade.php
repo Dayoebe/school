@@ -1,5 +1,4 @@
-<div x-data="modernCbtExam()" 
-     x-init="init()"
+<div x-data="modernCbtExam()"
      class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
@@ -93,64 +92,83 @@
     {{-- Results Screen --}}
     <div class="min-h-screen flex items-center justify-center p-4">
         <div class="max-w-4xl w-full bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
-            {{-- Results Header --}}
-            <div class="p-8 text-center {{ $results['passed'] ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-gradient-to-r from-red-600 to-pink-600' }}">
-                <div class="w-32 h-32 mx-auto bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm mb-6">
-                    <i class="fas {{ $results['passed'] ? 'fa-check-circle' : 'fa-times-circle' }} text-7xl text-white"></i>
+            @if($pendingPublish)
+                <div class="p-8 text-center bg-gradient-to-r from-blue-600 to-indigo-600">
+                    <div class="w-32 h-32 mx-auto bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm mb-6">
+                        <i class="fas fa-hourglass-half text-7xl text-white"></i>
+                    </div>
+                    <h1 class="text-4xl font-bold text-white mb-2">Exam Submitted</h1>
+                    <p class="text-xl text-white/90">{{ $assessment->title }}</p>
                 </div>
-                <h1 class="text-4xl font-bold text-white mb-2">
-                    {{ $results['passed'] ? 'Congratulations!' : 'Keep Trying!' }}
-                </h1>
-                <p class="text-xl text-white/90">{{ $assessment->title }}</p>
-            </div>
+            @else
+                {{-- Results Header --}}
+                <div class="p-8 text-center {{ $results['passed'] ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-gradient-to-r from-red-600 to-pink-600' }}">
+                    <div class="w-32 h-32 mx-auto bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm mb-6">
+                        <i class="fas {{ $results['passed'] ? 'fa-check-circle' : 'fa-times-circle' }} text-7xl text-white"></i>
+                    </div>
+                    <h1 class="text-4xl font-bold text-white mb-2">
+                        {{ $results['passed'] ? 'Congratulations!' : 'Keep Trying!' }}
+                    </h1>
+                    <p class="text-xl text-white/90">{{ $assessment->title }}</p>
+                </div>
+            @endif
 
             <div class="p-8">
-                {{-- Score Display --}}
-                <div class="text-center mb-8">
-                    <div class="inline-block relative">
-                        <svg class="transform -rotate-90 w-48 h-48">
-                            <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" 
-                                    class="text-gray-200 dark:text-gray-700" />
-                            <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent"
-                                    class="{{ $results['passed'] ? 'text-green-500' : 'text-red-500' }}"
-                                    :stroke-dasharray="`${({{ $results['percentage'] }} / 100) * 552.92} 552.92`"
-                                    stroke-linecap="round" />
-                        </svg>
-                        <div class="absolute inset-0 flex items-center justify-center">
-                            <div>
-                                <div class="text-5xl font-bold {{ $results['passed'] ? 'text-green-600' : 'text-red-600' }}">
-                                    {{ $results['percentage'] }}%
+                @if($pendingPublish)
+                    <div class="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-blue-900">
+                        <p class="font-semibold">{{ $resultNotice ?: 'Your response has been captured successfully.' }}</p>
+                        <p class="mt-2 text-sm">
+                            Your school needs to publish this CBT result before it appears in your result dashboard.
+                        </p>
+                    </div>
+                @else
+                    {{-- Score Display --}}
+                    <div class="text-center mb-8">
+                        <div class="inline-block relative">
+                            <svg class="transform -rotate-90 w-48 h-48">
+                                <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent" 
+                                        class="text-gray-200 dark:text-gray-700" />
+                                <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent"
+                                        class="{{ $results['passed'] ? 'text-green-500' : 'text-red-500' }}"
+                                        :stroke-dasharray="`${({{ $results['percentage'] }} / 100) * 552.92} 552.92`"
+                                        stroke-linecap="round" />
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div>
+                                    <div class="text-5xl font-bold {{ $results['passed'] ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ $results['percentage'] }}%
+                                    </div>
+                                    <div class="text-sm text-gray-500 dark:text-gray-400">Your Score</div>
                                 </div>
-                                <div class="text-sm text-gray-500 dark:text-gray-400">Your Score</div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {{-- Stats Grid --}}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                    <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl text-center">
-                        <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ $results['total_points'] }}</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Points Earned</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">out of {{ $results['max_points'] }}</div>
-                    </div>
+                    {{-- Stats Grid --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                        <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl text-center">
+                            <div class="text-3xl font-bold text-blue-600 dark:text-blue-400">{{ $results['total_points'] }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Points Earned</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">out of {{ $results['max_points'] }}</div>
+                        </div>
 
-                    <div class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-2xl text-center">
-                        <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ $results['correct_answers'] }}</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Correct Answers</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">out of {{ $results['total_questions'] }}</div>
-                    </div>
+                        <div class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-2xl text-center">
+                            <div class="text-3xl font-bold text-purple-600 dark:text-purple-400">{{ $results['correct_answers'] }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Correct Answers</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">out of {{ $results['total_questions'] }}</div>
+                        </div>
 
-                    <div class="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-2xl text-center">
-                        <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">{{ $this->formatTimeSpent($results['time_spent']) }}</div>
-                        <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Time Taken</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">Attempt #{{ $results['attempt_number'] }}</div>
+                        <div class="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-2xl text-center">
+                            <div class="text-3xl font-bold text-orange-600 dark:text-orange-400">{{ $this->formatTimeSpent($results['time_spent']) }}</div>
+                            <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Time Taken</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-500 mt-1">Attempt #{{ $results['attempt_number'] }}</div>
+                        </div>
                     </div>
-                </div>
+                @endif
 
                 {{-- Action Buttons --}}
                 <div class="flex flex-col sm:flex-row gap-4">
-                    @if(!$results['passed'])
+                    @if(!$pendingPublish && !$results['passed'])
                     <button wire:click="retakeExam" 
                             class="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold py-4 rounded-2xl transition-all">
                         <i class="fas fa-redo mr-2"></i>Retake Exam
@@ -166,10 +184,16 @@
     </div>
     @else
     
-    {{-- Main Exam Interface --}}
-    <div class="min-h-screen flex flex-col bg-white dark:bg-gray-900">
-        {{-- Top Navigation Bar --}}
-        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg z-20 flex-shrink-0">
+	    {{-- Main Exam Interface --}}
+	    <div class="min-h-screen flex flex-col bg-white dark:bg-gray-900">
+            @if($resumeBanner)
+                <div class="mx-4 mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
+                    {{ $resumeBanner }}
+                </div>
+            @endif
+
+	        {{-- Top Navigation Bar --}}
+	        <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg z-20 flex-shrink-0">
             <div class="flex items-center justify-between px-4 md:px-6 py-4">
                 {{-- Left: Question Counter with Mobile Dropdown --}}
                 <div class="flex items-center space-x-4">
@@ -680,6 +704,18 @@ document.addEventListener('alpine:init', () => {
             this.currentQuestionIndex = parseInt(el.getAttribute('data-current-index')) || 0;
             
             this.calculateProgress();
+
+            window.addEventListener('cbt-timer-sync', (event) => {
+                const nextSeconds = Number(event?.detail?.seconds);
+                if (!Number.isNaN(nextSeconds)) {
+                    this.timeRemaining = nextSeconds;
+                    this.calculateProgress();
+                }
+            });
+
+            window.addEventListener('cbt-timer-stop', () => {
+                this.stopInternalTimer();
+            });
             
             // Start internal countdown timer
             this.startInternalTimer();
@@ -807,58 +843,49 @@ document.addEventListener('alpine:init', () => {
 
     // Main CBT Exam Component
     Alpine.data('modernCbtExam', () => ({
-        // State
         timeRemaining: @js($timeRemaining ?? 0),
         timerInterval: null,
+        heartbeatInterval: null,
+        heartbeatInFlight: false,
         sidebarOpen: false,
         examStarted: @js($examStarted ?? false),
         examCompleted: @js($examCompleted ?? false),
         mathJaxReady: false,
         mathJaxQueue: [],
+        mathJaxTimeout: null,
 
         init() {
-            console.log('Alpine initialized', {
-                examStarted: this.examStarted,
-                examCompleted: this.examCompleted,
-                timeRemaining: this.timeRemaining
-            });
-
-            // Wait for MathJax to be ready
             this.initializeMathJax();
-
-            // Start timer if exam is active
-            if (this.examStarted && !this.examCompleted) {
-                this.startTimer();
-            }
-
-            // Listen for Livewire events
             this.setupEventListeners();
+            this.setupSecurityListeners();
+
+            if (this.isExamActive()) {
+                this.startTimer();
+                this.syncWithServer(true);
+            }
         },
 
         initializeMathJax() {
-            // Check if MathJax is already loaded
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 this.mathJaxReady = true;
                 this.processMathJaxQueue();
-                console.log('MathJax ready immediately');
-            } else {
-                // Wait for MathJax to load
-                document.addEventListener('mathjax-loaded', () => {
-                    this.mathJaxReady = true;
-                    this.processMathJaxQueue();
-                    console.log('MathJax loaded via event');
-                });
+                return;
             }
+
+            document.addEventListener('mathjax-loaded', () => {
+                this.mathJaxReady = true;
+                this.processMathJaxQueue();
+            });
         },
 
         processMathJaxQueue() {
-            if (!this.mathJaxReady || !this.mathJaxQueue.length) return;
-            
-            // Process all queued elements at once
+            if (!this.mathJaxReady || !this.mathJaxQueue.length) {
+                return;
+            }
+
             if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise(this.mathJaxQueue)
                     .then(() => {
-                        console.log(`MathJax rendered ${this.mathJaxQueue.length} elements`);
                         this.mathJaxQueue = [];
                     })
                     .catch(err => console.error('MathJax error:', err));
@@ -866,43 +893,41 @@ document.addEventListener('alpine:init', () => {
         },
 
         renderMathInElement(element) {
-            if (!element) return;
-            
-            if (this.mathJaxReady) {
-                // Render immediately if ready
-                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-                    MathJax.typesetPromise([element]).catch(err => {
-                        console.error('MathJax element error:', err);
-                    });
-                }
-            } else {
-                // Queue for later
-                this.mathJaxQueue.push(element);
+            if (!element) {
+                return;
             }
+
+            if (this.mathJaxReady && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                MathJax.typesetPromise([element]).catch(err => {
+                    console.error('MathJax element error:', err);
+                });
+                return;
+            }
+
+            this.mathJaxQueue.push(element);
         },
 
         setupEventListeners() {
-            // Livewire events
             Livewire.on('startTimer', () => {
                 this.examStarted = true;
+                this.examCompleted = false;
                 this.startTimer();
+                this.syncWithServer(true);
             });
-            
+
             Livewire.on('examCompleted', () => {
                 this.examCompleted = true;
                 this.stopTimer();
             });
-            
+
             Livewire.on('questionChanged', () => {
-                // Debounce MathJax rendering
                 clearTimeout(this.mathJaxTimeout);
                 this.mathJaxTimeout = setTimeout(() => {
                     this.renderMath();
                 }, 100);
             });
 
-            // Re-render math after Livewire updates (debounced)
-            Livewire.hook('morph.updated', ({ el, component }) => {
+            Livewire.hook('morph.updated', () => {
                 clearTimeout(this.mathJaxTimeout);
                 this.mathJaxTimeout = setTimeout(() => {
                     this.renderMath();
@@ -910,17 +935,75 @@ document.addEventListener('alpine:init', () => {
             });
         },
 
+        setupSecurityListeners() {
+            window.addEventListener('beforeunload', (event) => {
+                if (!this.isExamActive()) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.returnValue = 'You have an active CBT exam. Leaving now may trigger a security violation.';
+            });
+
+            document.addEventListener('visibilitychange', () => {
+                if (!this.isExamActive()) {
+                    return;
+                }
+
+                if (document.hidden) {
+                    this.$wire.call('handleSecurityViolation', 'visibility_change', 'tab_or_window_hidden');
+                }
+            });
+
+            window.addEventListener('blur', () => {
+                if (!this.isExamActive()) {
+                    return;
+                }
+
+                this.$wire.call('handleSecurityViolation', 'app_switch', 'window_blur');
+            });
+
+            window.addEventListener('keydown', (event) => {
+                if (!this.isExamActive()) {
+                    return;
+                }
+
+                const key = event.key.toLowerCase();
+                const isRefreshAttempt = key === 'f5' || ((event.ctrlKey || event.metaKey) && key === 'r');
+
+                if (isRefreshAttempt) {
+                    event.preventDefault();
+                    this.$wire.call('handleSecurityViolation', 'refresh_attempt', 'keyboard_shortcut');
+                }
+            });
+        },
+
+        isExamActive() {
+            return this.examStarted && !this.examCompleted;
+        },
+
         startTimer() {
-            if (this.timerInterval) clearInterval(this.timerInterval);
-            
+            this.stopTimer();
+
             this.timerInterval = setInterval(() => {
+                if (!this.isExamActive()) {
+                    return;
+                }
+
                 if (this.timeRemaining > 0) {
                     this.timeRemaining--;
-                } else {
-                    this.stopTimer();
-                    this.$wire.call('submitExam');
+                }
+
+                this.broadcastTimerSync();
+
+                if (this.timeRemaining <= 30 || this.timeRemaining % 15 === 0) {
+                    this.syncWithServer();
                 }
             }, 1000);
+
+            this.heartbeatInterval = setInterval(() => {
+                this.syncWithServer();
+            }, 15000);
         },
 
         stopTimer() {
@@ -928,13 +1011,61 @@ document.addEventListener('alpine:init', () => {
                 clearInterval(this.timerInterval);
                 this.timerInterval = null;
             }
+
+            if (this.heartbeatInterval) {
+                clearInterval(this.heartbeatInterval);
+                this.heartbeatInterval = null;
+            }
+
+            window.dispatchEvent(new CustomEvent('cbt-timer-stop'));
+        },
+
+        async syncWithServer(force = false) {
+            if (!this.isExamActive()) {
+                return;
+            }
+
+            if (this.heartbeatInFlight && !force) {
+                return;
+            }
+
+            this.heartbeatInFlight = true;
+            try {
+                const payload = await this.$wire.call('heartbeat', this.timeRemaining);
+                if (payload && typeof payload.time_remaining !== 'undefined') {
+                    this.timeRemaining = Number(payload.time_remaining) || 0;
+                    this.broadcastTimerSync();
+                }
+
+                if (payload?.reload) {
+                    window.location.reload();
+                    return;
+                }
+
+                if (payload?.exam_completed || payload?.auto_submitted) {
+                    this.examCompleted = true;
+                    this.stopTimer();
+                }
+            } catch (error) {
+                console.error('Timer sync failed', error);
+            } finally {
+                this.heartbeatInFlight = false;
+            }
+        },
+
+        broadcastTimerSync() {
+            window.dispatchEvent(new CustomEvent('cbt-timer-sync', {
+                detail: {
+                    seconds: this.timeRemaining,
+                },
+            }));
         },
 
         formatTime(seconds) {
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            
+
             if (hours > 0) {
                 return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }
@@ -946,9 +1077,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         renderMath() {
-            if (!this.mathJaxReady) return;
-            
-            // Find all math content elements
+            if (!this.mathJaxReady) {
+                return;
+            }
+
             const mathElements = document.querySelectorAll('.math-content');
             if (mathElements.length > 0 && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                 MathJax.typesetPromise(Array.from(mathElements))
@@ -967,4 +1099,3 @@ window.renderMathInElement = function(element) {
     }
 };
 </script>
-

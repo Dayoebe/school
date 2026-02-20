@@ -8,8 +8,30 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
+        // Schools table first (users.school_id depends on this table)
+        $createTable('schools', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('initials')->nullable();
+            $table->text('address')->nullable();
+            $table->string('email')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('code');
+            $table->string('logo_path')->nullable();
+            // These references are managed by later migrations where academic tables exist.
+            $table->unsignedBigInteger('academic_year_id')->nullable();
+            $table->unsignedBigInteger('semester_id')->nullable();
+            $table->timestamps();
+        });
+
         // Users table
-        Schema::create('users', function (Blueprint $table) {
+        $createTable('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -20,7 +42,7 @@ return new class extends Migration
             $table->rememberToken();
             $table->foreignId('current_team_id')->nullable();
             $table->string('profile_photo_path', 2048)->nullable();
-            $table->foreignId('school_id')->nullable()->constrained()->nullOnDelete()->onUpdate('cascade');
+            $table->foreignId('school_id')->nullable()->constrained('schools')->nullOnDelete()->cascadeOnUpdate();
             $table->string('gender')->nullable();
             $table->date('birthday')->nullable();
             $table->string('nationality')->nullable();
@@ -35,30 +57,15 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Schools table
-        Schema::create('schools', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('initials')->nullable();
-            $table->text('address')->nullable();
-            $table->string('email')->nullable();
-            $table->string('phone')->nullable();
-            $table->string('code');
-            $table->string('logo_path')->nullable();
-            $table->foreignId('academic_year_id')->nullable()->constrained()->onDelete('set null')->onUpdate('set null');
-            $table->foreignId('semester_id')->nullable()->constrained()->onDelete('set null')->onUpdate('set null');
-            $table->timestamps();
-        });
-
         // Password resets
-        Schema::create('password_resets', function (Blueprint $table) {
+        $createTable('password_resets', function (Blueprint $table) {
             $table->string('email')->index();
             $table->string('token');
             $table->timestamp('created_at')->nullable();
         });
 
         // Failed jobs
-        Schema::create('failed_jobs', function (Blueprint $table) {
+        $createTable('failed_jobs', function (Blueprint $table) {
             $table->id();
             $table->string('uuid')->unique();
             $table->text('connection');
@@ -69,7 +76,7 @@ return new class extends Migration
         });
 
         // Personal access tokens
-        Schema::create('personal_access_tokens', function (Blueprint $table) {
+        $createTable('personal_access_tokens', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->morphs('tokenable');
             $table->string('name');
@@ -80,7 +87,7 @@ return new class extends Migration
         });
 
         // Sessions
-        Schema::create('sessions', function (Blueprint $table) {
+        $createTable('sessions', function (Blueprint $table) {
             $table->string('id')->primary();
             $table->foreignId('user_id')->nullable()->index();
             $table->string('ip_address', 45)->nullable();
@@ -90,7 +97,7 @@ return new class extends Migration
         });
 
         // Statuses (for polymorphic status tracking)
-        Schema::create('statuses', function (Blueprint $table) {
+        $createTable('statuses', function (Blueprint $table) {
             $table->increments('id');
             $table->string('name');
             $table->text('reason')->nullable();

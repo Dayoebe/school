@@ -66,6 +66,12 @@
                                     <span class="text-themed-tertiary">Max Attempts:</span>
                                     <p class="text-themed-primary">{{ $assessment->formatted_max_attempts }}</p>
                                 </div>
+                                <div>
+                                    <span class="text-themed-tertiary">Results:</span>
+                                    <p class="{{ $assessment->results_published_at ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                        {{ $assessment->results_published_at ? 'Published' : 'Hidden' }}
+                                    </p>
+                                </div>
                                 @if($assessment->shuffle_questions)
                                 <div class="col-span-2">
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
@@ -86,6 +92,19 @@
                                     title="Manage Questions">
                                     <i class="fas fa-question-circle"></i>
                                 </button>
+                                @if($assessment->results_published_at)
+                                    <button wire:click="unpublishResults({{ $assessment->id }})"
+                                        class="text-amber-600 hover:text-amber-800 p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                        title="Unpublish Results">
+                                        <i class="fas fa-eye-slash"></i>
+                                    </button>
+                                @else
+                                    <button wire:click="publishResults({{ $assessment->id }})"
+                                        class="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                        title="Publish Results">
+                                        <i class="fas fa-bullhorn"></i>
+                                    </button>
+                                @endif
                                 <button wire:click="editAssessment({{ $assessment->id }})"
                                     class="text-themed-secondary hover:text-themed-primary p-2 rounded-lg hover:bg-themed-secondary transition-colors"
                                     title="Edit">
@@ -143,6 +162,10 @@
                                                 <i class="fas fa-random mr-1"></i>Shuffled
                                             </span>
                                             @endif
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->results_published_at ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300' }}">
+                                                <i class="fas {{ $assessment->results_published_at ? 'fa-bullhorn' : 'fa-eye-slash' }} mr-1"></i>
+                                                {{ $assessment->results_published_at ? 'Results Published' : 'Results Hidden' }}
+                                            </span>
                                         </div>
                                     </td>
                                     <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
@@ -157,6 +180,19 @@
                                                 title="Manage Questions">
                                                 <i class="fas fa-question-circle"></i>
                                             </button>
+                                            @if($assessment->results_published_at)
+                                                <button wire:click="unpublishResults({{ $assessment->id }})"
+                                                    class="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                    title="Unpublish Results">
+                                                    <i class="fas fa-eye-slash"></i>
+                                                </button>
+                                            @else
+                                                <button wire:click="publishResults({{ $assessment->id }})"
+                                                    class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                    title="Publish Results">
+                                                    <i class="fas fa-bullhorn"></i>
+                                                </button>
+                                            @endif
                                             <button wire:click="editAssessment({{ $assessment->id }})"
                                                 class="text-themed-secondary hover:text-themed-primary p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
                                                 title="Edit">

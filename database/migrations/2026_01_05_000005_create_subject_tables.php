@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
         // Subjects
-        Schema::create('subjects', function (Blueprint $table) {
+        $createTable('subjects', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('short_name');
@@ -25,7 +31,7 @@ return new class extends Migration
         });
 
         // Section subject pivot (for section-specific subjects)
-        Schema::create('section_subject', function (Blueprint $table) {
+        $createTable('section_subject', function (Blueprint $table) {
             $table->id();
             $table->foreignId('section_id')->constrained()->onDelete('cascade');
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');
@@ -33,7 +39,7 @@ return new class extends Migration
         });
 
         // Class subject pivot (for general subjects assigned to classes)
-        Schema::create('class_subject', function (Blueprint $table) {
+        $createTable('class_subject', function (Blueprint $table) {
             $table->id();
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');
             $table->foreignId('my_class_id')->constrained()->onDelete('cascade');
@@ -43,7 +49,7 @@ return new class extends Migration
         });
 
         // Subject teacher pivot (replaces subject_user with class specificity)
-        Schema::create('subject_teacher', function (Blueprint $table) {
+        $createTable('subject_teacher', function (Blueprint $table) {
             $table->id();
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
@@ -55,7 +61,7 @@ return new class extends Migration
         });
 
         // Student subject enrollment
-        Schema::create('student_subject', function (Blueprint $table) {
+        $createTable('student_subject', function (Blueprint $table) {
             $table->id();
             $table->foreignId('student_record_id')->constrained()->onDelete('cascade');
             $table->foreignId('subject_id')->constrained()->onDelete('cascade');
@@ -66,7 +72,7 @@ return new class extends Migration
         });
 
         // Syllabi
-        Schema::create('syllabi', function (Blueprint $table) {
+        $createTable('syllabi', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->longText('description')->nullable();

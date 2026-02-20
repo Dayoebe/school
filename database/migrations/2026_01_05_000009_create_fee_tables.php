@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
         // Fee categories
-        Schema::create('fee_categories', function (Blueprint $table) {
+        $createTable('fee_categories', function (Blueprint $table) {
             $table->id();
             $table->foreignId('school_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->string('name');
@@ -19,7 +25,7 @@ return new class extends Migration
         });
 
         // Fees
-        Schema::create('fees', function (Blueprint $table) {
+        $createTable('fees', function (Blueprint $table) {
             $table->id();
             $table->foreignId('fee_category_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->string('name', 1024);
@@ -29,7 +35,7 @@ return new class extends Migration
         });
 
         // Fee invoices
-        Schema::create('fee_invoices', function (Blueprint $table) {
+        $createTable('fee_invoices', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('user_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
@@ -41,7 +47,7 @@ return new class extends Migration
         });
 
         // Fee invoice records (line items)
-        Schema::create('fee_invoice_records', function (Blueprint $table) {
+        $createTable('fee_invoice_records', function (Blueprint $table) {
             $table->id();
             $table->foreignId('fee_invoice_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('fee_id')->constrained()->onUpdate('cascade')->onDelete('cascade');

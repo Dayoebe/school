@@ -21,8 +21,11 @@ class CbtViewer extends Component
 
     public function render()
     {
+        $canViewUnpublished = $this->canViewUnpublishedResults();
+
         // Get ONLY standalone CBT assessments where user has attempted
         $userAssessments = $this->assessmentsForCurrentSchool()
+            ->when(!$canViewUnpublished, fn ($query) => $query->whereNotNull('results_published_at'))
             ->whereHas('studentAnswers', function($query) {
                 $query->where('user_id', Auth::id())
                       ->whereNotNull('submitted_at');
@@ -39,7 +42,9 @@ class CbtViewer extends Component
 
     public function viewAssessmentDetails($assessmentId)
     {
-        $this->selectedAssessment = $this->assessmentsForCurrentSchool()->with([
+        $this->selectedAssessment = $this->assessmentsForCurrentSchool()
+            ->when(!$this->canViewUnpublishedResults(), fn ($query) => $query->whereNotNull('results_published_at'))
+            ->with([
             'studentAnswers' => function($query) {
                 $query->where('user_id', Auth::id())
                       ->whereNotNull('submitted_at')
@@ -131,5 +136,10 @@ class CbtViewer extends Component
         return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
             $classGroupQuery->where('school_id', $schoolId);
         });
+    }
+
+    protected function canViewUnpublishedResults(): bool
+    {
+        return (bool) auth()->user()?->can('manage cbt');
     }
 }

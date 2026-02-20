@@ -40,6 +40,10 @@
                                     {{ $assessment->user_result['passed'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
                                     {{ $assessment->user_result['passed'] ? 'PASSED' : 'FAILED' }}
                                 </span>
+                            @elseif($assessment->has_submitted_attempt && !$assessment->results_visible)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
+                                    RESULT PENDING
+                                </span>
                             @endif
                         </div>
 
@@ -94,6 +98,11 @@
                                         {{ $assessment->user_result['percentage'] }}%
                                     </span>
                                 </div>
+                            </div>
+                        @elseif($assessment->has_submitted_attempt && !$assessment->results_visible)
+                            <div class="bg-themed-tertiary rounded-lg p-3 mb-4 text-xs text-amber-700 dark:text-amber-300">
+                                <i class="fas fa-hourglass-half mr-1"></i>
+                                You have completed attempt(s). Results will appear after school publishes them.
                             </div>
                         @endif
 

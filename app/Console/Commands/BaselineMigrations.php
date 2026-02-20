@@ -10,6 +10,8 @@ use SplFileInfo;
 
 class BaselineMigrations extends Command
 {
+    private const DEFAULT_BASELINE_CUTOFF = '2026_01_05_000010_update_polymorphic_types';
+
     /**
      * The name and signature of the console command.
      *
@@ -52,8 +54,8 @@ class BaselineMigrations extends Command
         }
 
         if ($upTo === '') {
-            $this->error('Could not determine baseline cutoff. Use --up-to=<migration_filename>.');
-            return self::FAILURE;
+            $upTo = self::DEFAULT_BASELINE_CUTOFF;
+            $this->warn('No existing migration rows detected. Falling back to default cutoff: ' . $upTo);
         }
 
         $existing = DB::table('migrations')->pluck('migration')

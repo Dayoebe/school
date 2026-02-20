@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
         // Exams
-        Schema::create('exams', function (Blueprint $table) {
+        $createTable('exams', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->longText('description')->nullable();
@@ -22,7 +28,7 @@ return new class extends Migration
         });
 
         // Exam slots
-        Schema::create('exam_slots', function (Blueprint $table) {
+        $createTable('exam_slots', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('description')->nullable();
@@ -32,7 +38,7 @@ return new class extends Migration
         });
 
         // Exam records
-        Schema::create('exam_records', function (Blueprint $table) {
+        $createTable('exam_records', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->unsignedBigInteger('exam_slot_id');

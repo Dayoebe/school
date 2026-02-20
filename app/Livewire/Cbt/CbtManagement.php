@@ -216,6 +216,38 @@ class CbtManagement extends Component
         }
     }
 
+    public function publishResults($assessmentId): void
+    {
+        $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $assessment->update([
+            'results_published_at' => now(),
+            'results_published_by' => auth()->id(),
+        ]);
+
+        session()->flash('message', 'CBT results published for students.');
+    }
+
+    public function unpublishResults($assessmentId): void
+    {
+        $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $assessment->update([
+            'results_published_at' => null,
+            'results_published_by' => null,
+        ]);
+
+        session()->flash('message', 'CBT results unpublished.');
+    }
+
     public function manageQuestions($assessmentId)
     {
         $this->selectedAssessment = $this->assessmentsForCurrentSchool()

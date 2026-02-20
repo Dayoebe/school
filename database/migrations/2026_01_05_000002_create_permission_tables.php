@@ -20,7 +20,13 @@ return new class extends Migration
             throw new \Exception('Error: team_foreign_key on config/permission.php not loaded. Run [php artisan config:clear] and try again.');
         }
 
-        Schema::create($tableNames['permissions'], function (Blueprint $table) {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
+        $createTable($tableNames['permissions'], function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name');
             $table->string('guard_name');
@@ -28,7 +34,7 @@ return new class extends Migration
             $table->unique(['name', 'guard_name']);
         });
 
-        Schema::create($tableNames['roles'], function (Blueprint $table) use ($teams, $columnNames) {
+        $createTable($tableNames['roles'], function (Blueprint $table) use ($teams, $columnNames) {
             $table->bigIncrements('id');
             if ($teams || config('permission.testing')) {
                 $table->unsignedBigInteger($columnNames['team_foreign_key'])->nullable();
@@ -44,7 +50,7 @@ return new class extends Migration
             }
         });
 
-        Schema::create($tableNames['model_has_permissions'], function (Blueprint $table) use ($tableNames, $columnNames, $teams) {
+        $createTable($tableNames['model_has_permissions'], function (Blueprint $table) use ($tableNames, $columnNames, $teams) {
             $table->unsignedBigInteger(PermissionRegistrar::$pivotPermission);
             $table->string('model_type');
             $table->unsignedBigInteger($columnNames['model_morph_key']);
@@ -69,7 +75,7 @@ return new class extends Migration
             }
         });
 
-        Schema::create($tableNames['model_has_roles'], function (Blueprint $table) use ($tableNames, $columnNames, $teams) {
+        $createTable($tableNames['model_has_roles'], function (Blueprint $table) use ($tableNames, $columnNames, $teams) {
             $table->unsignedBigInteger(PermissionRegistrar::$pivotRole);
             $table->string('model_type');
             $table->unsignedBigInteger($columnNames['model_morph_key']);
@@ -94,7 +100,7 @@ return new class extends Migration
             }
         });
 
-        Schema::create($tableNames['role_has_permissions'], function (Blueprint $table) use ($tableNames) {
+        $createTable($tableNames['role_has_permissions'], function (Blueprint $table) use ($tableNames) {
             $table->unsignedBigInteger(PermissionRegistrar::$pivotPermission);
             $table->unsignedBigInteger(PermissionRegistrar::$pivotRole);
 
@@ -111,8 +117,7 @@ return new class extends Migration
             $table->primary([PermissionRegistrar::$pivotPermission, PermissionRegistrar::$pivotRole], 'role_has_permissions_permission_id_role_id_primary');
         });
 
-        // Account applications
-        Schema::create('account_applications', function (Blueprint $table) {
+        $createTable('account_applications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
             $table->foreignId('role_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
@@ -133,10 +138,10 @@ return new class extends Migration
         }
 
         Schema::dropIfExists('account_applications');
-        Schema::drop($tableNames['role_has_permissions']);
-        Schema::drop($tableNames['model_has_roles']);
-        Schema::drop($tableNames['model_has_permissions']);
-        Schema::drop($tableNames['roles']);
-        Schema::drop($tableNames['permissions']);
+        Schema::dropIfExists($tableNames['role_has_permissions']);
+        Schema::dropIfExists($tableNames['model_has_roles']);
+        Schema::dropIfExists($tableNames['model_has_permissions']);
+        Schema::dropIfExists($tableNames['roles']);
+        Schema::dropIfExists($tableNames['permissions']);
     }
 };

@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\Subject;
+use App\Models\User;
 
 class Assessment extends Model
 {
@@ -40,6 +41,8 @@ class Assessment extends Model
         'max_attempts',
         'shuffle_questions',
         'shuffle_options',
+        'results_published_at',
+        'results_published_by',
     ];
 
     protected $casts = [
@@ -53,6 +56,7 @@ class Assessment extends Model
         'max_attempts' => 'integer',
         'shuffle_questions' => 'boolean',
         'shuffle_options' => 'boolean',
+        'results_published_at' => 'datetime',
     ];
 
     public function course()
@@ -78,6 +82,16 @@ class Assessment extends Model
     public function studentAnswers()
     {
         return $this->hasMany(StudentAnswer::class);
+    }
+
+    public function attemptSessions()
+    {
+        return $this->hasMany(AttemptSession::class, 'assessment_id');
+    }
+
+    public function resultsPublishedBy()
+    {
+        return $this->belongsTo(User::class, 'results_published_by');
     }
 
     protected static function boot()
@@ -126,6 +140,11 @@ class Assessment extends Model
      */
     public function canUserTakeAssessment($userId)
     {
+        $activeSession = $this->getActiveAttemptSession($userId);
+        if ($activeSession && !$activeSession->isExpired()) {
+            return [true, 'You have an in-progress attempt that can be resumed'];
+        }
+
         // If max_attempts is null, unlimited attempts allowed
         if ($this->max_attempts === null) {
             return [true, 'You can take this assessment'];
@@ -250,11 +269,45 @@ class Assessment extends Model
      */
     public function getNextAttemptNumber($userId)
     {
-        $lastAttempt = $this->studentAnswers()
+        $lastSubmittedAttempt = $this->studentAnswers()
+            ->where('user_id', $userId)
+            ->whereNotNull('submitted_at')
+            ->max('attempt_number');
+
+        $lastSessionAttempt = $this->attemptSessions()
             ->where('user_id', $userId)
             ->max('attempt_number');
 
-        return ($lastAttempt ?? 0) + 1;
+        $lastAttempt = max((int) ($lastSubmittedAttempt ?? 0), (int) ($lastSessionAttempt ?? 0));
+
+        return $lastAttempt + 1;
+    }
+
+    public function getActiveAttemptSession($userId): ?AttemptSession
+    {
+        return $this->attemptSessions()
+            ->where('user_id', $userId)
+            ->where('status', 'in_progress')
+            ->latest('started_at')
+            ->first();
+    }
+
+    public function isResultPublished(): bool
+    {
+        return $this->results_published_at !== null;
+    }
+
+    public function canUserViewResults(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($user->can('manage cbt')) {
+            return true;
+        }
+
+        return $this->isResultPublished();
     }
 
     /**

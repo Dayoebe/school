@@ -70,7 +70,7 @@ class InitCommand extends Command
             $this->setAppEnvironmentDetails();
             $this->buildNodeDependencies();
             $this->setDatabaseCredentials();
-            $this->call('migrate', ['--force' => true]);
+            $this->call('app:migrate-safe', ['--force' => true]);
             $this->seedDatabase();
             $this->setMailCredentials();
             $this->createSuperAdmin();

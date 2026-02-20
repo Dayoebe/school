@@ -8,8 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $createTable = static function (string $tableName, callable $callback): void {
+            if (!Schema::hasTable($tableName)) {
+                Schema::create($tableName, $callback);
+            }
+        };
+
         // Class groups
-        Schema::create('class_groups', function (Blueprint $table) {
+        $createTable('class_groups', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('school_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
@@ -18,7 +24,7 @@ return new class extends Migration
         });
 
         // My classes
-        Schema::create('my_classes', function (Blueprint $table) {
+        $createTable('my_classes', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('class_group_id')->constrained()->onDelete('cascade')->onUpdate('cascade');
@@ -28,7 +34,7 @@ return new class extends Migration
         });
 
         // Sections
-        Schema::create('sections', function (Blueprint $table) {
+        $createTable('sections', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('my_class_id')->constrained()->onUpdate('cascade')->onDelete('cascade');
@@ -37,7 +43,7 @@ return new class extends Migration
         });
 
         // Academic years
-        Schema::create('academic_years', function (Blueprint $table) {
+        $createTable('academic_years', function (Blueprint $table) {
             $table->id();
             $table->string('start_year');
             $table->string('stop_year');
@@ -46,7 +52,7 @@ return new class extends Migration
         });
 
         // Semesters
-        Schema::create('semesters', function (Blueprint $table) {
+        $createTable('semesters', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->foreignId('academic_year_id')->nullable()->constrained()->onDelete('cascade')->onUpdate('cascade');
@@ -56,7 +62,7 @@ return new class extends Migration
         });
 
         // Grade systems
-        Schema::create('grade_systems', function (Blueprint $table) {
+        $createTable('grade_systems', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('remark')->nullable();
@@ -67,14 +73,14 @@ return new class extends Migration
         });
 
         // Weekdays
-        Schema::create('weekdays', function (Blueprint $table) {
+        $createTable('weekdays', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->timestamps();
         });
 
         // Notices
-        Schema::create('notices', function (Blueprint $table) {
+        $createTable('notices', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->text('content');
@@ -87,7 +93,7 @@ return new class extends Migration
         });
 
         // Term settings
-        Schema::create('term_settings', function (Blueprint $table) {
+        $createTable('term_settings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('academic_year_id')->constrained()->onDelete('cascade');
             $table->foreignId('semester_id')->constrained()->onDelete('cascade');
@@ -100,7 +106,7 @@ return new class extends Migration
         });
 
         // Class teacher pivot
-        Schema::create('class_teacher', function (Blueprint $table) {
+        $createTable('class_teacher', function (Blueprint $table) {
             $table->id();
             $table->foreignId('class_id')->constrained('my_classes')->onDelete('cascade');
             $table->foreignId('teacher_id')->constrained('users')->onDelete('cascade');

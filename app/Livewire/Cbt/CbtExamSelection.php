@@ -13,15 +13,20 @@ class CbtExamSelection extends Component
 {
     public function render()
     {
+        $canViewUnpublished = $this->canViewUnpublishedResults();
+
         // Get only standalone CBT assessments
         $availableAssessments = $this->assessmentsForCurrentSchool()
             ->with(['questions', 'course'])
             ->whereHas('questions') // Only show assessments that have questions
             ->get()
-            ->map(function($assessment) {
+            ->map(function($assessment) use ($canViewUnpublished) {
                 // Check if user has attempted this assessment
                 $userResult = $assessment->getStudentResults(Auth::id());
-                $assessment->user_result = $userResult;
+                $resultsVisible = $canViewUnpublished || $assessment->isResultPublished();
+                $assessment->results_visible = $resultsVisible;
+                $assessment->user_result = $resultsVisible ? $userResult : null;
+                $assessment->has_submitted_attempt = $userResult !== null;
                 
                 // Get attempt count and check if can take
                 $attemptCount = $assessment->getStudentAttemptCount(Auth::id());
@@ -90,5 +95,10 @@ class CbtExamSelection extends Component
         return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
             $classGroupQuery->where('school_id', $schoolId);
         });
+    }
+
+    protected function canViewUnpublishedResults(): bool
+    {
+        return (bool) auth()->user()?->can('manage cbt');
     }
 }
