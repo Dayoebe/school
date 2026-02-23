@@ -11,20 +11,24 @@ class StoreNoticeRequest extends FormRequest
      *
      * @return bool
      */
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, mixed>
      */
-    public function rules()
+    public function rules(): array
     {
         return [
             'title'      => 'required|string|max:255',
             'content'    => 'required|string',
             'attachment' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx|max:10000',
-            'start_date' => 'date',
-            'stop_date'  => 'date|after:start_date',
+            'start_date' => 'required|date',
+            'stop_date'  => 'required|date|after_or_equal:start_date',
         ];
     }
 }

@@ -13,6 +13,10 @@ class NoticeController extends Controller
 {
     public function __construct()
     {
+        $this->middleware('permission:read notice')->only(['index', 'show']);
+        $this->middleware('permission:create notice')->only(['create', 'store']);
+        $this->middleware('permission:update notice')->only(['edit', 'update']);
+        $this->middleware('permission:delete notice')->only(['destroy']);
         $this->authorizeResource(Notice::class, 'notice');
     }
 
@@ -37,9 +41,9 @@ class NoticeController extends Controller
      */
     public function store(StoreNoticeRequest $request): RedirectResponse
     {
-        $data = $request->except('_token');
+        $data = $request->validated();
         $attachmentPath = isset($data['attachment'])
-            ? $data['attachment']->store('notice/', 'public')
+            ? $data['attachment']->store('notices/', 'public')
             : null;
 
         Notice::create([
@@ -51,7 +55,7 @@ class NoticeController extends Controller
             'school_id' => auth()->user()->school_id,
         ]);
 
-        return back()->with('success', 'Notice created successfully');
+        return redirect()->route('notices.index')->with('success', 'Notice created successfully');
     }
 
     /**

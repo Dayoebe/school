@@ -3,7 +3,7 @@
         <h4 class="card-title">Notices</h4>
     </div>
     <div class="card-body">
-        @can (['update notice', 'delete notice'])
+        @canany(['update notice', 'delete notice'])
             <livewire:common.datatable :model="App\Models\Notice::class" 
             uniqueId="List-notice-table"
             :filters="[
@@ -16,7 +16,7 @@
                ['name' => 'actions' , 'type' => 'dropdown' , 'links' => [
                     ['href' => 'notices.show', 'text' => 'View', 'icon' => 'fas fa-eye'],
                ]],
-               ['type' => 'delete' , 'name' => 'delete', 'action' => 'notices.destroy']
+               ['type' => 'delete' , 'name' => 'delete', 'action' => 'notices.destroy', 'can' => 'delete notice']
             ]"
             />
         @else
@@ -32,6 +32,6 @@
             ]],
             ]"
             />
-        @endcan
+        @endcanany
     </div>
 </div>

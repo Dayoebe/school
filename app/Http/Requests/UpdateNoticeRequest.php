@@ -11,9 +11,9 @@ class UpdateNoticeRequest extends FormRequest
      *
      * @return bool
      */
-    public function authorize()
+    public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -21,10 +21,14 @@ class UpdateNoticeRequest extends FormRequest
      *
      * @return array<string, mixed>
      */
-    public function rules()
+    public function rules(): array
     {
         return [
-            //
+            'title'      => 'required|string|max:255',
+            'content'    => 'required|string',
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx|max:10000',
+            'start_date' => 'required|date',
+            'stop_date'  => 'required|date|after_or_equal:start_date',
         ];
     }
 }
