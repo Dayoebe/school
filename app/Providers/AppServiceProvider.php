@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Support\SiteSettings;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\View;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +47,14 @@ class AppServiceProvider extends ServiceProvider
             if ($user->hasAnyRole(['super-admin', 'super_admin'])) {
                 return true;
             }
+        });
+
+        View::composer(['layouts.app', 'partials.header', 'partials.footer', 'livewire.site.*'], function ($view): void {
+            $school = SiteSettings::resolveSchool();
+            $settings = SiteSettings::forSchool($school?->id);
+
+            $view->with('publicSiteSchool', $school)
+                ->with('publicSiteSettings', $settings);
         });
     }
 }

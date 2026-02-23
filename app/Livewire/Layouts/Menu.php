@@ -12,7 +12,22 @@ class Menu extends Component
 
     public function mount(): void
     {
-        $this->menu = [
+        $this->menu = array_merge(
+            $this->overviewMenu(),
+            $this->learningMenu(),
+            $this->schoolManagementMenu(),
+            $this->academicsMenu(),
+            $this->assessmentMenu(),
+            $this->financeMenu(),
+            $this->engagementMenu(),
+            $this->plannedFeaturesMenu(),
+            $this->accountMenu(),
+        );
+    }
+
+    protected function overviewMenu(): array
+    {
+        return [
             ['header' => 'Overview'],
             [
                 'type' => 'menu-item',
@@ -21,54 +36,13 @@ class Menu extends Component
                 'route' => 'dashboard',
                 'permissions' => ['view dashboard'],
             ],
-            [
-                'type' => 'menu-item',
-                'icon' => 'fas fa-bullhorn',
-                'text' => 'Notices',
-                'route' => 'notices.index',
-                'permissions' => ['read notice', 'create notice', 'update notice'],
-            ],
-            [
-                'type' => 'menu-item',
-                'icon' => 'fas fa-envelope',
-                'text' => 'Contact Messages',
-                'route' => 'contacts.messages.index',
-                'permissions' => ['read contact message'],
-            ],
-            [
-                'type' => 'menu-item',
-                'icon' => 'fas fa-images',
-                'text' => 'Gallery Manager',
-                'route' => 'gallery.manage',
-                'permissions' => ['manage gallery'],
-            ],
-            [
-                'type' => 'menu-item',
-                'text' => 'CBT',
-                'icon' => 'fas fa-laptop-code',
-                'submenu' => [
-                    [
-                        'type' => 'menu-item',
-                        'text' => 'Take CBT Exams',
-                        'route' => 'cbt.exams',
-                        'permissions' => ['take cbt exam'],
-                    ],
-                    [
-                        'type' => 'menu-item',
-                        'text' => 'CBT Results',
-                        'route' => 'cbt.viewer',
-                        'permissions' => ['view cbt result'],
-                    ],
-                    [
-                        'type' => 'menu-item',
-                        'text' => 'Manage CBT',
-                        'route' => 'cbt.manage',
-                        'permissions' => ['manage cbt'],
-                    ],
-                ],
-            ],
+        ];
+    }
 
-            ['header' => 'Student & Parent'],
+    protected function learningMenu(): array
+    {
+        return [
+            ['header' => 'Learning'],
             [
                 'type' => 'menu-item',
                 'text' => 'My Learning',
@@ -106,7 +80,12 @@ class Menu extends Component
                     ],
                 ],
             ],
+        ];
+    }
 
+    protected function schoolManagementMenu(): array
+    {
+        return [
             ['header' => 'School Management'],
             [
                 'type' => 'menu-item',
@@ -115,42 +94,42 @@ class Menu extends Component
                 'permissions' => ['read school', 'create school', 'manage school settings'],
                 'submenu' => [
                     [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Schools',
+                        'type' => 'menu-item',
+                        'text' => 'View Schools',
                         'route' => 'schools.index',
                         'permissions' => ['read school'],
                     ],
                     [
-                        'type'  => 'menu-item',
-                        'text'  => 'Create School',
+                        'type' => 'menu-item',
+                        'text' => 'Create School',
                         'route' => 'schools.index',
                         'params' => ['mode' => 'create'],
                         'permissions' => ['create school'],
                     ],
-                    [
-                        'type'  => 'menu-item',
-                        'icon'  => 'fas fa-cog',
-                        'text'  => 'School Settings',
-                        'route' => 'schools.settings',
-                        'permissions' => ['manage school settings'],
-                    ],
                 ],
             ],
             [
-                'type'    => 'menu-item',
-                'text'    => 'Admins',
-                'icon'    => 'fas fa-user-shield',
+                'type' => 'menu-item',
+                'text' => 'Website Settings',
+                'icon' => 'fas fa-sliders-h',
+                'route' => 'schools.settings',
+                'permissions' => ['manage school settings'],
+            ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Admins',
+                'icon' => 'fas fa-user-shield',
                 'permissions' => ['read admin', 'create admin'],
                 'submenu' => [
                     [
-                        'type'  => 'menu-item',
-                        'text'  => 'View Admins',
+                        'type' => 'menu-item',
+                        'text' => 'View Admins',
                         'route' => 'admins.index',
                         'permissions' => ['read admin'],
                     ],
                     [
-                        'type'  => 'menu-item',
-                        'text'  => 'Create Admin',
+                        'type' => 'menu-item',
+                        'text' => 'Create Admin',
                         'route' => 'admins.index',
                         'params' => ['mode' => 'create'],
                         'permissions' => ['create admin'],
@@ -265,7 +244,12 @@ class Menu extends Component
                     ],
                 ],
             ],
+        ];
+    }
 
+    protected function academicsMenu(): array
+    {
+        return [
             ['header' => 'Academics'],
             [
                 'type' => 'menu-item',
@@ -380,14 +364,38 @@ class Menu extends Component
                     ],
                 ],
             ],
+        ];
+    }
 
+    protected function assessmentMenu(): array
+    {
+        return [
             ['header' => 'Assessment & Results'],
             [
                 'type' => 'menu-item',
-                'text' => 'Teacher Result Entry',
-                'icon' => 'fas fa-pen',
-                'route' => 'results.index',
-                'permissions' => ['upload result'],
+                'text' => 'CBT',
+                'icon' => 'fas fa-laptop-code',
+                'permissions' => ['take cbt exam', 'view cbt result', 'manage cbt'],
+                'submenu' => [
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Take CBT Exams',
+                        'route' => 'cbt.exams',
+                        'permissions' => ['take cbt exam'],
+                    ],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'CBT Results',
+                        'route' => 'cbt.viewer',
+                        'permissions' => ['view cbt result'],
+                    ],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Manage CBT',
+                        'route' => 'cbt.manage',
+                        'permissions' => ['manage cbt'],
+                    ],
+                ],
             ],
             [
                 'type' => 'menu-item',
@@ -517,7 +525,19 @@ class Menu extends Component
                     ],
                 ],
             ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Teacher Result Entry',
+                'icon' => 'fas fa-pen',
+                'route' => 'results.index',
+                'permissions' => ['upload result'],
+            ],
+        ];
+    }
 
+    protected function financeMenu(): array
+    {
+        return [
             ['header' => 'Finance'],
             [
                 'type' => 'menu-item',
@@ -563,7 +583,92 @@ class Menu extends Component
                     ],
                 ],
             ],
+        ];
+    }
 
+    protected function engagementMenu(): array
+    {
+        return [
+            ['header' => 'Communication & Media'],
+            [
+                'type' => 'menu-item',
+                'icon' => 'fas fa-bullhorn',
+                'text' => 'Notices',
+                'route' => 'notices.index',
+                'permissions' => ['read notice', 'create notice', 'update notice'],
+            ],
+            [
+                'type' => 'menu-item',
+                'icon' => 'fas fa-envelope',
+                'text' => 'Contact Messages',
+                'route' => 'contacts.messages.index',
+                'permissions' => ['read contact message'],
+            ],
+            [
+                'type' => 'menu-item',
+                'icon' => 'fas fa-images',
+                'text' => 'Gallery Manager',
+                'route' => 'gallery.manage',
+                'permissions' => ['manage gallery'],
+            ],
+        ];
+    }
+
+    protected function plannedFeaturesMenu(): array
+    {
+        return [
+            ['header' => 'Planned Features'],
+            [
+                'type' => 'menu-item',
+                'text' => 'Attendance & Discipline',
+                'icon' => 'fas fa-user-check',
+                'permissions' => ['view dashboard'],
+                'submenu' => [
+                    ['type' => 'menu-item', 'text' => 'Daily Attendance', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Behavior Log', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Parent Alerts', 'coming_soon' => true],
+                ],
+            ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Teaching & Learning',
+                'icon' => 'fas fa-book-reader',
+                'permissions' => ['view dashboard'],
+                'submenu' => [
+                    ['type' => 'menu-item', 'text' => 'Assignments', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Lesson Plans', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Digital Library', 'coming_soon' => true],
+                ],
+            ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Operations',
+                'icon' => 'fas fa-sitemap',
+                'permissions' => ['view dashboard'],
+                'submenu' => [
+                    ['type' => 'menu-item', 'text' => 'Transport', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Hostel', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Clinic', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Inventory', 'coming_soon' => true],
+                ],
+            ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Reports & Insights',
+                'icon' => 'fas fa-chart-pie',
+                'permissions' => ['view dashboard'],
+                'submenu' => [
+                    ['type' => 'menu-item', 'text' => 'Executive Reports', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Enrollment Analytics', 'coming_soon' => true],
+                    ['type' => 'menu-item', 'text' => 'Performance Trends', 'coming_soon' => true],
+                ],
+            ],
+        ];
+    }
+
+    protected function accountMenu(): array
+    {
+        return [
             ['header' => 'Account'],
             [
                 'type' => 'menu-item',
@@ -590,7 +695,7 @@ class Menu extends Component
             return false;
         }
 
-        if (!empty($item['route']) && !Route::has($item['route'])) {
+        if (empty($item['coming_soon']) && !empty($item['route']) && !Route::has($item['route'])) {
             return false;
         }
 

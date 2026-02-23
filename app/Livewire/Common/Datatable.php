@@ -80,14 +80,19 @@ class Datatable extends Component
         }
     
         foreach ($this->filters as $filter) {
-            // Check if the method exists on the query before calling it
-            if (method_exists($query, $filter['name'])) {
-                $query = call_user_func_array([$query, $filter['name']], $filter['arguments'] ?? []);
-            } else {
-                // Log or handle the error gracefully
-                \Log::warning("Method {$filter['name']} does not exist on the query builder.");
-                // You could also throw a more specific exception
-                // throw new \BadMethodCallException("Method {$filter['name']} does not exist.");
+            $method = $filter['name'] ?? null;
+            $arguments = $filter['arguments'] ?? [];
+
+            if (!$method) {
+                continue;
+            }
+
+            try {
+                $query = $query->{$method}(...$arguments);
+            } catch (\Throwable $exception) {
+                \Log::warning("Method {$method} could not be applied on datatable query.", [
+                    'error' => $exception->getMessage(),
+                ]);
             }
         }
     

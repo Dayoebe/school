@@ -2,6 +2,14 @@
 
 @section('title', 'About Us')
 
+@php
+    $settings = $publicSiteSettings ?? [];
+    $aboutSettings = data_get($settings, 'about_page', []);
+    $contactAddress = data_get($settings, 'contact.address', '');
+    $contactPhonePrimary = data_get($settings, 'contact.phone_primary', '');
+    $contactEmail = data_get($settings, 'contact.email', '');
+@endphp
+
 @section('content')
     <div x-data="aboutPage()" x-init="init()" class="bg-slate-50 text-slate-900">
         <section id="top" class="relative overflow-hidden bg-slate-900 py-14 sm:py-16">
@@ -13,17 +21,16 @@
             <div class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="animate__animated animate__fadeInDown inline-flex items-center gap-2 rounded-full border border-orange-200/40 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-200">
                     <i class="fas fa-circle-info"></i>
-                    <span>Who We Are</span>
+                    <span>{{ data_get($aboutSettings, 'hero_badge') }}</span>
                 </div>
 
                 <h1 class="animate__animated animate__fadeInUp mt-4 text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                    About Elites International College
-                    <span class="mt-1 block text-red-300">Excellence with Character</span>
+                    {{ data_get($aboutSettings, 'hero_title') }}
+                    <span class="mt-1 block text-red-300">{{ data_get($aboutSettings, 'hero_highlight') }}</span>
                 </h1>
 
                 <p class="animate__animated animate__fadeInUp animate__delay-1s mt-4 max-w-3xl text-sm leading-relaxed text-slate-200 sm:text-base">
-                    We are a learning community committed to academic excellence, personal discipline, and leadership development.
-                    Every learner is guided to think critically, grow confidently, and contribute meaningfully to society.
+                    {{ data_get($aboutSettings, 'hero_description') }}
                 </p>
 
                 <div class="mt-6 flex flex-wrap gap-2 text-xs font-bold">
@@ -41,10 +48,9 @@
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                     <div class="animate__animated animate__fadeInLeft rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                         <p class="text-xs font-bold uppercase tracking-wider text-red-700">Our Story</p>
-                        <h2 class="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">A school built for impact</h2>
+                        <h2 class="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">{{ data_get($aboutSettings, 'story_title') }}</h2>
                         <p class="mt-4 text-sm leading-relaxed text-slate-600 sm:text-base">
-                            Elites International College was established to provide a balanced education where strong academics meet
-                            discipline, values, and practical life readiness.
+                            {{ data_get($aboutSettings, 'story_description') }}
                         </p>
                         <p class="mt-3 text-sm leading-relaxed text-slate-600 sm:text-base">
                             We combine structured teaching, co-curricular exposure, and close mentoring to help students discover their
@@ -81,27 +87,26 @@
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="animate__animated animate__fadeInUp mb-6">
                     <p class="text-xs font-bold uppercase tracking-wider text-orange-700">Identity</p>
-                    <h2 class="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">Mission, vision, and values</h2>
+                    <h2 class="mt-2 text-2xl font-black text-slate-900 sm:text-3xl">{{ data_get($aboutSettings, 'identity_title') }}</h2>
                 </div>
 
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
                         <p class="text-sm font-black uppercase tracking-wide text-red-700">Mission</p>
                         <p class="mt-3 text-sm leading-relaxed text-red-900/90">
-                            To deliver holistic education that develops intellectual ability, emotional strength, ethical
-                            discipline, and leadership confidence.
+                            {{ data_get($settings, 'mission') }}
                         </p>
                     </div>
                     <div class="rounded-2xl border border-blue-200 bg-blue-50 p-5">
                         <p class="text-sm font-black uppercase tracking-wide text-blue-700">Vision</p>
                         <p class="mt-3 text-sm leading-relaxed text-blue-900/90">
-                            To be a leading institution known for raising globally competent, value-driven, and purpose-led graduates.
+                            {{ data_get($settings, 'vision') }}
                         </p>
                     </div>
                     <div class="rounded-2xl border border-violet-200 bg-violet-50 p-5 md:col-span-2 xl:col-span-1">
                         <p class="text-sm font-black uppercase tracking-wide text-violet-700">School Promise</p>
                         <p class="mt-3 text-sm leading-relaxed text-violet-900/90">
-                            Every student is seen, supported, and challenged to become the best version of themselves.
+                            {{ data_get($settings, 'school_promise') }}
                         </p>
                     </div>
                 </div>
@@ -240,9 +245,9 @@
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div class="lg:col-span-2">
                         <p class="text-xs font-bold uppercase tracking-wider text-rose-300">Visit Us</p>
-                        <h2 class="mt-2 text-2xl font-black sm:text-3xl">Come and experience our learning environment</h2>
+                        <h2 class="mt-2 text-2xl font-black sm:text-3xl">{{ data_get($aboutSettings, 'visit_title') }}</h2>
                         <p class="mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
-                            Meet our admissions team, explore our campus, and discover how we support every child’s journey.
+                            {{ data_get($aboutSettings, 'visit_description') }}
                         </p>
                         <div class="mt-5 flex flex-col gap-3 sm:flex-row">
                             <a href="{{ route('admission') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700">
@@ -257,9 +262,9 @@
                     </div>
                     <div class="rounded-2xl border border-white/10 bg-white/10 p-5">
                         <p class="text-sm font-bold text-pink-200">Campus Contact</p>
-                        <p class="mt-3 text-sm text-slate-200"><i class="fas fa-location-dot mr-2"></i>13 Chief Mbanefo E. Uduezue Street, Umubele, Awka</p>
-                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-phone mr-2"></i>+234 806 602 5508</p>
-                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-envelope mr-2"></i>info@elitesinternationalcollege.com</p>
+                        <p class="mt-3 text-sm text-slate-200"><i class="fas fa-location-dot mr-2"></i>{{ $contactAddress }}</p>
+                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-phone mr-2"></i>{{ $contactPhonePrimary }}</p>
+                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-envelope mr-2"></i>{{ $contactEmail }}</p>
                     </div>
                 </div>
             </div>

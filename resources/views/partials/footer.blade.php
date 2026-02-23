@@ -1,3 +1,25 @@
+@php
+    $settings = $publicSiteSettings ?? [];
+    $schoolName = (string) data_get($settings, 'school_name', config('app.name', 'School Portal'));
+    $schoolLocation = (string) data_get($settings, 'school_location', '');
+    $aboutSummary = (string) data_get($settings, 'about_summary', 'A modern learning community focused on academic excellence, leadership development, and moral values.');
+
+    $footerBadge = (string) data_get($settings, 'footer.admissions_badge', 'Admissions Open');
+    $footerTitle = (string) data_get($settings, 'footer.admissions_title', 'Ready to enroll your child?');
+    $footerDescription = (string) data_get($settings, 'footer.admissions_description', 'Start your admission process today or contact us for guidance.');
+    $copyrightSuffix = (string) data_get($settings, 'footer.copyright_suffix', 'All rights reserved.');
+
+    $contactAddress = (string) data_get($settings, 'contact.address', '');
+    $contactPhonePrimary = (string) data_get($settings, 'contact.phone_primary', '');
+    $contactPhoneSecondary = (string) data_get($settings, 'contact.phone_secondary', '');
+    $contactEmail = (string) data_get($settings, 'contact.email', '');
+
+    $phonePrimaryHref = preg_replace('/[^0-9+]/', '', $contactPhonePrimary);
+    $phoneSecondaryHref = preg_replace('/[^0-9+]/', '', $contactPhoneSecondary);
+
+    $logoUrl = $publicSiteSchool?->logo_url ?? asset(config('app.logo', 'img/logo.png'));
+@endphp
+
 <footer class="relative mt-16 overflow-hidden border-t border-slate-200 bg-slate-950 text-slate-100">
     <div class="pointer-events-none absolute inset-0">
         <div class="absolute -top-20 -left-10 h-56 w-56 rounded-full bg-red-500/15 blur-3xl"></div>
@@ -8,9 +30,9 @@
         <div class="mb-10 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur sm:p-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="text-xs font-bold uppercase tracking-widest text-amber-300">Admissions Open</p>
-                    <h2 class="mt-1 text-xl font-black text-white sm:text-2xl">Ready to enroll your child?</h2>
-                    <p class="mt-2 text-sm text-slate-300">Start your admission process today or contact us for guidance.</p>
+                    <p class="text-xs font-bold uppercase tracking-widest text-amber-300">{{ $footerBadge }}</p>
+                    <h2 class="mt-1 text-xl font-black text-white sm:text-2xl">{{ $footerTitle }}</h2>
+                    <p class="mt-2 text-sm text-slate-300">{{ $footerDescription }}</p>
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <a href="{{ route('admission') }}"
@@ -30,16 +52,14 @@
         <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
                 <div class="flex items-center gap-3">
-                    <img src="{{ asset('img/logo.png') }}" alt="Elites International College Logo"
+                    <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo"
                         class="h-11 w-11 rounded-full border border-white/20 object-cover">
                     <div>
-                        <p class="text-sm font-black text-white">Elites International College</p>
-                        <p class="text-xs text-rose-300">Awka, Anambra</p>
+                        <p class="text-sm font-black text-white">{{ $schoolName }}</p>
+                        <p class="text-xs text-rose-300">{{ $schoolLocation }}</p>
                     </div>
                 </div>
-                <p class="mt-4 text-sm leading-relaxed text-slate-300">
-                    A modern learning community focused on academic excellence, leadership development, and moral values.
-                </p>
+                <p class="mt-4 text-sm leading-relaxed text-slate-300">{{ $aboutSummary }}</p>
                 <div class="mt-4 flex items-center gap-3 text-base">
                     <a href="#" aria-label="Facebook" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
                         <i class="fab fa-facebook-f"></i>
@@ -83,26 +103,32 @@
                 <ul class="mt-4 space-y-3 text-sm text-slate-300">
                     <li class="flex items-start gap-2">
                         <i class="fas fa-location-dot mt-1 text-lime-300"></i>
-                        <span>13 Chief Mbanefo E. Uduezue Street, Umubele, Awka, Anambra State</span>
+                        <span>{{ $contactAddress }}</span>
                     </li>
-                    <li class="flex items-center gap-2">
-                        <i class="fas fa-phone text-green-300"></i>
-                        <a href="tel:+2348066025508" class="transition hover:text-white">+234 806 602 5508</a>
-                    </li>
-                    <li class="flex items-center gap-2">
-                        <i class="fas fa-phone text-teal-300"></i>
-                        <a href="tel:+2348037315741" class="transition hover:text-white">+234 803 731 5741</a>
-                    </li>
-                    <li class="flex items-center gap-2">
-                        <i class="fas fa-envelope text-sky-300"></i>
-                        <a href="mailto:info@elitesinternationalcollege.com" class="transition hover:text-white">info@elitesinternationalcollege.com</a>
-                    </li>
+                    @if ($contactPhonePrimary !== '')
+                        <li class="flex items-center gap-2">
+                            <i class="fas fa-phone text-green-300"></i>
+                            <a href="tel:{{ $phonePrimaryHref }}" class="transition hover:text-white">{{ $contactPhonePrimary }}</a>
+                        </li>
+                    @endif
+                    @if ($contactPhoneSecondary !== '')
+                        <li class="flex items-center gap-2">
+                            <i class="fas fa-phone text-teal-300"></i>
+                            <a href="tel:{{ $phoneSecondaryHref }}" class="transition hover:text-white">{{ $contactPhoneSecondary }}</a>
+                        </li>
+                    @endif
+                    @if ($contactEmail !== '')
+                        <li class="flex items-center gap-2">
+                            <i class="fas fa-envelope text-sky-300"></i>
+                            <a href="mailto:{{ $contactEmail }}" class="transition hover:text-white">{{ $contactEmail }}</a>
+                        </li>
+                    @endif
                 </ul>
             </div>
         </div>
 
         <div class="mt-10 flex flex-col gap-3 border-t border-white/10 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <p>&copy; {{ date('Y') }} Elites International College. All rights reserved.</p>
+            <p>&copy; {{ date('Y') }} {{ $schoolName }}. {{ $copyrightSuffix }}</p>
             <a href="#top" class="inline-flex items-center gap-2 font-semibold text-fuchsia-300 transition hover:text-fuchsia-200">
                 <span>Back to Top</span>
                 <i class="fas fa-arrow-up text-[10px]"></i>

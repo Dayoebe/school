@@ -2,6 +2,13 @@
 
 @section('title', 'Admission')
 
+@php
+    $settings = $publicSiteSettings ?? [];
+    $admissionPage = data_get($settings, 'admission_page', []);
+    $contactPhonePrimary = (string) data_get($settings, 'contact.phone_primary', '');
+    $contactPhonePrimaryHref = preg_replace('/[^0-9+]/', '', $contactPhonePrimary);
+@endphp
+
 @section('content')
     <div class="bg-slate-50 text-slate-900">
         <section class="relative overflow-hidden bg-slate-900 py-14 sm:py-16">
@@ -13,17 +20,16 @@
             <div class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="animate__animated animate__fadeInDown inline-flex items-center gap-2 rounded-full border border-orange-200/40 bg-orange-500/10 px-3 py-1 text-xs font-semibold text-orange-200">
                     <i class="fas fa-file-signature"></i>
-                    <span>Admission Portal</span>
+                    <span>{{ data_get($admissionPage, 'hero_badge') }}</span>
                 </div>
 
                 <h1 class="animate__animated animate__fadeInUp mt-4 text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                    Student Admission Registration
-                    <span class="mt-1 block text-red-300">Start Your Child's Journey</span>
+                    {{ data_get($admissionPage, 'hero_title') }}
+                    <span class="mt-1 block text-red-300">{{ data_get($admissionPage, 'hero_highlight') }}</span>
                 </h1>
 
                 <p class="animate__animated animate__fadeInUp animate__delay-1s mt-4 max-w-3xl text-sm leading-relaxed text-slate-200 sm:text-base">
-                    Complete the form below to submit an admission request. All registrations are reviewed in the school dashboard,
-                    and successful applicants are enrolled directly into the student management system.
+                    {{ data_get($admissionPage, 'hero_description') }}
                 </p>
 
                 <div class="mt-6 flex flex-wrap gap-2 text-xs font-bold">
@@ -100,9 +106,9 @@
                                 <i class="fas fa-envelope"></i>
                                 <span>Contact Admissions</span>
                             </a>
-                            <a href="tel:+2348066025508" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100">
+                            <a href="tel:{{ $contactPhonePrimaryHref }}" class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100">
                                 <i class="fas fa-phone"></i>
-                                <span>Call Now</span>
+                                <span>Call {{ $contactPhonePrimary }}</span>
                             </a>
                         </div>
                     </div>

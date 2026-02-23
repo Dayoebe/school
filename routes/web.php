@@ -35,6 +35,7 @@ use App\Livewire\Classes\{ManageClassGroups, ManageClasses};
 use App\Livewire\Admissions\ManageAdmissionRegistrations;
 use App\Livewire\Contacts\ManageContactMessages;
 use App\Livewire\Gallery\ManageGallery;
+use App\Livewire\Syllabi\ManageSyllabi;
 
 // Controllers 
 use App\Http\Controllers\{
@@ -46,7 +47,6 @@ use App\Http\Controllers\{
     MyClassController,
     NoticeController,
     ResultController,
-    SyllabusController,
     ExamController,
     ExamRecordController,
     ExamSlotController,
@@ -425,13 +425,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('permission:read school|create school|update school|delete school|manage school settings')
         ->name('schools.index');
     
-    // School Settings - MUST come BEFORE {schoolId} route
-    Route::get('/schools/settings', function() {
-        if (!auth()->user()->school_id) {
-            return redirect()->route('schools.index')->with('error', 'Please set a school first');
-        }
-        return redirect()->route('schools.index', ['mode' => 'edit', 'schoolId' => auth()->user()->school_id]);
-    })->middleware('permission:manage school settings')->name('schools.settings');
+    // Website and school-specific public content settings.
+    Route::get('/schools/settings', \App\Livewire\Schools\ManageSiteSettings::class)
+        ->middleware('permission:manage school settings')
+        ->name('schools.settings');
     
     // School detail - comes LAST
     Route::get('/schools/{schoolId}', \App\Livewire\Schools\SchoolDetail::class)
@@ -540,17 +537,7 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
 
         // Notices
         Route::resource('notices', NoticeController::class)
-            ->only(['index', 'show'])
-            ->middleware('permission:read notice');
-        Route::resource('notices', NoticeController::class)
-            ->only(['create', 'store'])
-            ->middleware('permission:create notice');
-        Route::resource('notices', NoticeController::class)
-            ->only(['edit', 'update'])
-            ->middleware('permission:update notice');
-        Route::resource('notices', NoticeController::class)
-            ->only(['destroy'])
-            ->middleware('permission:delete notice');
+            ->whereNumber('notice');
 
         // Academic Year Dependent Routes
         Route::middleware([
@@ -563,19 +550,16 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
             Route::middleware('App\Http\Middleware\EnsureSemesterIsSet')->group(function () {
 
 
-                // Syllabus
-                Route::resource('syllabi', SyllabusController::class)
-                    ->only(['index', 'show'])
-                    ->middleware('permission:read syllabus');
-                Route::resource('syllabi', SyllabusController::class)
-                    ->only(['create', 'store'])
-                    ->middleware('permission:create syllabus');
-                Route::resource('syllabi', SyllabusController::class)
-                    ->only(['edit', 'update'])
-                    ->middleware('permission:update syllabus');
-                Route::resource('syllabi', SyllabusController::class)
-                    ->only(['destroy'])
-                    ->middleware('permission:delete syllabus');
+                // Syllabi (Full Livewire)
+                Route::get('syllabi', ManageSyllabi::class)
+                    ->middleware('permission:read syllabus')
+                    ->name('syllabi.index');
+                Route::get('syllabi/create', ManageSyllabi::class)
+                    ->middleware('permission:create syllabus')
+                    ->name('syllabi.create');
+                Route::get('syllabi/{syllabus}', ManageSyllabi::class)
+                    ->middleware('permission:read syllabus')
+                    ->name('syllabi.show');
 
    
                 

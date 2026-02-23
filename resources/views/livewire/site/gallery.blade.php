@@ -3,6 +3,10 @@
 @section('title', 'Gallery')
 
 @php
+    $settings = $publicSiteSettings ?? [];
+    $schoolName = (string) data_get($settings, 'school_name', config('app.name', 'School Portal'));
+    $galleryPage = data_get($settings, 'gallery_page', []);
+
     $palette = [
         'red' => ['bg' => 'bg-red-100', 'text' => 'text-red-700', 'dot' => 'bg-red-500', 'ring' => 'ring-red-200'],
         'orange' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-700', 'dot' => 'bg-orange-500', 'ring' => 'ring-orange-200'],
@@ -58,14 +62,14 @@
         ->values();
 
     $fallbackItems = collect([
-        ['id' => 1, 'title' => 'STEM Innovation Fair', 'caption' => 'Students presented robotics and coding projects.', 'url' => 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg', 'category' => 'STEM', 'category_slug' => 'stem', 'color' => 'indigo', 'school' => 'Elites International College', 'featured' => true, 'date' => 'May 18, 2026'],
-        ['id' => 2, 'title' => 'Inter-House Sports Day', 'caption' => 'Competitive track and field events with full participation.', 'url' => 'https://images.pexels.com/photos/8613089/pexels-photo-8613089.jpeg', 'category' => 'Sports', 'category_slug' => 'sports', 'color' => 'emerald', 'school' => 'Elites International College', 'featured' => true, 'date' => 'Apr 04, 2026'],
-        ['id' => 3, 'title' => 'Creative Arts Showcase', 'caption' => 'Drama, music and spoken-word performances by students.', 'url' => 'https://images.pexels.com/photos/713149/pexels-photo-713149.jpeg', 'category' => 'Events', 'category_slug' => 'events', 'color' => 'purple', 'school' => 'Elites International College', 'featured' => false, 'date' => 'Jun 02, 2026'],
-        ['id' => 4, 'title' => 'Modern Classroom Sessions', 'caption' => 'Interactive teaching in technology-enabled classrooms.', 'url' => 'https://images.pexels.com/photos/3184325/pexels-photo-3184325.jpeg', 'category' => 'Academics', 'category_slug' => 'academics', 'color' => 'blue', 'school' => 'Elites International College', 'featured' => false, 'date' => 'Mar 12, 2026'],
-        ['id' => 5, 'title' => 'Laboratory Practical', 'caption' => 'Hands-on science practicals for real understanding.', 'url' => 'https://images.pexels.com/photos/2280549/pexels-photo-2280549.jpeg', 'category' => 'Academics', 'category_slug' => 'academics', 'color' => 'red', 'school' => 'Elites International College', 'featured' => false, 'date' => 'Feb 21, 2026'],
-        ['id' => 6, 'title' => 'Leadership Club Meeting', 'caption' => 'Students discussing projects and community initiatives.', 'url' => 'https://images.pexels.com/photos/1184572/pexels-photo-1184572.jpeg', 'category' => 'Clubs', 'category_slug' => 'clubs', 'color' => 'teal', 'school' => 'Elites International College', 'featured' => false, 'date' => 'Jan 25, 2026'],
-        ['id' => 7, 'title' => 'Debate Championship', 'caption' => 'Critical thinking and persuasive communication in action.', 'url' => 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg', 'category' => 'Clubs', 'category_slug' => 'clubs', 'color' => 'orange', 'school' => 'Elites International College', 'featured' => false, 'date' => 'Nov 19, 2025'],
-        ['id' => 8, 'title' => 'Graduation Ceremony', 'caption' => 'Celebrating graduating students and award winners.', 'url' => 'https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg', 'category' => 'Events', 'category_slug' => 'events', 'color' => 'rose', 'school' => 'Elites International College', 'featured' => true, 'date' => 'Jul 30, 2025'],
+        ['id' => 1, 'title' => 'STEM Innovation Fair', 'caption' => 'Students presented robotics and coding projects.', 'url' => 'https://images.pexels.com/photos/1181406/pexels-photo-1181406.jpeg', 'category' => 'STEM', 'category_slug' => 'stem', 'color' => 'indigo', 'school' => $schoolName, 'featured' => true, 'date' => 'May 18, 2026'],
+        ['id' => 2, 'title' => 'Inter-House Sports Day', 'caption' => 'Competitive track and field events with full participation.', 'url' => 'https://images.pexels.com/photos/8613089/pexels-photo-8613089.jpeg', 'category' => 'Sports', 'category_slug' => 'sports', 'color' => 'emerald', 'school' => $schoolName, 'featured' => true, 'date' => 'Apr 04, 2026'],
+        ['id' => 3, 'title' => 'Creative Arts Showcase', 'caption' => 'Drama, music and spoken-word performances by students.', 'url' => 'https://images.pexels.com/photos/713149/pexels-photo-713149.jpeg', 'category' => 'Events', 'category_slug' => 'events', 'color' => 'purple', 'school' => $schoolName, 'featured' => false, 'date' => 'Jun 02, 2026'],
+        ['id' => 4, 'title' => 'Modern Classroom Sessions', 'caption' => 'Interactive teaching in technology-enabled classrooms.', 'url' => 'https://images.pexels.com/photos/3184325/pexels-photo-3184325.jpeg', 'category' => 'Academics', 'category_slug' => 'academics', 'color' => 'blue', 'school' => $schoolName, 'featured' => false, 'date' => 'Mar 12, 2026'],
+        ['id' => 5, 'title' => 'Laboratory Practical', 'caption' => 'Hands-on science practicals for real understanding.', 'url' => 'https://images.pexels.com/photos/2280549/pexels-photo-2280549.jpeg', 'category' => 'Academics', 'category_slug' => 'academics', 'color' => 'red', 'school' => $schoolName, 'featured' => false, 'date' => 'Feb 21, 2026'],
+        ['id' => 6, 'title' => 'Leadership Club Meeting', 'caption' => 'Students discussing projects and community initiatives.', 'url' => 'https://images.pexels.com/photos/1184572/pexels-photo-1184572.jpeg', 'category' => 'Clubs', 'category_slug' => 'clubs', 'color' => 'teal', 'school' => $schoolName, 'featured' => false, 'date' => 'Jan 25, 2026'],
+        ['id' => 7, 'title' => 'Debate Championship', 'caption' => 'Critical thinking and persuasive communication in action.', 'url' => 'https://images.pexels.com/photos/3184292/pexels-photo-3184292.jpeg', 'category' => 'Clubs', 'category_slug' => 'clubs', 'color' => 'orange', 'school' => $schoolName, 'featured' => false, 'date' => 'Nov 19, 2025'],
+        ['id' => 8, 'title' => 'Graduation Ceremony', 'caption' => 'Celebrating graduating students and award winners.', 'url' => 'https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg', 'category' => 'Events', 'category_slug' => 'events', 'color' => 'rose', 'school' => $schoolName, 'featured' => true, 'date' => 'Jul 30, 2025'],
     ]);
 
     $galleryItems = $dbItems->isNotEmpty() ? $dbItems : $fallbackItems;
@@ -91,14 +95,14 @@
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="inline-flex items-center gap-2 rounded-full border border-red-200/40 bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-200">
                     <i class="fas fa-images"></i>
-                    <span>School Gallery</span>
+                    <span>{{ data_get($galleryPage, 'hero_badge') }}</span>
                 </div>
 
                 <div class="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                        <h1 class="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">Moments That Define Our Campus</h1>
+                        <h1 class="text-3xl font-black leading-tight sm:text-4xl lg:text-5xl">{{ data_get($galleryPage, 'hero_title') }}</h1>
                         <p class="mt-4 max-w-3xl text-sm leading-relaxed text-slate-200 sm:text-base">
-                            Explore school events, classroom activities, sports, leadership experiences, and student milestones.
+                            {{ data_get($galleryPage, 'hero_description') }}
                         </p>
                     </div>
 

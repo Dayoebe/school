@@ -6,6 +6,19 @@
         ['label' => 'Gallery', 'route' => 'gallery'],
         ['label' => 'Contact', 'route' => 'contact'],
     ];
+
+    $settings = $publicSiteSettings ?? [];
+    $schoolName = (string) data_get($settings, 'school_name', config('app.name', 'School Portal'));
+    $schoolLocation = (string) data_get($settings, 'school_location', 'Awka, Anambra');
+
+    $contactAddress = (string) data_get($settings, 'contact.address', '');
+    $contactPhonePrimary = (string) data_get($settings, 'contact.phone_primary', '');
+    $contactEmail = (string) data_get($settings, 'contact.email', '');
+
+    $phoneHref = preg_replace('/[^0-9+]/', '', $contactPhonePrimary);
+    $emailHref = trim($contactEmail);
+
+    $logoUrl = $publicSiteSchool?->logo_url ?? asset(config('app.logo', 'img/logo.png'));
 @endphp
 
 <header
@@ -19,15 +32,19 @@
         <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-2 text-xs text-slate-600">
             <p class="flex items-center gap-2">
                 <i class="fas fa-location-dot text-red-600"></i>
-                <span>13 Chief Mbanefo E. Uduezue Street, Umubele, Awka</span>
+                <span>{{ $contactAddress }}</span>
             </p>
             <div class="flex items-center gap-5">
-                <a href="tel:+2348066025508" class="transition hover:text-orange-700">
-                    <i class="fas fa-phone mr-1"></i>+234 806 602 5508
-                </a>
-                <a href="mailto:info@elitesinternationalcollege.com" class="transition hover:text-amber-700">
-                    <i class="fas fa-envelope mr-1"></i>info@elitesinternationalcollege.com
-                </a>
+                @if ($contactPhonePrimary !== '')
+                    <a href="tel:{{ $phoneHref }}" class="transition hover:text-orange-700">
+                        <i class="fas fa-phone mr-1"></i>{{ $contactPhonePrimary }}
+                    </a>
+                @endif
+                @if ($contactEmail !== '')
+                    <a href="mailto:{{ $emailHref }}" class="transition hover:text-amber-700">
+                        <i class="fas fa-envelope mr-1"></i>{{ $contactEmail }}
+                    </a>
+                @endif
             </div>
         </div>
     </div>
@@ -35,13 +52,13 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between py-3">
             <a href="{{ route('home') }}" class="group flex items-center gap-3">
-                <img src="{{ asset('img/logo.png') }}" alt="Elites International College Logo"
+                <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo"
                     class="h-10 w-10 rounded-full border border-amber-300 object-cover shadow-sm transition group-hover:scale-105 sm:h-11 sm:w-11">
                 <div class="min-w-0">
                     <p class="truncate text-sm font-black leading-tight text-slate-900 sm:text-base">
-                        Elites International College
+                        {{ $schoolName }}
                     </p>
-                    <p class="text-xs font-semibold text-orange-700">Awka, Anambra</p>
+                    <p class="text-xs font-semibold text-orange-700">{{ $schoolLocation }}</p>
                 </div>
             </a>
 

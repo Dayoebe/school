@@ -2,6 +2,14 @@
 
 @section('title', 'Home')
 
+@php
+    $settings = $publicSiteSettings ?? [];
+    $homeSettings = data_get($settings, 'home', []);
+    $contactAddress = data_get($settings, 'contact.address', '');
+    $contactPhonePrimary = data_get($settings, 'contact.phone_primary', '');
+    $contactEmail = data_get($settings, 'contact.email', '');
+@endphp
+
 @section('content')
     <div x-data="homePage()" x-init="init()" class="bg-slate-50 text-slate-900">
         <section id="top" class="relative overflow-hidden bg-slate-900">
@@ -13,17 +21,16 @@
             <div class="relative mx-auto max-w-6xl px-4 pb-10 pt-12 sm:px-6 sm:pt-16 lg:px-8">
                 <div class="animate__animated animate__fadeInDown inline-flex items-center gap-2 rounded-full border border-red-200/30 bg-red-500/10 px-3 py-1 text-xs font-semibold text-orange-200">
                     <i class="fas fa-school"></i>
-                    <span>Modern Learning. Strong Values. Real Results.</span>
+                    <span>{{ data_get($homeSettings, 'hero_badge') }}</span>
                 </div>
 
                 <h1 class="animate__animated animate__fadeInUp mt-5 text-3xl font-black leading-tight text-white sm:text-4xl lg:text-5xl">
-                    Elites International College
-                    <span class="block text-red-300">Building Leaders for Tomorrow</span>
+                    {{ data_get($homeSettings, 'hero_title') }}
+                    <span class="block text-red-300">{{ data_get($homeSettings, 'hero_highlight') }}</span>
                 </h1>
 
                 <p class="animate__animated animate__fadeInUp animate__delay-1s mt-4 max-w-2xl text-sm leading-relaxed text-slate-200 sm:text-base">
-                    A complete secondary school experience with excellent teaching, strong discipline, modern technology,
-                    and a supportive environment for every child.
+                    {{ data_get($homeSettings, 'hero_description') }}
                 </p>
 
                 <div class="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
@@ -252,9 +259,9 @@
                 <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div class="lg:col-span-2">
                         <p class="text-xs font-bold uppercase tracking-wider text-fuchsia-300">Ready to Join?</p>
-                        <h2 class="mt-2 text-2xl font-black sm:text-3xl">Book a campus visit and talk with our admissions team</h2>
+                        <h2 class="mt-2 text-2xl font-black sm:text-3xl">{{ data_get($homeSettings, 'contact_title') }}</h2>
                         <p class="mt-3 max-w-2xl text-sm text-slate-300 sm:text-base">
-                            We are open for enquiries, tours, and registration support for new families.
+                            {{ data_get($homeSettings, 'contact_description') }}
                         </p>
                         <div class="mt-5 flex flex-col gap-3 sm:flex-row">
                             <a href="{{ route('admission') }}" class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700">
@@ -269,9 +276,9 @@
                     </div>
                     <div class="rounded-2xl border border-white/10 bg-white/10 p-5">
                         <p class="text-sm font-bold text-pink-200">Quick Contact</p>
-                        <p class="mt-3 text-sm text-slate-200"><i class="fas fa-location-dot mr-2"></i>13 Chief Mbanefo E. Uduezue Street, Umubele, Awka</p>
-                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-phone mr-2"></i>+234 806 602 5508</p>
-                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-envelope mr-2"></i>info@elitesinternationalcollege.com</p>
+                        <p class="mt-3 text-sm text-slate-200"><i class="fas fa-location-dot mr-2"></i>{{ $contactAddress }}</p>
+                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-phone mr-2"></i>{{ $contactPhonePrimary }}</p>
+                        <p class="mt-2 text-sm text-slate-200"><i class="fas fa-envelope mr-2"></i>{{ $contactEmail }}</p>
                     </div>
                 </div>
             </div>
