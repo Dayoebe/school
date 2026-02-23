@@ -8,7 +8,6 @@ use App\Models\FeeCategory;
 use App\Models\User;
 use App\Models\MyClass;
 use App\Models\Section;
-use App\Models\School;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\DB;
@@ -59,17 +58,62 @@ class ManageFeeInvoices extends Component
 
     public function mount()
     {
+        $this->hydrateModeFromRoute();
+
         $this->yearFilter = date('Y');
         
         if ($this->mode === 'create') {
-            $this->loadDataForCreate();
+            if ($this->modeIsAllowed('create')) {
+                $this->loadDataForCreate();
+            } else {
+                $this->mode = 'list';
+            }
         } elseif ($this->mode === 'edit' && $this->feeInvoiceId) {
-            $this->loadFeeInvoiceForEdit();
+            if ($this->modeIsAllowed('edit')) {
+                $this->loadFeeInvoiceForEdit();
+            } else {
+                $this->mode = 'list';
+                $this->feeInvoiceId = null;
+            }
+        } elseif ($this->mode === 'edit') {
+            $this->mode = 'list';
+            $this->feeInvoiceId = null;
         }
+    }
+
+    protected function hydrateModeFromRoute(): void
+    {
+        $routeName = request()->route()?->getName();
+
+        if ($routeName === 'fee-invoices.create') {
+            $this->mode = 'create';
+            $this->feeInvoiceId = null;
+            return;
+        }
+
+        if ($routeName === 'fee-invoices.edit') {
+            $this->mode = 'edit';
+            $this->feeInvoiceId = $this->resolveRouteModelId(request()->route('feeInvoice'));
+        }
+    }
+
+    protected function resolveRouteModelId(mixed $value): ?int
+    {
+        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+            return (int) $value->getKey();
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
     }
 
     public function loadDataForCreate()
     {
+        $this->ensurePermission('create fee invoice');
+
         $this->classes = MyClass::whereHas('classGroup', function($q) {
             $q->where('school_id', auth()->user()->school_id);
         })->get();
@@ -103,7 +147,7 @@ class ManageFeeInvoices extends Component
     {
         if ($this->selectedSection) {
             $section = $this->getSectionForCurrentSchool($this->selectedSection, $this->selectedClass ?: null);
-            $this->students = $section ? $section->students : collect();
+            $this->students = $section ? $section->students() : collect();
         } elseif ($this->selectedClass) {
             $class = $this->getClassForCurrentSchool($this->selectedClass);
             $this->students = $class ? $class->students() : collect();
@@ -114,6 +158,8 @@ class ManageFeeInvoices extends Component
 
     public function addStudent()
     {
+        $this->ensurePermission('create fee invoice');
+
         if ($this->selectedStudent) {
             $student = $this->getStudentForCurrentSchool($this->selectedStudent);
             if ($student && !isset($this->selectedStudents[$student->id])) {
@@ -126,7 +172,7 @@ class ManageFeeInvoices extends Component
         } elseif ($this->selectedSection) {
             $section = $this->getSectionForCurrentSchool($this->selectedSection, $this->selectedClass ?: null);
             if ($section) {
-                foreach ($section->students as $student) {
+                foreach ($section->students() as $student) {
                     if (!isset($this->selectedStudents[$student->id])) {
                         $this->selectedStudents[$student->id] = [
                             'id' => $student->id,
@@ -168,6 +214,8 @@ class ManageFeeInvoices extends Component
 
     public function addFee()
     {
+        $this->ensurePermission('create fee invoice');
+
         if ($this->selectedFee) {
             $fee = $this->getFeeForCurrentSchool($this->selectedFee);
             if ($fee && !isset($this->selectedFees[$fee->id])) {
@@ -204,6 +252,12 @@ class ManageFeeInvoices extends Component
 
     public function switchMode($mode, $feeInvoiceId = null)
     {
+        if (!$this->modeIsAllowed($mode)) {
+            $this->mode = 'list';
+            $this->feeInvoiceId = null;
+            return;
+        }
+
         $this->mode = $mode;
         $this->feeInvoiceId = $feeInvoiceId;
         $this->resetValidation();
@@ -218,6 +272,8 @@ class ManageFeeInvoices extends Component
 
     public function loadFeeInvoiceForEdit()
     {
+        $this->ensurePermission('update fee invoice');
+
         $feeInvoice = $this->getFeeInvoiceForCurrentSchool($this->feeInvoiceId);
         
         $this->fill([
@@ -229,6 +285,8 @@ class ManageFeeInvoices extends Component
 
     public function createFeeInvoice()
     {
+        $this->ensurePermission('create fee invoice');
+
         $this->validate([
             'issue_date' => 'required|date',
             'due_date' => 'required|date|after_or_equal:issue_date',
@@ -306,6 +364,8 @@ class ManageFeeInvoices extends Component
 
     public function updateFeeInvoice()
     {
+        $this->ensurePermission('update fee invoice');
+
         $feeInvoice = $this->getFeeInvoiceForCurrentSchool($this->feeInvoiceId);
         
         $this->validate([
@@ -328,6 +388,8 @@ class ManageFeeInvoices extends Component
 
     public function deleteFeeInvoice($feeInvoiceId)
     {
+        $this->ensurePermission('delete fee invoice');
+
         $feeInvoice = $this->getFeeInvoiceForCurrentSchool($feeInvoiceId);
         
         DB::transaction(function () use ($feeInvoice) {
@@ -382,7 +444,7 @@ class ManageFeeInvoices extends Component
         $query = FeeInvoice::whereHas('user', function($q) {
                 $q->where('school_id', auth()->user()->school_id);
             })
-            ->with(['user', 'user.studentRecord.myClass', 'user.studentRecord.section'])
+            ->with(['user', 'user.studentRecord.myClass', 'user.studentRecord.section', 'feeInvoiceRecords'])
             ->when($this->search, function($q) {
                 $q->where(function($query) {
                     $query->where('name', 'like', '%' . $this->search . '%')
@@ -475,6 +537,20 @@ class ManageFeeInvoices extends Component
         return FeeInvoice::whereHas('user', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
         })->with(['user', 'feeInvoiceRecords.fee'])->findOrFail($feeInvoiceId);
+    }
+
+    protected function modeIsAllowed(string $mode): bool
+    {
+        return match ($mode) {
+            'create' => auth()->user()?->can('create fee invoice') ?? false,
+            'edit' => auth()->user()?->can('update fee invoice') ?? false,
+            default => true,
+        };
+    }
+
+    protected function ensurePermission(string $permission): void
+    {
+        abort_unless(auth()->user()?->can($permission), 403);
     }
 
     public function render()

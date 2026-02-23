@@ -1,4 +1,7 @@
 <div x-data="{ activeTab: @entangle('activeTab') }" class="space-y-6">
+    @php
+        $studentRecord = $feeInvoice->user->studentRecord;
+    @endphp
     
     <!-- Header Card -->
     <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-lg overflow-hidden">
@@ -13,7 +16,12 @@
                         </div>
                         <div>
                             <p class="opacity-75">Class</p>
-                            <p class="font-semibold">{{ $feeInvoice->user->studentRecord->myClass->name ?? 'N/A' }}</p>
+                            <p class="font-semibold">
+                                {{ $studentRecord?->myClass?->name ?? 'N/A' }}
+                                @if($studentRecord?->section?->name)
+                                    - {{ $studentRecord->section->name }}
+                                @endif
+                            </p>
                         </div>
                         <div>
                             <p class="opacity-75">Issue Date</p>
@@ -71,11 +79,13 @@
                    class="px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg transition">
                     <i class="fas fa-arrow-left mr-2"></i>Back
                 </a>
-                <a href="{{ route('fee-invoices.edit', $feeInvoice->id) }}" 
-                   wire:navigate
-                   class="px-4 py-2 bg-white text-indigo-600 rounded-lg font-semibold shadow hover:shadow-lg transition">
-                    <i class="fas fa-edit mr-2"></i>Edit Invoice
-                </a>
+                @if($canManage)
+                    <a href="{{ route('fee-invoices.edit', $feeInvoice->id) }}" 
+                       wire:navigate
+                       class="px-4 py-2 bg-white text-indigo-600 rounded-lg font-semibold shadow hover:shadow-lg transition">
+                        <i class="fas fa-edit mr-2"></i>Edit Invoice
+                    </a>
+                @endif
                 <a href="{{ route('fee-invoices.print', $feeInvoice->id) }}" 
                    target="_blank"
                    class="px-4 py-2 bg-white text-indigo-600 rounded-lg font-semibold shadow hover:shadow-lg transition">
@@ -88,21 +98,26 @@
     <!-- Tabs -->
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <div class="flex border-b overflow-x-auto">
-            <button @click="activeTab = 'details'" 
+            <button wire:click="changeTab('details')"
+                    @click="activeTab = 'details'" 
                     :class="activeTab === 'details' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
                     class="px-6 py-4 font-semibold transition whitespace-nowrap">
                 <i class="fas fa-file-invoice mr-2"></i>Details
             </button>
-            <button @click="activeTab = 'payments'" 
-                    :class="activeTab === 'payments' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
-                    class="px-6 py-4 font-semibold transition whitespace-nowrap">
-                <i class="fas fa-money-bill-wave mr-2"></i>Payments
-            </button>
-            <button @click="activeTab = 'manage'" 
-                    :class="activeTab === 'manage' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
-                    class="px-6 py-4 font-semibold transition whitespace-nowrap">
-                <i class="fas fa-cog mr-2"></i>Manage Fees
-            </button>
+            @if($canManage)
+                <button wire:click="changeTab('payments')"
+                        @click="activeTab = 'payments'" 
+                        :class="activeTab === 'payments' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                        class="px-6 py-4 font-semibold transition whitespace-nowrap">
+                    <i class="fas fa-money-bill-wave mr-2"></i>Payments
+                </button>
+                <button wire:click="changeTab('manage')"
+                        @click="activeTab = 'manage'" 
+                        :class="activeTab === 'manage' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
+                        class="px-6 py-4 font-semibold transition whitespace-nowrap">
+                    <i class="fas fa-cog mr-2"></i>Manage Fees
+                </button>
+            @endif
         </div>
 
         <!-- Tab Content -->
@@ -154,6 +169,7 @@
                 @endif
             </div>
 
+            @if($canManage)
             <!-- Payments Tab -->
             <div x-show="activeTab === 'payments'" x-transition>
                 <h3 class="text-xl font-bold text-gray-900 mb-4">Add Payments</h3>
@@ -208,7 +224,9 @@
                     </div>
                 @endforeach
             </div>
+            @endif
 
+            @if($canManage)
             <!-- Manage Tab -->
             <div x-show="activeTab === 'manage'" x-transition>
                 <div class="space-y-6">
@@ -226,7 +244,7 @@
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                                                 <input type="number" 
                                                        wire:model="editAmount"
-                                                       step="1"
+                                                       step="0.01"
                                                        min="0"
                                                        class="w-full rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                             </div>
@@ -234,7 +252,7 @@
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Waiver</label>
                                                 <input type="number" 
                                                        wire:model="editWaiver"
-                                                       step="1"
+                                                       step="0.01"
                                                        min="0"
                                                        class="w-full rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                             </div>
@@ -242,7 +260,7 @@
                                                 <label class="block text-sm font-medium text-gray-700 mb-1">Fine</label>
                                                 <input type="number" 
                                                        wire:model="editFine"
-                                                       step="1"
+                                                       step="0.01"
                                                        min="0"
                                                        class="w-full rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                             </div>
@@ -320,7 +338,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Amount</label>
                                     <input type="number" 
                                            wire:model="newFeeAmount"
-                                           step="1"
+                                           step="0.01"
                                            min="0"
                                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                     @error('newFeeAmount')
@@ -332,7 +350,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Waiver</label>
                                     <input type="number" 
                                            wire:model="newFeeWaiver"
-                                           step="1"
+                                           step="0.01"
                                            min="0"
                                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
@@ -341,7 +359,7 @@
                                     <label class="block text-sm font-medium text-gray-700 mb-2">Fine</label>
                                     <input type="number" 
                                            wire:model="newFeeFine"
-                                           step="1"
+                                           step="0.01"
                                            min="0"
                                            class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                                 </div>
@@ -356,6 +374,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
     </div>
 </div>

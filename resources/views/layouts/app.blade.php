@@ -6,6 +6,13 @@
     $isGuestMode = $layoutMode === 'guest' || (!$isPrintMode && $hasBodySection);
     $isPublicMode = $layoutMode === 'public';
     $isDashboardMode = !$isPrintMode && !$isGuestMode && !$isPublicMode && auth()->check();
+
+    $publicSettings = $publicSiteSettings ?? [];
+    $metaSiteName = data_get($publicSettings, 'school_name', config('app.name', 'School Portal'));
+    $metaDescription = data_get($publicSettings, 'meta.description', 'School portal and services.');
+    $metaKeywords = data_get($publicSettings, 'meta.keywords', 'School Portal, Results, Exams, Admissions');
+    $metaAuthor = data_get($publicSettings, 'meta.author', $metaSiteName);
+    $metaOgDescription = data_get($publicSettings, 'meta.og_description', $metaDescription);
 @endphp
 
 <!DOCTYPE html>
@@ -16,28 +23,28 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <meta name="description" content="Elite International College, Awka portal and services.">
-    <meta name="keywords" content="Elite International College, Awka, School Portal, Results, Exams, Admissions">
-    <meta name="author" content="Elite International College, Awka">
+    <meta name="description" content="{{ $metaDescription }}">
+    <meta name="keywords" content="{{ $metaKeywords }}">
+    <meta name="author" content="{{ $metaAuthor }}">
     <meta name="robots" content="index, follow">
 
     <link rel="canonical" href="{{ url()->current() }}">
     <link rel="icon" href="{{ asset('logo.png') }}" type="image/png">
     <link rel="shortcut icon" href="{{ asset(config('app.favicon', 'logo.png')) }}" type="image/png">
 
-    <meta property="og:title" content="@yield('title', config('app.name', 'Elite International College, Awka'))">
-    <meta property="og:description" content="Elite International College portal for learning, exams, and result management.">
+    <meta property="og:title" content="@yield('title', $metaSiteName)">
+    <meta property="og:description" content="{{ $metaOgDescription }}">
     <meta property="og:image" content="{{ asset('logo.png') }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Elite International College, Awka">
+    <meta property="og:site_name" content="{{ $metaSiteName }}">
 
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="@yield('title', config('app.name', 'Elite International College, Awka'))">
-    <meta name="twitter:description" content="Elite International College portal for learning, exams, and result management.">
+    <meta name="twitter:title" content="@yield('title', $metaSiteName)">
+    <meta name="twitter:description" content="{{ $metaOgDescription }}">
     <meta name="twitter:image" content="{{ asset('logo.png') }}">
 
-    <title>@yield('title', config('app.name', 'Elite International College, Awka'))</title>
+    <title>@yield('title', $metaSiteName)</title>
 
     @if ($isPrintMode)
         <style>

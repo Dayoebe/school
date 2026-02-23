@@ -128,8 +128,8 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-gray-600">
-                                    {{ $invoice->user->studentRecord->myClass->name ?? 'N/A' }}
-                                    @if($invoice->user->studentRecord->section)
+                                    {{ $invoice->user->studentRecord?->myClass?->name ?? 'N/A' }}
+                                    @if($invoice->user->studentRecord?->section?->name)
                                         - {{ $invoice->user->studentRecord->section->name }}
                                     @endif
                                 </div>

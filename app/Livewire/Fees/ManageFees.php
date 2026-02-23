@@ -39,13 +39,56 @@ class ManageFees extends Component
 
     public function mount()
     {
+        $this->hydrateModeFromRoute();
+
         $this->loadFeeCategories();
         
         if ($this->mode === 'edit' && $this->feeId) {
-            $this->loadFeeForEdit();
+            if ($this->modeIsAllowed('edit')) {
+                $this->loadFeeForEdit();
+            } else {
+                $this->mode = 'list';
+                $this->feeId = null;
+            }
+        } elseif ($this->mode === 'edit') {
+            $this->mode = 'list';
+            $this->feeId = null;
         } elseif ($this->mode === 'create') {
-            $this->resetForm();
+            if ($this->modeIsAllowed('create')) {
+                $this->resetForm();
+            } else {
+                $this->mode = 'list';
+            }
         }
+    }
+
+    protected function hydrateModeFromRoute(): void
+    {
+        $routeName = request()->route()?->getName();
+
+        if ($routeName === 'fees.create') {
+            $this->mode = 'create';
+            $this->feeId = null;
+            return;
+        }
+
+        if ($routeName === 'fees.edit') {
+            $this->mode = 'edit';
+            $this->feeId = $this->resolveRouteModelId(request()->route('fee'));
+        }
+    }
+
+    protected function resolveRouteModelId(mixed $value): ?int
+    {
+        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+            return (int) $value->getKey();
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
     }
 
     public function loadFeeCategories()
@@ -57,6 +100,12 @@ class ManageFees extends Component
 
     public function switchMode($mode, $feeId = null)
     {
+        if (!$this->modeIsAllowed($mode)) {
+            $this->mode = 'list';
+            $this->feeId = null;
+            return;
+        }
+
         $this->mode = $mode;
         $this->feeId = $feeId;
         $this->resetValidation();
@@ -70,6 +119,8 @@ class ManageFees extends Component
 
     public function loadFeeForEdit()
     {
+        $this->ensurePermission('update fee');
+
         $fee = $this->getFeeForCurrentSchool($this->feeId);
         
         $this->fill([
@@ -81,6 +132,8 @@ class ManageFees extends Component
 
     public function createFee()
     {
+        $this->ensurePermission('create fee');
+
         $this->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -104,6 +157,8 @@ class ManageFees extends Component
 
     public function updateFee()
     {
+        $this->ensurePermission('update fee');
+
         $fee = $this->getFeeForCurrentSchool($this->feeId);
         
         $this->validate([
@@ -129,6 +184,8 @@ class ManageFees extends Component
 
     public function deleteFee($feeId)
     {
+        $this->ensurePermission('delete fee');
+
         $fee = $this->getFeeForCurrentSchool($feeId);
         
         DB::transaction(function () use ($fee) {
@@ -197,6 +254,20 @@ class ManageFees extends Component
         return Fee::whereHas('feeCategory', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
         })->with('feeCategory')->findOrFail($feeId);
+    }
+
+    protected function modeIsAllowed(string $mode): bool
+    {
+        return match ($mode) {
+            'create' => auth()->user()?->can('create fee') ?? false,
+            'edit' => auth()->user()?->can('update fee') ?? false,
+            default => true,
+        };
+    }
+
+    protected function ensurePermission(string $permission): void
+    {
+        abort_unless(auth()->user()?->can($permission), 403);
     }
 
     public function render()

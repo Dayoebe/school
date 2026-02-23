@@ -34,15 +34,64 @@ class ManageFeeCategories extends Component
 
     public function mount()
     {
+        $this->hydrateModeFromRoute();
+
         if ($this->mode === 'edit' && $this->feeCategoryId) {
-            $this->loadFeeCategoryForEdit();
+            if ($this->modeIsAllowed('edit')) {
+                $this->loadFeeCategoryForEdit();
+            } else {
+                $this->mode = 'list';
+                $this->feeCategoryId = null;
+            }
+        } elseif ($this->mode === 'edit') {
+            $this->mode = 'list';
+            $this->feeCategoryId = null;
         } elseif ($this->mode === 'create') {
-            $this->resetForm();
+            if ($this->modeIsAllowed('create')) {
+                $this->resetForm();
+            } else {
+                $this->mode = 'list';
+            }
         }
+    }
+
+    protected function hydrateModeFromRoute(): void
+    {
+        $routeName = request()->route()?->getName();
+
+        if ($routeName === 'fee-categories.create') {
+            $this->mode = 'create';
+            $this->feeCategoryId = null;
+            return;
+        }
+
+        if ($routeName === 'fee-categories.edit') {
+            $this->mode = 'edit';
+            $this->feeCategoryId = $this->resolveRouteModelId(request()->route('feeCategory'));
+        }
+    }
+
+    protected function resolveRouteModelId(mixed $value): ?int
+    {
+        if ($value instanceof \Illuminate\Database\Eloquent\Model) {
+            return (int) $value->getKey();
+        }
+
+        if (is_numeric($value)) {
+            return (int) $value;
+        }
+
+        return null;
     }
 
     public function switchMode($mode, $feeCategoryId = null)
     {
+        if (!$this->modeIsAllowed($mode)) {
+            $this->mode = 'list';
+            $this->feeCategoryId = null;
+            return;
+        }
+
         $this->mode = $mode;
         $this->feeCategoryId = $feeCategoryId;
         $this->resetValidation();
@@ -56,6 +105,8 @@ class ManageFeeCategories extends Component
 
     public function loadFeeCategoryForEdit()
     {
+        $this->ensurePermission('update fee category');
+
         $feeCategory = $this->getFeeCategoryForCurrentSchool($this->feeCategoryId);
         
         $this->fill([
@@ -66,6 +117,8 @@ class ManageFeeCategories extends Component
 
     public function createFeeCategory()
     {
+        $this->ensurePermission('create fee category');
+
         $this->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string|max:1000',
@@ -85,6 +138,8 @@ class ManageFeeCategories extends Component
 
     public function updateFeeCategory()
     {
+        $this->ensurePermission('update fee category');
+
         $feeCategory = $this->getFeeCategoryForCurrentSchool($this->feeCategoryId);
         
         $this->validate([
@@ -105,6 +160,8 @@ class ManageFeeCategories extends Component
 
     public function deleteFeeCategory($feeCategoryId)
     {
+        $this->ensurePermission('delete fee category');
+
         $feeCategory = $this->getFeeCategoryForCurrentSchool($feeCategoryId);
         
         DB::transaction(function () use ($feeCategory) {
@@ -160,6 +217,20 @@ class ManageFeeCategories extends Component
                 });
             })
             ->orderBy($this->sortField, $this->sortDirection);
+    }
+
+    protected function modeIsAllowed(string $mode): bool
+    {
+        return match ($mode) {
+            'create' => auth()->user()?->can('create fee category') ?? false,
+            'edit' => auth()->user()?->can('update fee category') ?? false,
+            default => true,
+        };
+    }
+
+    protected function ensurePermission(string $permission): void
+    {
+        abort_unless(auth()->user()?->can($permission), 403);
     }
 
     public function render()

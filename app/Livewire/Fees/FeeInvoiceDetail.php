@@ -17,6 +17,7 @@ class FeeInvoiceDetail extends Component
 
     public FeeInvoice $feeInvoice;
     public $activeTab = 'details';
+    public bool $canManage = false;
     
     // For adding new fees
     public $feeCategories = [];
@@ -46,6 +47,11 @@ class FeeInvoiceDetail extends Component
             'user.studentRecord.section',
             'feeInvoiceRecords.fee'
         ])->findOrFail($feeInvoiceId);
+
+        $this->canManage = auth()->user()?->can('update fee invoice') ?? false;
+        if (!$this->canManage) {
+            $this->activeTab = 'details';
+        }
         
         $this->loadFeeCategories();
     }
@@ -75,17 +81,24 @@ class FeeInvoiceDetail extends Component
 
     public function changeTab($tab)
     {
+        if (in_array($tab, ['payments', 'manage'], true) && !$this->canManage) {
+            $this->activeTab = 'details';
+            return;
+        }
+
         $this->activeTab = $tab;
     }
 
     public function startEditingRecord($recordId)
     {
+        $this->ensureCanManage();
+
         $record = $this->getInvoiceRecordForCurrentInvoice($recordId);
         
         $this->editingRecordId = $recordId;
-        $this->editAmount = $record->amount->getAmount()->toInt();
-        $this->editWaiver = $record->waiver->getAmount()->toInt();
-        $this->editFine = $record->fine->getAmount()->toInt();
+        $this->editAmount = $record->amount->getAmount()->toFloat();
+        $this->editWaiver = $record->waiver->getAmount()->toFloat();
+        $this->editFine = $record->fine->getAmount()->toFloat();
     }
 
     public function cancelEditingRecord()
@@ -96,6 +109,8 @@ class FeeInvoiceDetail extends Component
 
     public function updateRecord()
     {
+        $this->ensureCanManage();
+
         $this->validate([
             'editAmount' => 'required|numeric|min:0',
             'editWaiver' => 'required|numeric|min:0',
@@ -104,9 +119,9 @@ class FeeInvoiceDetail extends Component
 
         $record = $this->getInvoiceRecordForCurrentInvoice($this->editingRecordId);
         
-        $amount = Money::ofMinor($this->editAmount, config('app.currency'));
-        $waiver = Money::ofMinor($this->editWaiver, config('app.currency'));
-        $fine = Money::ofMinor($this->editFine, config('app.currency'));
+        $amount = Money::of($this->editAmount, config('app.currency'));
+        $waiver = Money::of($this->editWaiver, config('app.currency'));
+        $fine = Money::of($this->editFine, config('app.currency'));
         $paid = $record->paid;
 
         // Check if payment is higher than due
@@ -131,6 +146,8 @@ class FeeInvoiceDetail extends Component
 
     public function addNewFee()
     {
+        $this->ensureCanManage();
+
         $this->validate([
             'selectedFee' => 'required|exists:fees,id',
             'newFeeAmount' => 'required|numeric|min:0',
@@ -171,6 +188,8 @@ class FeeInvoiceDetail extends Component
 
     public function deleteRecord($recordId)
     {
+        $this->ensureCanManage();
+
         $record = $this->getInvoiceRecordForCurrentInvoice($recordId);
         
         DB::transaction(function () use ($record) {
@@ -183,6 +202,8 @@ class FeeInvoiceDetail extends Component
 
     public function startPayment($recordId)
     {
+        $this->ensureCanManage();
+
         $this->payingRecordId = $recordId;
         $this->paymentAmount = 0;
     }
@@ -195,6 +216,8 @@ class FeeInvoiceDetail extends Component
 
     public function addPayment()
     {
+        $this->ensureCanManage();
+
         $this->validate([
             'paymentAmount' => 'required|numeric|min:0.01',
         ]);
@@ -251,6 +274,11 @@ class FeeInvoiceDetail extends Component
                 $query->where('school_id', auth()->user()->school_id);
             })
             ->findOrFail($recordId);
+    }
+
+    protected function ensureCanManage(): void
+    {
+        abort_unless($this->canManage, 403);
     }
 
     public function render()

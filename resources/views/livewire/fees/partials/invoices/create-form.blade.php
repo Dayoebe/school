@@ -1,7 +1,7 @@
 <div class="space-y-6" x-data="{ 
     feeAmounts: @entangle('selectedFees'),
     calculateTotal(fee) {
-        return (parseInt(fee.amount || 0) - parseInt(fee.waiver || 0) + parseInt(fee.fine || 0));
+        return (parseFloat(fee.amount || 0) - parseFloat(fee.waiver || 0) + parseFloat(fee.fine || 0));
     }
 }">
     <!-- Header -->
