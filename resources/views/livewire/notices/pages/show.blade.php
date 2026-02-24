@@ -1,13 +1,13 @@
 @extends('layouts.app', ['breadcrumbs' => [
-    ['href'=> route('dashboard'), 'text'=> 'Dashboard'],
-    ['href'=> route('notices.index'), 'text'=> 'notices'],
-    ['href'=> route('notices.show', $notice->id), 'text'=> "View $notice->title", 'active'],
+    ['href' => route('dashboard'), 'text' => 'Dashboard'],
+    ['href' => route('notices.index'), 'text' => 'Notices'],
+    ['href' => route('notices.show', $notice), 'text' => 'View', 'active'],
 ]])
 
-@section('title', __("View $notice->title"))
-
-@section('page_heading', __("View $notice->title") )
+@section('title', __("Notice: {$notice->title}"))
+@section('page_heading', __('Notice Details'))
 
 @section('content')
     @livewire('notices.show-notice', ['notice' => $notice])
 @endsection
+
