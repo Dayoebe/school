@@ -159,6 +159,27 @@ public function teacherRecord()
         return $this->belongsToMany(User::class, 'parent_records', 'user_id', 'student_id');
     }
 
+    public function broadcastMessageRecipients()
+    {
+        return $this->hasMany(BroadcastMessageRecipient::class);
+    }
+
+    public function receivedBroadcastMessages()
+    {
+        return $this->belongsToMany(
+            BroadcastMessage::class,
+            'broadcast_message_recipients',
+            'user_id',
+            'broadcast_message_id'
+        )->withPivot([
+            'channels',
+            'portal_delivered_at',
+            'email_delivered_at',
+            'sms_delivered_at',
+            'sms_status',
+        ]);
+    }
+
     // Profile Photo
     public function getProfilePhotoUrlAttribute()
     {

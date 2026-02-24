@@ -1,120 +1,216 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Profile')
+@section('title', 'My Profile')
 @section('page_heading', 'My Profile')
 
 @section('content')
-<div x-data="profileEdit()" class="max-w-4xl mx-auto py-10 sm:px-6 lg:px-8">
-    <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-8 rounded-2xl shadow-sm mb-10 text-center">
-        <div class="flex flex-col items-center justify-center">
-            <img src="{{ Auth::user()->profile_photo_url ?? asset('images/default-avatar.png') }}"
-                 alt="Profile Avatar"
-                 class="w-24 h-24 rounded-full border-2 border-gray-200 dark:border-gray-600 shadow-sm object-cover mb-4">
-            <h1 class="text-3xl font-bold mb-2 text-gray-900 dark:text-white">
-                <i class="fas fa-user-circle mr-2"></i>My Profile
-            </h1>
-            <p class="text-gray-600 dark:text-gray-300">Manage your personal and account settings</p>
-        </div>
-    </div>
+    @php
+        $roleLabels = $user->roles
+            ->pluck('name')
+            ->map(fn ($name) => $name === 'super_admin' ? 'super-admin' : $name)
+            ->unique()
+            ->map(fn ($name) => ucwords(str_replace(['-', '_'], ' ', $name)));
+    @endphp
 
-    <!-- Success Message -->
-    @if (session('success'))
-    <div x-show="showSuccess" x-transition class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded-lg shadow-sm relative mb-6 flex items-center">
-        <div class="flex-shrink-0">
-            <i class="fas fa-check-circle text-green-500 text-xl"></i>
-        </div>
-        <div class="ml-3 text-sm font-medium">
-            <span>{{ session('success') }}</span>
-        </div>
-        <button @click="showSuccess = false" class="ml-auto text-green-700 hover:text-green-900 focus:outline-none">
-            <i class="fas fa-times"></i>
-        </button>
-    </div>
-    @endif
+    <div class="space-y-6">
+        @if (session('success'))
+            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                {{ session('success') }}
+            </div>
+        @endif
 
-    <!-- Tabs Navigation -->
-    <div class="bg-white rounded-xl shadow-lg border border-gray-200 mb-8 p-2 flex justify-center">
-        <nav class="flex space-x-4 sm:space-x-8">
-            <button type="button" @click="activeTab = 'profile'" 
-                :class="activeTab === 'profile' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-700 hover:bg-gray-100'"
-                class="flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300">
-                <i class="fas fa-user-edit mr-2"></i>Profile Information
-            </button>
-            <button type="button" @click="activeTab = 'password'" 
-                :class="activeTab === 'password' ? 'bg-blue-500 text-white shadow-md' : 'text-gray-700 hover:bg-gray-100'"
-                class="flex items-center px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300">
-                <i class="fas fa-lock mr-2"></i>Account Security
-            </button>
-        </nav>
-    </div>
-
-    <!-- Profile Tab Content -->
-    <div x-show="activeTab === 'profile'" x-transition>
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Personal Details</h2>
-            <form method="POST" action="{{ route('profile.update') }}">
-                @csrf
-                @method('patch')
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div class="flex items-center gap-4">
+                    <img
+                        src="{{ $user->profile_photo_url }}"
+                        alt="{{ $user->name }}"
+                        class="h-16 w-16 rounded-full border border-slate-200 object-cover"
+                    />
                     <div>
-                        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
-                            <i class="fas fa-id-card mr-2 text-blue-500"></i>Full Name
-                        </label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $user->name) }}" autocomplete="name"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 text-gray-800">
-                        @error('name')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+                        <h2 class="text-xl font-bold text-slate-900">{{ $user->name }}</h2>
+                        <p class="text-sm text-slate-600">{{ $user->email }}</p>
+                        <div class="mt-2 flex flex-wrap gap-2">
+                            @forelse ($roleLabels as $roleLabel)
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase text-slate-700">
+                                    {{ $roleLabel }}
+                                </span>
+                            @empty
+                                <span class="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold uppercase text-slate-500">
+                                    No role
+                                </span>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 text-xs text-slate-600 sm:grid-cols-4">
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p class="font-semibold uppercase tracking-wide text-slate-500">School</p>
+                        <p class="mt-1 text-slate-800">{{ $user->school?->name ?? 'N/A' }}</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p class="font-semibold uppercase tracking-wide text-slate-500">School Code</p>
+                        <p class="mt-1 text-slate-800">{{ $user->school?->code ?? 'N/A' }}</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p class="font-semibold uppercase tracking-wide text-slate-500">Email Status</p>
+                        <p class="mt-1 text-slate-800">{{ $user->email_verified_at ? 'Verified' : 'Unverified' }}</p>
+                    </div>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                        <p class="font-semibold uppercase tracking-wide text-slate-500">Account Since</p>
+                        <p class="mt-1 text-slate-800">{{ $user->created_at?->format('M d, Y') ?? 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-slate-900">Profile Information</h3>
+            <p class="mt-1 text-sm text-slate-600">Update your personal and contact details.</p>
+
+            <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="mt-5 space-y-4">
+                @csrf
+                @method('PATCH')
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div>
+                        <label for="name" class="mb-1 block text-sm font-semibold text-slate-700">Full Name</label>
+                        <input id="name" name="name" type="text" value="{{ old('name', $user->name) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-                            <i class="fas fa-envelope mr-2 text-blue-500"></i>Email Address
-                        </label>
-                        <input type="email" name="email" id="email" value="{{ old('email', $user->email) }}" autocomplete="email"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-3 text-gray-800">
-                        @error('email')
-                            <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+                        <label for="email" class="mb-1 block text-sm font-semibold text-slate-700">Email Address</label>
+                        <input id="email" name="email" type="email" value="{{ old('email', $user->email) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="phone" class="mb-1 block text-sm font-semibold text-slate-700">Phone</label>
+                        <input id="phone" name="phone" type="text" value="{{ old('phone', $user->phone) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="gender" class="mb-1 block text-sm font-semibold text-slate-700">Gender</label>
+                        <select id="gender" name="gender"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">
+                            <option value="">Select</option>
+                            <option value="male" @selected(old('gender', $user->gender) === 'male')>Male</option>
+                            <option value="female" @selected(old('gender', $user->gender) === 'female')>Female</option>
+                        </select>
+                        @error('gender') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="birthday" class="mb-1 block text-sm font-semibold text-slate-700">Birthday</label>
+                        <input
+                            id="birthday"
+                            name="birthday"
+                            type="date"
+                            value="{{ old('birthday', optional($user->birthday)->format('Y-m-d')) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                        @error('birthday') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="blood_group" class="mb-1 block text-sm font-semibold text-slate-700">Blood Group</label>
+                        <input id="blood_group" name="blood_group" type="text" value="{{ old('blood_group', $user->blood_group) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('blood_group') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="state" class="mb-1 block text-sm font-semibold text-slate-700">State</label>
+                        <input id="state" name="state" type="text" value="{{ old('state', $user->state) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('state') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="city" class="mb-1 block text-sm font-semibold text-slate-700">City</label>
+                        <input id="city" name="city" type="text" value="{{ old('city', $user->city) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('city') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="nationality" class="mb-1 block text-sm font-semibold text-slate-700">Nationality</label>
+                        <input id="nationality" name="nationality" type="text" value="{{ old('nationality', $user->nationality) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('nationality') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
+                        <label for="religion" class="mb-1 block text-sm font-semibold text-slate-700">Religion</label>
+                        <input id="religion" name="religion" type="text" value="{{ old('religion', $user->religion) }}"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        @error('religion') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="address" class="mb-1 block text-sm font-semibold text-slate-700">Address</label>
+                        <textarea id="address" name="address" rows="3"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200">{{ old('address', $user->address) }}</textarea>
+                        @error('address') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label for="profile_photo" class="mb-1 block text-sm font-semibold text-slate-700">Profile Photo</label>
+                        <input id="profile_photo" name="profile_photo" type="file" accept="image/*"
+                            class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        <p class="mt-1 text-xs text-slate-500">Accepted image files up to 3MB.</p>
+                        @error('profile_photo') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
                 </div>
 
                 <div class="flex justify-end">
-                    <button type="submit"
-                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-300">
-                        <i class="fas fa-save mr-2"></i> Save Changes
+                    <button type="submit" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+                        <i class="fas fa-save mr-2"></i>Save Profile
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
+        </section>
 
-    <!-- Password Tab Content -->
-    <div x-show="activeTab === 'password'" x-transition>
-        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6 sm:p-8">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Change Password</h2>
-            @include('profile.partials.change-password-form')
-        </div>
-    </div>
-</div>
+        <section id="password" class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 class="text-lg font-bold text-slate-900">Security</h3>
+            <p class="mt-1 text-sm text-slate-600">Use a strong password and update it regularly.</p>
 
-@push('scripts')
-<script>
-    function profileEdit() {
-        return {
-            activeTab: 'profile',
-            showSuccess: @json(session('success') ? true : false),
-            init() {
-                // Auto-hide success message after 5 seconds
-                if (this.showSuccess) {
-                    setTimeout(() => {
-                        this.showSuccess = false;
-                    }, 5000);
-                }
-            }
-        }
-    }
-</script>
-@endpush
+            <form action="{{ route('password.change.update') }}" method="POST" class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                @csrf
+
+                <div class="md:col-span-2">
+                    <label for="current_password" class="mb-1 block text-sm font-semibold text-slate-700">Current Password</label>
+                    <input id="current_password" name="current_password" type="password"
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                    @error('current_password') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label for="password" class="mb-1 block text-sm font-semibold text-slate-700">New Password</label>
+                    <input id="password" name="password" type="password"
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                    @error('password') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label for="password_confirmation" class="mb-1 block text-sm font-semibold text-slate-700">Confirm Password</label>
+                    <input id="password_confirmation" name="password_confirmation" type="password"
+                        class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                </div>
+
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="rounded-lg bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-900">
+                        <i class="fas fa-lock mr-2"></i>Change Password
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
 @endsection
+

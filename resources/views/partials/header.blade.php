@@ -18,7 +18,8 @@
     $phoneHref = preg_replace('/[^0-9+]/', '', $contactPhonePrimary);
     $emailHref = trim($contactEmail);
 
-    $logoUrl = $publicSiteSchool?->logo_url ?? asset(config('app.logo', 'img/logo.png'));
+    $themeLogoUrl = trim((string) data_get($settings, 'theme.logo_url', ''));
+    $logoUrl = $themeLogoUrl !== '' ? $themeLogoUrl : ($publicSiteSchool?->logo_url ?? asset(config('app.logo', 'img/logo.png')));
 @endphp
 
 <header
@@ -77,7 +78,7 @@
 
             <div class="hidden items-center gap-2 lg:flex">
                 <a href="{{ route('admission') }}"
-                    class="inline-flex items-center gap-2 rounded-xl bg-orange-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-700">
+                    class="site-primary-bg inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold text-white transition hover:opacity-90">
                     <i class="fas fa-user-plus text-xs"></i>
                     <span>Apply Now</span>
                 </a>
@@ -146,7 +147,7 @@
 
             <div class="grid grid-cols-1 gap-2 pt-2">
                 <a href="{{ route('admission') }}"
-                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-orange-700">
+                    class="site-primary-bg inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white transition hover:opacity-90">
                     <i class="fas fa-user-plus text-xs"></i>
                     <span>Apply Now</span>
                 </a>

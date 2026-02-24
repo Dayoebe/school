@@ -36,6 +36,13 @@ class Menu extends Component
                 'route' => 'dashboard',
                 'permissions' => ['view dashboard'],
             ],
+            [
+                'type' => 'menu-item',
+                'icon' => 'fas fa-chart-bar',
+                'text' => 'Analytics',
+                'route' => 'analytics.index',
+                'permissions' => ['read analytics dashboard'],
+            ],
         ];
     }
 
@@ -74,9 +81,15 @@ class Menu extends Component
                     ],
                     [
                         'type' => 'menu-item',
-                        'text' => 'Children Overview',
-                        'route' => 'dashboard',
-                        'permissions' => ['view dashboard'],
+                        'text' => 'Portal Notices',
+                        'route' => 'broadcasts.inbox',
+                        'permissions' => ['view own broadcasts'],
+                    ],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Child Attendance & Discipline',
+                        'route' => 'parent.student-welfare',
+                        'permissions' => ['read own child attendance', 'read own child discipline'],
                     ],
                 ],
             ],
@@ -135,6 +148,13 @@ class Menu extends Component
                         'permissions' => ['create admin'],
                     ],
                 ],
+            ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Users & Roles',
+                'icon' => 'fas fa-users-gear',
+                'route' => 'users.roles',
+                'permissions' => ['manage user roles'],
             ],
             [
                 'type' => 'menu-item',
@@ -361,6 +381,32 @@ class Menu extends Component
                         'text' => 'Create Custom Item',
                         'route' => 'custom-timetable-items.create',
                         'permissions' => ['create custom timetable item'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'menu-item',
+                'text' => 'Attendance & Discipline',
+                'icon' => 'fas fa-user-check',
+                'permissions' => ['read attendance', 'read discipline incident', 'read own child attendance', 'read own child discipline'],
+                'submenu' => [
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Daily Attendance',
+                        'route' => 'attendance.index',
+                        'permissions' => ['read attendance'],
+                    ],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Discipline Incidents',
+                        'route' => 'discipline.index',
+                        'permissions' => ['read discipline incident'],
+                    ],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Child Welfare View',
+                        'route' => 'parent.student-welfare',
+                        'permissions' => ['read own child attendance', 'read own child discipline'],
                     ],
                 ],
             ],
@@ -606,10 +652,24 @@ class Menu extends Component
             ],
             [
                 'type' => 'menu-item',
+                'icon' => 'fas fa-paper-plane',
+                'text' => 'Broadcast Messaging',
+                'route' => 'broadcasts.manage',
+                'permissions' => ['read broadcast message', 'create broadcast message'],
+            ],
+            [
+                'type' => 'menu-item',
                 'icon' => 'fas fa-images',
                 'text' => 'Gallery Manager',
                 'route' => 'gallery.manage',
                 'permissions' => ['manage gallery'],
+            ],
+            [
+                'type' => 'menu-item',
+                'icon' => 'fas fa-photo-video',
+                'text' => 'Media Library',
+                'route' => 'media-library.index',
+                'permissions' => ['manage media library'],
             ],
         ];
     }
@@ -618,17 +678,6 @@ class Menu extends Component
     {
         return [
             ['header' => 'Planned Features'],
-            [
-                'type' => 'menu-item',
-                'text' => 'Attendance & Discipline',
-                'icon' => 'fas fa-user-check',
-                'permissions' => ['view dashboard'],
-                'submenu' => [
-                    ['type' => 'menu-item', 'text' => 'Daily Attendance', 'coming_soon' => true],
-                    ['type' => 'menu-item', 'text' => 'Behavior Log', 'coming_soon' => true],
-                    ['type' => 'menu-item', 'text' => 'Parent Alerts', 'coming_soon' => true],
-                ],
-            ],
             [
                 'type' => 'menu-item',
                 'text' => 'Teaching & Learning',

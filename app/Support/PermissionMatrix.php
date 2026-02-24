@@ -18,6 +18,12 @@ class PermissionMatrix
             'read school',
             'update school',
             'manage school settings',
+            'submit school settings for approval',
+            'export school settings',
+            'import school settings',
+            'manage media library',
+            'read analytics dashboard',
+            'manage user roles',
 
             'read teacher',
             'create teacher',
@@ -102,6 +108,15 @@ class PermissionMatrix
             'create notice',
             'update notice',
             'delete notice',
+            'read attendance',
+            'create attendance',
+            'update attendance',
+            'read discipline incident',
+            'create discipline incident',
+            'update discipline incident',
+            'read broadcast message',
+            'create broadcast message',
+            'view own broadcasts',
 
             'read fee category',
             'create fee category',
@@ -164,6 +179,15 @@ class PermissionMatrix
             'read notice',
             'create notice',
             'update notice',
+            'read attendance',
+            'create attendance',
+            'update attendance',
+            'read discipline incident',
+            'create discipline incident',
+            'update discipline incident',
+            'read broadcast message',
+            'create broadcast message',
+            'view own broadcasts',
 
             'read admission registration',
             'review admission registration',
@@ -185,6 +209,7 @@ class PermissionMatrix
             'view result',
             'take cbt exam',
             'view cbt result',
+            'view own broadcasts',
         ];
 
         $parent = [
@@ -193,12 +218,16 @@ class PermissionMatrix
             'change own password',
             'view result',
             'view cbt result',
+            'read own child attendance',
+            'read own child discipline',
+            'view own broadcasts',
         ];
 
         $basicUser = [
             'view dashboard',
             'manage own profile',
             'change own password',
+            'view own broadcasts',
         ];
 
         return [
@@ -235,12 +264,19 @@ class PermissionMatrix
             'update school',
             'delete school',
             'manage school settings',
+            'submit school settings for approval',
+            'approve school settings',
+            'export school settings',
+            'import school settings',
+            'manage media library',
+            'read analytics dashboard',
 
             'read admin',
             'create admin',
             'update admin',
             'delete admin',
             'lock user',
+            'manage user roles',
             'read applicant',
             'update applicant',
 
@@ -327,6 +363,17 @@ class PermissionMatrix
             'create notice',
             'update notice',
             'delete notice',
+            'read attendance',
+            'create attendance',
+            'update attendance',
+            'read discipline incident',
+            'create discipline incident',
+            'update discipline incident',
+            'read own child attendance',
+            'read own child discipline',
+            'read broadcast message',
+            'create broadcast message',
+            'view own broadcasts',
 
             'read fee category',
             'create fee category',

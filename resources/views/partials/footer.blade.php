@@ -8,6 +8,12 @@
     $footerTitle = (string) data_get($settings, 'footer.admissions_title', 'Ready to enroll your child?');
     $footerDescription = (string) data_get($settings, 'footer.admissions_description', 'Start your admission process today or contact us for guidance.');
     $copyrightSuffix = (string) data_get($settings, 'footer.copyright_suffix', 'All rights reserved.');
+    $socialLinks = [
+        'facebook' => trim((string) data_get($settings, 'footer.social.facebook', '')),
+        'instagram' => trim((string) data_get($settings, 'footer.social.instagram', '')),
+        'x' => trim((string) data_get($settings, 'footer.social.x', '')),
+        'whatsapp' => trim((string) data_get($settings, 'footer.social.whatsapp', '')),
+    ];
 
     $contactAddress = (string) data_get($settings, 'contact.address', '');
     $contactPhonePrimary = (string) data_get($settings, 'contact.phone_primary', '');
@@ -17,7 +23,8 @@
     $phonePrimaryHref = preg_replace('/[^0-9+]/', '', $contactPhonePrimary);
     $phoneSecondaryHref = preg_replace('/[^0-9+]/', '', $contactPhoneSecondary);
 
-    $logoUrl = $publicSiteSchool?->logo_url ?? asset(config('app.logo', 'img/logo.png'));
+    $themeLogoUrl = trim((string) data_get($settings, 'theme.logo_url', ''));
+    $logoUrl = $themeLogoUrl !== '' ? $themeLogoUrl : ($publicSiteSchool?->logo_url ?? asset(config('app.logo', 'img/logo.png')));
 @endphp
 
 <footer class="relative mt-16 overflow-hidden border-t border-slate-200 bg-slate-950 text-slate-100">
@@ -36,7 +43,7 @@
                 </div>
                 <div class="flex flex-col gap-2 sm:flex-row">
                     <a href="{{ route('admission') }}"
-                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-red-700">
+                        class="site-primary-bg inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white transition hover:opacity-90">
                         <i class="fas fa-user-plus text-xs"></i>
                         <span>Apply Now</span>
                     </a>
@@ -61,18 +68,26 @@
                 </div>
                 <p class="mt-4 text-sm leading-relaxed text-slate-300">{{ $aboutSummary }}</p>
                 <div class="mt-4 flex items-center gap-3 text-base">
-                    <a href="#" aria-label="Facebook" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                    <a href="#" aria-label="Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-                    <a href="#" aria-label="X" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
-                        <i class="fab fa-twitter"></i>
-                    </a>
-                    <a href="#" aria-label="WhatsApp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
-                        <i class="fab fa-whatsapp"></i>
-                    </a>
+                    @if ($socialLinks['facebook'] !== '')
+                        <a href="{{ $socialLinks['facebook'] }}" target="_blank" rel="noopener noreferrer" aria-label="Facebook" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                            <i class="fab fa-facebook-f"></i>
+                        </a>
+                    @endif
+                    @if ($socialLinks['instagram'] !== '')
+                        <a href="{{ $socialLinks['instagram'] }}" target="_blank" rel="noopener noreferrer" aria-label="Instagram" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                    @endif
+                    @if ($socialLinks['x'] !== '')
+                        <a href="{{ $socialLinks['x'] }}" target="_blank" rel="noopener noreferrer" aria-label="X" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                    @endif
+                    @if ($socialLinks['whatsapp'] !== '')
+                        <a href="{{ $socialLinks['whatsapp'] }}" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-slate-200 transition hover:bg-white/20 hover:text-white">
+                            <i class="fab fa-whatsapp"></i>
+                        </a>
+                    @endif
                 </div>
             </div>
 
