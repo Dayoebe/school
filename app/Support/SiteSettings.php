@@ -27,6 +27,11 @@ class SiteSettings
             'mission' => 'To deliver holistic education that develops intellectual ability, emotional strength, ethical discipline, and leadership confidence.',
             'vision' => 'To be a leading institution known for raising globally competent, value-driven, and purpose-led graduates.',
             'school_promise' => 'Every student is seen, supported, and challenged to become the best version of themselves.',
+            'theme' => [
+                'primary_color' => '#dc2626',
+                'logo_url' => '',
+                'favicon_url' => '',
+            ],
             'contact' => [
                 'address' => '13 Chief Mbanefo E. Uduezue Street, Umubele, Awka, Anambra State, Nigeria',
                 'phone_primary' => '+234 806 602 5508',
@@ -49,9 +54,284 @@ class SiteSettings
                 'hero_description' => 'We are a learning community committed to academic excellence, personal discipline, and leadership development. Every learner is guided to think critically, grow confidently, and contribute meaningfully to society.',
                 'story_title' => 'A school built for impact',
                 'story_description' => 'Our school was established to provide a balanced education where strong academics meet discipline, values, and practical life readiness.',
+                'story_extra' => 'We combine structured teaching, co-curricular exposure, and close mentoring to help students discover their strengths and pursue clear goals.',
+                'story_quote' => 'Our focus is not just high scores, but complete growth: mind, character, and leadership.',
                 'identity_title' => 'Mission, vision, and values',
+                'pillars_title' => 'How we build student success',
+                'leadership_title' => 'Teams that drive quality education',
+                'stats_title' => 'Our impact at a glance',
+                'faq_title' => 'What parents and students ask',
+                'faq_subtitle' => 'Frequently Asked Questions',
+                'updates_title' => 'Updates and Calendar',
+                'updates_subtitle' => 'Upcoming events and school calendar',
+                'student_voice_title' => 'Student Voice',
+                'student_voice_subtitle' => 'What students and families are saying',
                 'visit_title' => 'Come and experience our learning environment',
                 'visit_description' => 'Meet our admissions team, explore our campus, and discover how we support every child’s journey.',
+                'milestones' => [
+                    [
+                        'title' => 'Foundation Stage',
+                        'note' => 'Built with a mission to deliver strong academics and character development.',
+                        'dotClass' => 'bg-red-500',
+                    ],
+                    [
+                        'title' => 'Growth Stage',
+                        'note' => 'Expanded student support systems, clubs, and practical learning structure.',
+                        'dotClass' => 'bg-orange-500',
+                    ],
+                    [
+                        'title' => 'Digital Learning Stage',
+                        'note' => 'Integrated technology-driven learning and data-backed performance tracking.',
+                        'dotClass' => 'bg-blue-500',
+                    ],
+                    [
+                        'title' => 'Future Forward',
+                        'note' => 'Strengthening innovation, leadership culture, and global readiness.',
+                        'dotClass' => 'bg-violet-500',
+                    ],
+                ],
+                'values' => [
+                    [
+                        'title' => 'Excellence',
+                        'text' => 'We pursue high standards in teaching, learning, and outcomes.',
+                        'icon' => 'fa-medal',
+                        'cardClass' => 'border-red-200 bg-red-50 text-red-900',
+                        'badgeClass' => 'bg-red-600 text-white',
+                    ],
+                    [
+                        'title' => 'Integrity',
+                        'text' => 'We build honesty, accountability, and trust in daily school life.',
+                        'icon' => 'fa-shield-halved',
+                        'cardClass' => 'border-orange-200 bg-orange-50 text-orange-900',
+                        'badgeClass' => 'bg-orange-600 text-white',
+                    ],
+                    [
+                        'title' => 'Leadership',
+                        'text' => 'Students are encouraged to take initiative and lead with confidence.',
+                        'icon' => 'fa-flag',
+                        'cardClass' => 'border-amber-200 bg-amber-50 text-amber-900',
+                        'badgeClass' => 'bg-amber-600 text-white',
+                    ],
+                    [
+                        'title' => 'Innovation',
+                        'text' => 'Creative thinking and practical problem-solving are part of learning.',
+                        'icon' => 'fa-lightbulb',
+                        'cardClass' => 'border-cyan-200 bg-cyan-50 text-cyan-900',
+                        'badgeClass' => 'bg-cyan-600 text-white',
+                    ],
+                    [
+                        'title' => 'Discipline',
+                        'text' => 'Structure and consistency shape student habits and responsibility.',
+                        'icon' => 'fa-list-check',
+                        'cardClass' => 'border-indigo-200 bg-indigo-50 text-indigo-900',
+                        'badgeClass' => 'bg-indigo-600 text-white',
+                    ],
+                    [
+                        'title' => 'Service',
+                        'text' => 'We inspire students to contribute positively to the community.',
+                        'icon' => 'fa-hand-holding-heart',
+                        'cardClass' => 'border-rose-200 bg-rose-50 text-rose-900',
+                        'badgeClass' => 'bg-rose-600 text-white',
+                    ],
+                ],
+                'pillar_tabs' => [
+                    [
+                        'key' => 'academics',
+                        'label' => 'Academic Rigor',
+                    ],
+                    [
+                        'key' => 'mentorship',
+                        'label' => 'Mentorship',
+                    ],
+                    [
+                        'key' => 'coCurricular',
+                        'label' => 'Co-Curricular',
+                    ],
+                    [
+                        'key' => 'technology',
+                        'label' => 'Technology',
+                    ],
+                ],
+                'pillars' => [
+                    'academics' => [
+                        'title' => 'Academic Rigor and Structured Progress',
+                        'description' => 'A clear curriculum plan with continuous assessments and targeted support for steady improvement.',
+                        'points' => [
+                            'Focused teaching plans by level and subject',
+                            'Regular performance reviews and interventions',
+                            'Exam readiness culture with guided preparation',
+                        ],
+                        'outcomes' => ['Stronger foundation', 'Higher consistency', 'Clear progress tracking'],
+                        'boxClass' => 'border-blue-200 bg-blue-50 text-blue-900',
+                        'labelClass' => 'text-blue-700',
+                    ],
+                    'mentorship' => [
+                        'title' => 'Mentorship and Character Formation',
+                        'description' => 'Every student receives guidance on academics, discipline, values, and personal growth.',
+                        'points' => [
+                            'Class-based mentoring and counseling support',
+                            'Leadership coaching and confidence-building',
+                            'Positive behavior and responsibility culture',
+                        ],
+                        'outcomes' => ['Better focus', 'Strong values', 'Confidence growth'],
+                        'boxClass' => 'border-emerald-200 bg-emerald-50 text-emerald-900',
+                        'labelClass' => 'text-emerald-700',
+                    ],
+                    'coCurricular' => [
+                        'title' => 'Co-Curricular Development',
+                        'description' => 'Balanced education through sports, clubs, competitions, and creative platforms.',
+                        'points' => [
+                            'Clubs for debate, science, arts, and writing',
+                            'Sports programs and team participation',
+                            'Public speaking and collaboration activities',
+                        ],
+                        'outcomes' => ['Teamwork', 'Creativity', 'Leadership exposure'],
+                        'boxClass' => 'border-purple-200 bg-purple-50 text-purple-900',
+                        'labelClass' => 'text-purple-700',
+                    ],
+                    'technology' => [
+                        'title' => 'Technology-Enabled Learning',
+                        'description' => 'Digital tools improve teaching quality, tracking, communication, and learning access.',
+                        'points' => [
+                            'Technology-supported classroom delivery',
+                            'Data-informed student performance review',
+                            'Digital communication with parents and guardians',
+                        ],
+                        'outcomes' => ['Faster feedback', 'Better visibility', 'Modern readiness'],
+                        'boxClass' => 'border-cyan-200 bg-cyan-50 text-cyan-900',
+                        'labelClass' => 'text-cyan-700',
+                    ],
+                ],
+                'leadership' => [
+                    [
+                        'role' => 'Principal',
+                        'unit' => 'School Leadership Office',
+                        'note' => 'Provides direction, quality assurance, and strategic school development.',
+                        'icon' => 'fa-user-tie',
+                        'iconClass' => 'bg-red-600',
+                        'roleClass' => 'text-red-700',
+                    ],
+                    [
+                        'role' => 'Academic Team',
+                        'unit' => 'Teaching & Curriculum',
+                        'note' => 'Drives curriculum delivery, lesson quality, and exam readiness.',
+                        'icon' => 'fa-book-open-reader',
+                        'iconClass' => 'bg-blue-600',
+                        'roleClass' => 'text-blue-700',
+                    ],
+                    [
+                        'role' => 'Student Affairs',
+                        'unit' => 'Welfare & Guidance',
+                        'note' => 'Supports behavior, counseling, and student wellbeing.',
+                        'icon' => 'fa-user-group',
+                        'iconClass' => 'bg-teal-600',
+                        'roleClass' => 'text-teal-700',
+                    ],
+                    [
+                        'role' => 'Operations Team',
+                        'unit' => 'School Administration',
+                        'note' => 'Ensures smooth campus operations and learning support systems.',
+                        'icon' => 'fa-gear',
+                        'iconClass' => 'bg-violet-600',
+                        'roleClass' => 'text-violet-700',
+                    ],
+                ],
+                'stats' => [
+                    [
+                        'label' => 'Students Mentored',
+                        'target' => 1200,
+                        'suffix' => '+',
+                        'cardClass' => 'border-red-200 bg-red-50',
+                        'valueClass' => 'text-red-700',
+                    ],
+                    [
+                        'label' => 'Certified Teachers',
+                        'target' => 85,
+                        'suffix' => '+',
+                        'cardClass' => 'border-orange-200 bg-orange-50',
+                        'valueClass' => 'text-orange-700',
+                    ],
+                    [
+                        'label' => 'Learning Programs',
+                        'target' => 30,
+                        'suffix' => '+',
+                        'cardClass' => 'border-blue-200 bg-blue-50',
+                        'valueClass' => 'text-blue-700',
+                    ],
+                    [
+                        'label' => 'Success Rate',
+                        'target' => 98,
+                        'suffix' => '%',
+                        'cardClass' => 'border-violet-200 bg-violet-50',
+                        'valueClass' => 'text-violet-700',
+                    ],
+                ],
+                'faqs' => [
+                    [
+                        'q' => 'What makes Elites International College different?',
+                        'a' => 'We combine strong academics, disciplined culture, mentoring support, and practical student development.',
+                    ],
+                    [
+                        'q' => 'How does the school support student growth?',
+                        'a' => 'Through structured teaching, regular assessments, counseling support, and co-curricular opportunities.',
+                    ],
+                    [
+                        'q' => 'Can parents stay informed about student progress?',
+                        'a' => 'Yes. The school provides regular communication and progress visibility through reports and portal tools.',
+                    ],
+                    [
+                        'q' => 'How can I learn more about admissions?',
+                        'a' => 'Visit the Admission page or Contact page to speak with the admissions team.',
+                    ],
+                ],
+                'updates' => [
+                    [
+                        'title' => 'Inter-House Sports Festival',
+                        'date' => 'March 20, 2026',
+                        'note' => 'Campus-wide sports and cultural showcase for all houses.',
+                    ],
+                    [
+                        'title' => 'Science and Innovation Week',
+                        'date' => 'April 8, 2026',
+                        'note' => 'Student projects, lab demos, and parent exhibition day.',
+                    ],
+                    [
+                        'title' => 'Mid-Term Progress Briefing',
+                        'date' => 'May 2, 2026',
+                        'note' => 'Parents and guardians meet mentors for performance review.',
+                    ],
+                ],
+                'calendar' => [
+                    [
+                        'period' => 'March 2026',
+                        'activity' => 'Continuous Assessment 2',
+                    ],
+                    [
+                        'period' => 'April 2026',
+                        'activity' => 'Holiday Coaching and Club Clinics',
+                    ],
+                    [
+                        'period' => 'May 2026',
+                        'activity' => 'Second Term Examinations',
+                    ],
+                ],
+                'student_voice' => [
+                    [
+                        'name' => 'Amara E.',
+                        'role' => 'SS2 Student',
+                        'quote' => 'The mentorship system helped me become more confident in class and in leadership roles.',
+                    ],
+                    [
+                        'name' => 'Daniel O.',
+                        'role' => 'Parent',
+                        'quote' => 'We get timely updates, and the school genuinely partners with families for student progress.',
+                    ],
+                    [
+                        'name' => 'Chioma N.',
+                        'role' => 'JSS3 Student',
+                        'quote' => 'Clubs and projects make learning practical, exciting, and useful for real life.',
+                    ],
+                ],
             ],
             'admission_page' => [
                 'hero_badge' => 'Admission Portal',
@@ -74,12 +354,45 @@ class SiteSettings
                 'admissions_title' => 'Ready to enroll your child?',
                 'admissions_description' => 'Start your admission process today or contact us for guidance.',
                 'copyright_suffix' => 'All rights reserved.',
+                'social' => [
+                    'facebook' => '',
+                    'instagram' => '',
+                    'x' => '',
+                    'whatsapp' => '',
+                ],
             ],
             'meta' => [
                 'description' => 'School portal and services.',
                 'keywords' => 'School Portal, Results, Exams, Admissions',
                 'author' => config('app.name', 'School Portal'),
                 'og_description' => 'School portal for learning, exams, and result management.',
+            ],
+            'seo' => [
+                'home' => [
+                    'meta_title' => '',
+                    'meta_description' => '',
+                    'social_image_url' => '',
+                ],
+                'about' => [
+                    'meta_title' => '',
+                    'meta_description' => '',
+                    'social_image_url' => '',
+                ],
+                'admission' => [
+                    'meta_title' => '',
+                    'meta_description' => '',
+                    'social_image_url' => '',
+                ],
+                'contact' => [
+                    'meta_title' => '',
+                    'meta_description' => '',
+                    'social_image_url' => '',
+                ],
+                'gallery' => [
+                    'meta_title' => '',
+                    'meta_description' => '',
+                    'social_image_url' => '',
+                ],
             ],
             // Reserved for additional page-specific keys.
             'pages' => [
@@ -224,7 +537,13 @@ class SiteSettings
             $settings['about_page']['hero_title'] = 'About ' . $school->name;
         }
 
-        $settings['meta']['author'] = (string) ($settings['meta']['author'] ?? $school->name);
+        if (($settings['theme']['logo_url'] ?? '') === '' && !empty($school->logo_url)) {
+            $settings['theme']['logo_url'] = (string) $school->logo_url;
+        }
+
+        if (($settings['meta']['author'] ?? '') === '') {
+            $settings['meta']['author'] = (string) $school->name;
+        }
 
         return $settings;
     }
