@@ -21,8 +21,10 @@
                             {{ $weekday->name }}
                         </td>
                         @foreach($timeSlots as $timeSlot)
-                            <td class="border-2 border-gray-300 px-3 py-3 cursor-pointer hover:bg-indigo-50 transition"
-                                wire:click="selectCell({{ $timeSlot->id }}, {{ $weekday->id }})">
+                            <td class="border-2 border-gray-300 px-3 py-3 {{ $canUpdateTimetable ? 'cursor-pointer hover:bg-indigo-50' : 'cursor-default bg-gray-50/40' }} transition"
+                                @if($canUpdateTimetable)
+                                    wire:click="selectCell({{ $timeSlot->id }}, {{ $weekday->id }})"
+                                @endif>
                                 @php
                                     $pivot = $timeSlot->weekdays->find($weekday->id)?->timetableRecord;
                                 @endphp

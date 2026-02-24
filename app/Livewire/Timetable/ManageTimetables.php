@@ -45,6 +45,16 @@ class ManageTimetables extends Component
     public $subjects;
     public $customItems;
     public $currentTimetable;
+    public $activeSemesterId = null;
+
+    public bool $canReadTimetable = false;
+    public bool $canCreateTimetable = false;
+    public bool $canUpdateTimetable = false;
+    public bool $canDeleteTimetable = false;
+    public bool $canReadCustomItems = false;
+    public bool $canCreateCustomItems = false;
+    public bool $canUpdateCustomItems = false;
+    public bool $canDeleteCustomItems = false;
 
     protected $queryString = [
         'mode' => ['except' => 'list'],
@@ -53,19 +63,12 @@ class ManageTimetables extends Component
 
     public function mount()
     {
+        $this->activeSemesterId = auth()->user()->school?->semester_id;
+        $this->hydratePermissionFlags();
         $this->loadClasses();
         $this->loadWeekdays();
         $this->loadCustomItems();
-
-        if ($this->mode === 'list') {
-            $routeName = request()->route()?->getName();
-
-            if ($routeName === 'timetables.create') {
-                $this->mode = 'create';
-            } elseif (in_array($routeName, ['custom-timetable-items.index', 'custom-timetable-items.create'], true)) {
-                $this->mode = 'custom-items';
-            }
-        }
+        $this->hydrateModeFromRoute();
 
         $classFromQuery = request()->query('class');
         if ($classFromQuery && $this->classExistsInScope((int) $classFromQuery)) {
@@ -84,6 +87,15 @@ class ManageTimetables extends Component
             $this->loadTimetables();
         } else {
             $this->timetables = collect();
+        }
+
+        if (!$this->modeIsAllowed($this->mode)) {
+            $this->mode = 'list';
+        }
+
+        if (in_array($this->mode, ['edit', 'build'], true)) {
+            $this->mode = 'list';
+            $this->timetableId = null;
         }
     }
 
@@ -107,14 +119,13 @@ class ManageTimetables extends Component
 
     public function loadTimetables()
     {
-        if (!$this->selectedClass) {
+        if (!$this->selectedClass || !$this->activeSemesterId) {
             $this->timetables = collect();
             return;
         }
 
         $this->timetables = $this->timetableQueryForSchool()
             ->where('my_class_id', $this->selectedClass)
-            ->where('semester_id', auth()->user()->school->semester_id)
             ->with(['timeSlots', 'myClass'])
             ->latest()
             ->get();
@@ -137,6 +148,8 @@ class ManageTimetables extends Component
 
     public function loadTimetableForBuilding($timetableId)
     {
+        $this->ensureCan(['read timetable', 'update timetable']);
+
         $this->currentTimetable = $this->timetableQueryForSchool()
             ->with(['timeSlots.weekdays', 'myClass.subjects'])
             ->findOrFail($timetableId);
@@ -151,6 +164,12 @@ class ManageTimetables extends Component
 
     public function updatedSelectedClass()
     {
+        if (auth()->user()->hasRole('student')) {
+            $this->selectedClass = auth()->user()->studentRecord?->myClass?->id ?? '';
+        } elseif ($this->selectedClass && !$this->classExistsInScope((int) $this->selectedClass)) {
+            $this->selectedClass = '';
+        }
+
         $this->loadTimetables();
     }
 
@@ -162,6 +181,17 @@ class ManageTimetables extends Component
     // Mode switching
     public function switchMode($mode, $timetableId = null)
     {
+        if (!$this->modeIsAllowed($mode)) {
+            return;
+        }
+
+        if (in_array($mode, ['edit', 'build'], true) && !$timetableId) {
+            $this->mode = 'list';
+            $this->timetableId = null;
+            $this->loadTimetables();
+            return;
+        }
+
         $this->mode = $mode;
         $this->timetableId = $timetableId;
         $this->resetValidation();
@@ -172,9 +202,12 @@ class ManageTimetables extends Component
             $this->loadTimetableForBuilding($timetableId);
         } elseif ($mode === 'create') {
             $this->resetTimetableForm();
+            $this->my_class_id = $this->selectedClass ?: '';
         } elseif ($mode === 'custom-items') {
             $this->resetCustomItemForm();
             $this->loadCustomItems();
+        } else {
+            $this->loadTimetables();
         }
     }
 
@@ -193,9 +226,22 @@ class ManageTimetables extends Component
     public function createTimetable()
     {
         $this->ensureCan(['create timetable']);
+
+        if (!$this->activeSemesterId) {
+            session()->flash('error', 'Set an active semester before creating a timetable.');
+            return;
+        }
         
         $this->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('timetables', 'name')->where(function ($query) {
+                    $query->where('my_class_id', $this->my_class_id)
+                        ->where('semester_id', $this->activeSemesterId);
+                }),
+            ],
             'description' => 'nullable|string',
             'my_class_id' => 'required|exists:my_classes,id',
         ]);
@@ -209,7 +255,7 @@ class ManageTimetables extends Component
             'name' => $this->name,
             'description' => $this->description,
             'my_class_id' => $this->my_class_id,
-            'semester_id' => auth()->user()->school->semester_id,
+            'semester_id' => $this->activeSemesterId,
         ]);
 
         session()->flash('success', 'Timetable created successfully');
@@ -223,7 +269,17 @@ class ManageTimetables extends Component
         $timetable = $this->timetableQueryForSchool()->findOrFail($this->timetableId);
         
         $this->validate([
-            'name' => 'required|string|max:255',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('timetables', 'name')
+                    ->ignore($timetable->id)
+                    ->where(function ($query) use ($timetable) {
+                        $query->where('my_class_id', $timetable->my_class_id)
+                            ->where('semester_id', $timetable->semester_id);
+                    }),
+            ],
             'description' => 'nullable|string',
         ]);
 
@@ -251,12 +307,25 @@ class ManageTimetables extends Component
     // Time slots
     public function createTimeSlot()
     {
+        $this->ensureCan(['update timetable']);
+
         $this->validate([
-            'startTime' => 'required',
-            'stopTime' => 'required|after:startTime',
+            'startTime' => 'required|date_format:H:i',
+            'stopTime' => 'required|date_format:H:i|after:startTime',
         ]);
 
         $timetable = $this->timetableQueryForSchool()->findOrFail($this->timetableId);
+
+        $hasOverlap = TimetableTimeSlot::query()
+            ->where('timetable_id', $timetable->id)
+            ->where('start_time', '<', $this->stopTime)
+            ->where('stop_time', '>', $this->startTime)
+            ->exists();
+
+        if ($hasOverlap) {
+            session()->flash('error', 'Time slot overlaps with an existing slot.');
+            return;
+        }
 
         TimetableTimeSlot::create([
             'start_time' => $this->startTime,
@@ -276,7 +345,8 @@ class ManageTimetables extends Component
 
         $timeSlot = TimetableTimeSlot::whereHas('timetable.myClass.classGroup', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
-        })->findOrFail($timeSlotId);
+        })->where('timetable_id', $this->timetableId)
+            ->findOrFail($timeSlotId);
 
         $timeSlot->delete();
         
@@ -303,9 +373,6 @@ class ManageTimetables extends Component
             session()->flash('error', 'Selected time slot does not belong to the current timetable.');
             return;
         }
-        
-        // Remove existing record
-        $timeSlot->weekdays()->detach($this->selectedWeekday);
 
         // Attach new record if ID provided
         if ($this->recordId) {
@@ -339,11 +406,17 @@ class ManageTimetables extends Component
                 session()->flash('error', 'Selected record is not valid for your current school/class.');
                 return;
             }
-            
+
+            // Remove existing record before attaching new one.
+            $timeSlot->weekdays()->detach($this->selectedWeekday);
+
             $timeSlot->weekdays()->attach($this->selectedWeekday, [
                 'timetable_time_slot_weekdayable_id' => $this->recordId,
                 'timetable_time_slot_weekdayable_type' => $type,
             ]);
+        } else {
+            // Blank selection clears the cell.
+            $timeSlot->weekdays()->detach($this->selectedWeekday);
         }
 
         session()->flash('success', 'Record updated successfully');
@@ -352,6 +425,19 @@ class ManageTimetables extends Component
 
     public function selectCell($timeSlotId, $weekdayId)
     {
+        if (!$this->canUpdateTimetable) {
+            return;
+        }
+
+        $exists = TimetableTimeSlot::query()
+            ->where('id', $timeSlotId)
+            ->where('timetable_id', $this->timetableId)
+            ->exists();
+
+        if (!$exists) {
+            return;
+        }
+
         $this->selectedTimeSlot = $timeSlotId;
         $this->selectedWeekday = $weekdayId;
         
@@ -450,9 +536,68 @@ class ManageTimetables extends Component
 
     protected function timetableQueryForSchool()
     {
+        if (!$this->activeSemesterId) {
+            return Timetable::query()->whereRaw('1 = 0');
+        }
+
         return Timetable::whereHas('myClass.classGroup', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
-        });
+        })->where('semester_id', $this->activeSemesterId);
+    }
+
+    protected function hydrateModeFromRoute(): void
+    {
+        $routeName = request()->route()?->getName();
+
+        if ($routeName === 'timetables.create') {
+            $this->mode = 'create';
+            return;
+        }
+
+        if (in_array($routeName, ['custom-timetable-items.index', 'custom-timetable-items.create'], true)) {
+            $this->mode = 'custom-items';
+            return;
+        }
+
+        if (!in_array($this->mode, ['list', 'create', 'edit', 'build', 'custom-items'], true)) {
+            $this->mode = 'list';
+        }
+    }
+
+    protected function hydratePermissionFlags(): void
+    {
+        $this->canReadTimetable = $this->canAnyPermission(['read timetable']);
+        $this->canCreateTimetable = $this->canAnyPermission(['create timetable']);
+        $this->canUpdateTimetable = $this->canAnyPermission(['update timetable']);
+        $this->canDeleteTimetable = $this->canAnyPermission(['delete timetable']);
+
+        $this->canReadCustomItems = $this->canAnyPermission(['read custom timetable items', 'read custom timetable item']);
+        $this->canCreateCustomItems = $this->canAnyPermission(['create custom timetable items', 'create custom timetable item']);
+        $this->canUpdateCustomItems = $this->canAnyPermission(['update custom timetable items', 'update custom timetable item']);
+        $this->canDeleteCustomItems = $this->canAnyPermission(['delete custom timetable items', 'delete custom timetable item']);
+    }
+
+    protected function canAnyPermission(array $permissions): bool
+    {
+        foreach ($permissions as $permission) {
+            if (auth()->user()->can($permission)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    protected function modeIsAllowed(string $mode): bool
+    {
+        return match ($mode) {
+            'list' => $this->canReadTimetable,
+            'create' => $this->canCreateTimetable,
+            'edit' => $this->canUpdateTimetable,
+            'build' => $this->canReadTimetable || $this->canUpdateTimetable,
+            'custom-items' => $this->canReadCustomItems || $this->canCreateCustomItems || $this->canUpdateCustomItems || $this->canDeleteCustomItems,
+            default => false,
+        };
     }
 
     protected function ensureCan(array $permissions): void
