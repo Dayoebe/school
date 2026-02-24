@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Result;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class StudentRecord extends Model
@@ -442,6 +443,16 @@ class StudentRecord extends Model
             ->where('academic_year_id', $academicYearId)
             ->where('semester_id', $semesterId)
             ->first();
+    }
+
+    public function attendanceRecords(): HasMany
+    {
+        return $this->hasMany(AttendanceRecord::class);
+    }
+
+    public function disciplineIncidents(): HasMany
+    {
+        return $this->hasMany(DisciplineIncident::class);
     }
 
     public function scopeWithActiveUser($query)

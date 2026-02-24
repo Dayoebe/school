@@ -8,11 +8,62 @@
     $isDashboardMode = !$isPrintMode && !$isGuestMode && !$isPublicMode && auth()->check();
 
     $publicSettings = $publicSiteSettings ?? [];
+    $currentRouteName = request()->route()?->getName();
+
+    $seoPageKey = match ($currentRouteName) {
+        'home' => 'home',
+        'about' => 'about',
+        'admission' => 'admission',
+        'contact' => 'contact',
+        'gallery' => 'gallery',
+        default => null,
+    };
+
+    $seoPageSettings = $seoPageKey ? (array) data_get($publicSettings, 'seo.' . $seoPageKey, []) : [];
+
+    $seoMetaTitle = trim((string) data_get($seoPageSettings, 'meta_title', ''));
+    $seoMetaDescription = trim((string) data_get($seoPageSettings, 'meta_description', ''));
+    $seoSocialImage = trim((string) data_get($seoPageSettings, 'social_image_url', ''));
+
     $metaSiteName = data_get($publicSettings, 'school_name', config('app.name', 'School Portal'));
-    $metaDescription = data_get($publicSettings, 'meta.description', 'School portal and services.');
+    $metaDescription = $seoMetaDescription !== ''
+        ? $seoMetaDescription
+        : data_get($publicSettings, 'meta.description', 'School portal and services.');
     $metaKeywords = data_get($publicSettings, 'meta.keywords', 'School Portal, Results, Exams, Admissions');
     $metaAuthor = data_get($publicSettings, 'meta.author', $metaSiteName);
-    $metaOgDescription = data_get($publicSettings, 'meta.og_description', $metaDescription);
+    $metaOgDescription = $seoMetaDescription !== ''
+        ? $seoMetaDescription
+        : data_get($publicSettings, 'meta.og_description', $metaDescription);
+
+    $themePrimaryColor = (string) data_get($publicSettings, 'theme.primary_color', '#dc2626');
+    if (!preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $themePrimaryColor)) {
+        $themePrimaryColor = '#dc2626';
+    }
+
+    $hex = ltrim($themePrimaryColor, '#');
+    if (strlen($hex) === 3) {
+        $hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+    }
+
+    $themePrimaryRgb = sprintf(
+        '%d, %d, %d',
+        hexdec(substr($hex, 0, 2)),
+        hexdec(substr($hex, 2, 2)),
+        hexdec(substr($hex, 4, 2))
+    );
+
+    $themeFavicon = (string) data_get($publicSettings, 'theme.favicon_url', '');
+    if ($themeFavicon === '') {
+        $themeFavicon = asset(config('app.favicon', 'logo.png'));
+    }
+
+    $themeLogoMeta = (string) data_get($publicSettings, 'theme.logo_url', '');
+    if ($themeLogoMeta === '') {
+        $themeLogoMeta = asset('logo.png');
+    }
+
+    $metaOgImage = $seoSocialImage !== '' ? $seoSocialImage : $themeLogoMeta;
+    $metaTitle = $seoMetaTitle !== '' ? $seoMetaTitle : trim($__env->yieldContent('title', $metaSiteName));
 @endphp
 
 <!DOCTYPE html>
@@ -29,22 +80,22 @@
     <meta name="robots" content="index, follow">
 
     <link rel="canonical" href="{{ url()->current() }}">
-    <link rel="icon" href="{{ asset('logo.png') }}" type="image/png">
-    <link rel="shortcut icon" href="{{ asset(config('app.favicon', 'logo.png')) }}" type="image/png">
+    <link rel="icon" href="{{ $themeFavicon }}" type="image/png">
+    <link rel="shortcut icon" href="{{ $themeFavicon }}" type="image/png">
 
-    <meta property="og:title" content="@yield('title', $metaSiteName)">
+    <meta property="og:title" content="{{ $metaTitle }}">
     <meta property="og:description" content="{{ $metaOgDescription }}">
-    <meta property="og:image" content="{{ asset('logo.png') }}">
+    <meta property="og:image" content="{{ $metaOgImage }}">
     <meta property="og:url" content="{{ url()->current() }}">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ $metaSiteName }}">
 
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="@yield('title', $metaSiteName)">
+    <meta name="twitter:title" content="{{ $metaTitle }}">
     <meta name="twitter:description" content="{{ $metaOgDescription }}">
-    <meta name="twitter:image" content="{{ asset('logo.png') }}">
+    <meta name="twitter:image" content="{{ $metaOgImage }}">
 
-    <title>@yield('title', $metaSiteName)</title>
+    <title>{{ $metaTitle }}</title>
 
     @if ($isPrintMode)
         <style>
@@ -67,6 +118,19 @@
         </style>
         @yield('style')
     @else
+        <style>
+            :root {
+                --site-primary: {{ $themePrimaryColor }};
+                --site-primary-rgb: {{ $themePrimaryRgb }};
+            }
+
+            .site-primary-bg { background-color: var(--site-primary) !important; }
+            .site-primary-text { color: var(--site-primary) !important; }
+            .site-primary-border { border-color: var(--site-primary) !important; }
+            .site-primary-soft { background-color: rgba(var(--site-primary-rgb), 0.12) !important; }
+            .site-primary-soft-border { border-color: rgba(var(--site-primary-rgb), 0.3) !important; }
+        </style>
+
         @vite('resources/css/app.css')
         <livewire:styles />
 

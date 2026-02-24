@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule; // Import Rule for validation
 
 class ProfileController extends Controller
@@ -39,7 +40,8 @@ class ProfileController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
-        return redirect()->route('dashboard')->with('success', 'Password changed successfully');
+        return redirect()->route('profile.edit')
+            ->with('success', 'Password changed successfully.');
     }
 
     /**
@@ -49,8 +51,9 @@ class ProfileController extends Controller
      */
     public function edit()
     {
-        // Pass the authenticated user to the view
-        return view('profile.edit', ['user' => auth()->user()]);
+        return view('profile.edit', [
+            'user' => auth()->user()?->loadMissing('roles:id,name', 'school:id,name,code'),
+        ]);
     }
 
     /**
@@ -66,14 +69,43 @@ class ProfileController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
-            // Add other profile fields you want to update, e.g., 'phone', 'address'
+            'phone' => ['nullable', 'string', 'max:30'],
+            'gender' => ['nullable', Rule::in(['male', 'female'])],
+            'birthday' => ['nullable', 'date', 'before_or_equal:today'],
+            'address' => ['nullable', 'string', 'max:1000'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'nationality' => ['nullable', 'string', 'max:255'],
+            'religion' => ['nullable', 'string', 'max:255'],
+            'blood_group' => ['nullable', 'string', 'max:12'],
+            'profile_photo' => ['nullable', 'image', 'max:3072'],
         ]);
 
-        $user->forceFill([
+        $payload = [
             'name' => $request->name,
             'email' => $request->email,
-            // Update other fields here
-        ])->save();
+            'phone' => $request->phone,
+            'gender' => $request->gender,
+            'birthday' => $request->birthday ?: null,
+            'address' => $request->address,
+            'city' => $request->city,
+            'state' => $request->state,
+            'nationality' => $request->nationality,
+            'religion' => $request->religion,
+            'blood_group' => $request->blood_group,
+        ];
+
+        if ($request->hasFile('profile_photo')) {
+            $newPath = $request->file('profile_photo')->store('profile-photos', 'public');
+
+            if ($user->profile_photo_path && str_starts_with($user->profile_photo_path, 'profile-photos/')) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
+
+            $payload['profile_photo_path'] = $newPath;
+        }
+
+        $user->forceFill($payload)->save();
 
         return redirect()->route('profile.edit')->with('success', 'Profile updated successfully.');
     }

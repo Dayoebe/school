@@ -146,6 +146,18 @@ Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->
         ->middleware('permission:view dashboard')
         ->name('dashboard');
 
+    Route::get('/dashboard/analytics', \App\Livewire\Dashboard\AnalyticsDashboard::class)
+        ->middleware('permission:read analytics dashboard')
+        ->name('analytics.index');
+
+    Route::get('/dashboard/portal-notices', \App\Livewire\Broadcasts\MyBroadcastInbox::class)
+        ->middleware('permission:view own broadcasts')
+        ->name('broadcasts.inbox');
+
+    Route::get('/dashboard/parent/student-welfare', \App\Livewire\Attendance\ParentStudentWelfare::class)
+        ->middleware('permission:read own child attendance|read own child discipline')
+        ->name('parent.student-welfare');
+
     // Profile Management
     Route::get('/profile', [ProfileController::class, 'edit'])
         ->middleware('permission:manage own profile')
@@ -443,7 +455,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
 */
 
 Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
-    
+
+    Route::get('/users/roles', \App\Livewire\Users\ManageUserRoles::class)
+        ->middleware('permission:manage user roles')
+        ->name('users.roles');
+
     Route::get('/admins', \App\Livewire\Admins\ManageAdmins::class)
         ->middleware('permission:read admin|create admin|update admin|delete admin')
         ->name('admins.index');
@@ -538,6 +554,25 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
         // Notices
         Route::resource('notices', NoticeController::class)
             ->whereNumber('notice');
+
+        // Attendance & Discipline
+        Route::get('attendance', \App\Livewire\Attendance\ManageAttendance::class)
+            ->middleware('permission:read attendance')
+            ->name('attendance.index');
+
+        Route::get('discipline', \App\Livewire\Discipline\ManageDisciplineIncidents::class)
+            ->middleware('permission:read discipline incident')
+            ->name('discipline.index');
+
+        // Broadcast Messaging
+        Route::get('broadcasts', \App\Livewire\Broadcasts\ManageBroadcastMessages::class)
+            ->middleware('permission:read broadcast message')
+            ->name('broadcasts.manage');
+
+        // Media Library
+        Route::get('media-library', \App\Livewire\Media\ManageMediaLibrary::class)
+            ->middleware('permission:manage media library')
+            ->name('media-library.index');
 
         // Academic Year Dependent Routes
         Route::middleware([
