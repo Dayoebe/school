@@ -40,6 +40,7 @@ use App\Livewire\Syllabi\ManageSyllabi;
 // Controllers 
 use App\Http\Controllers\{
     PageController,
+    SeoController,
     AuthController,
     DashboardController,
     DatabaseBackupController,
@@ -83,6 +84,9 @@ $adminMiddleware = [
 | PUBLIC ROUTES
 |--------------------------------------------------------------------------
 */
+
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
 Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/about', [PageController::class, 'about'])->name('about');
