@@ -42,6 +42,7 @@ use App\Http\Controllers\{
     PageController,
     AuthController,
     DashboardController,
+    DatabaseBackupController,
     ProfileController,
     FeeInvoiceController,
     MyClassController,
@@ -142,6 +143,10 @@ Route::post('logout', [AuthController::class, 'logout'])
     ->name('logout');
 
 Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+    Route::match(['get', 'post'], '/database/download', [DatabaseBackupController::class, 'download'])
+        ->middleware('role:super-admin|super_admin')
+        ->name('database.download');
+
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:view dashboard')
         ->name('dashboard');
