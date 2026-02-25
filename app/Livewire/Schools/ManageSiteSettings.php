@@ -1219,8 +1219,24 @@ class ManageSiteSettings extends Component
             'seo_gallery_social_image_url' => (string) data_get($settings, 'seo.gallery.social_image_url', ''),
         ];
 
+        $pages = data_get($settings, 'pages', []);
+        if (!is_array($pages)) {
+            $pages = [];
+        }
+
+        foreach (['home', 'about', 'admission', 'contact', 'gallery'] as $reservedPageKey) {
+            if (!array_key_exists($reservedPageKey, $pages)) {
+                continue;
+            }
+
+            $reservedValue = $pages[$reservedPageKey];
+            if ($reservedValue === [] || $reservedValue === null || $reservedValue === '') {
+                unset($pages[$reservedPageKey]);
+            }
+        }
+
         $this->pagesJson = json_encode(
-            data_get($settings, 'pages', []),
+            $pages,
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES
         ) ?: '{}';
     }
