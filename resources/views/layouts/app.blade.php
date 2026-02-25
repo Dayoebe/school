@@ -9,6 +9,16 @@
 
     $publicSettings = $publicSiteSettings ?? [];
     $currentRouteName = request()->route()?->getName();
+    $metaLocale = str_replace('_', '-', app()->getLocale());
+
+    $publicIndexableRoutes = [
+        'home' => 'Home',
+        'about' => 'About',
+        'admission' => 'Admission',
+        'contact' => 'Contact',
+        'gallery' => 'Gallery',
+    ];
+    $isSeoPublicPage = $isPublicMode && array_key_exists((string) $currentRouteName, $publicIndexableRoutes);
 
     $seoPageKey = match ($currentRouteName) {
         'home' => 'home',
@@ -34,6 +44,10 @@
     $metaOgDescription = $seoMetaDescription !== ''
         ? $seoMetaDescription
         : data_get($publicSettings, 'meta.og_description', $metaDescription);
+    $metaRobots = $isSeoPublicPage
+        ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
+        : 'noindex, nofollow';
+    $canonicalUrl = url()->current();
 
     $themePrimaryColor = (string) data_get($publicSettings, 'theme.primary_color', '#dc2626');
     if (!preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $themePrimaryColor)) {
@@ -52,18 +66,96 @@
         hexdec(substr($hex, 4, 2))
     );
 
-    $themeFavicon = (string) data_get($publicSettings, 'theme.favicon_url', '');
-    if ($themeFavicon === '') {
-        $themeFavicon = asset(config('app.favicon', 'logo.png'));
+    $themeLogoMeta = trim((string) data_get($publicSettings, 'theme.logo_url', ''));
+    if ($themeLogoMeta === '') {
+        $themeLogoMeta = trim((string) ($publicSiteSchool?->logo_url ?? ''));
+    }
+    if ($themeLogoMeta === '') {
+        $themeLogoMeta = asset(config('app.logo', 'logo.png'));
     }
 
-    $themeLogoMeta = (string) data_get($publicSettings, 'theme.logo_url', '');
-    if ($themeLogoMeta === '') {
-        $themeLogoMeta = asset('logo.png');
+    // Always use school logo as favicon.
+    $themeFavicon = $themeLogoMeta;
+    if ($themeFavicon === '') {
+        $themeFavicon = asset(config('app.logo', 'logo.png'));
     }
 
     $metaOgImage = $seoSocialImage !== '' ? $seoSocialImage : $themeLogoMeta;
     $metaTitle = $seoMetaTitle !== '' ? $seoMetaTitle : trim($__env->yieldContent('title', $metaSiteName));
+    $metaOgType = $isSeoPublicPage && $currentRouteName !== 'home' ? 'article' : 'website';
+    $twitterCard = $metaOgImage !== '' ? 'summary_large_image' : 'summary';
+
+    $contactPhonePrimary = trim((string) data_get($publicSettings, 'contact.phone_primary', ''));
+    $contactEmail = trim((string) data_get($publicSettings, 'contact.email', ''));
+    $socialLinks = array_values(array_filter([
+        trim((string) data_get($publicSettings, 'footer.social.facebook', '')),
+        trim((string) data_get($publicSettings, 'footer.social.instagram', '')),
+        trim((string) data_get($publicSettings, 'footer.social.x', '')),
+        trim((string) data_get($publicSettings, 'footer.social.whatsapp', '')),
+    ], static fn (string $url): bool => $url !== ''));
+
+    $jsonLdSchemas = [];
+    if ($isSeoPublicPage) {
+        $organizationSchema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'EducationalOrganization',
+            'name' => $metaSiteName,
+            'url' => url('/'),
+            'logo' => $themeLogoMeta,
+        ];
+        if ($contactPhonePrimary !== '') {
+            $organizationSchema['telephone'] = $contactPhonePrimary;
+        }
+        if ($contactEmail !== '') {
+            $organizationSchema['email'] = $contactEmail;
+        }
+        if ($socialLinks !== []) {
+            $organizationSchema['sameAs'] = $socialLinks;
+        }
+
+        $jsonLdSchemas[] = $organizationSchema;
+        $jsonLdSchemas[] = [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => $metaSiteName,
+            'url' => url('/'),
+            'inLanguage' => $metaLocale,
+        ];
+        $jsonLdSchemas[] = [
+            '@context' => 'https://schema.org',
+            '@type' => 'WebPage',
+            'name' => $metaTitle,
+            'description' => $metaDescription,
+            'url' => $canonicalUrl,
+            'inLanguage' => $metaLocale,
+            'isPartOf' => [
+                '@type' => 'WebSite',
+                'name' => $metaSiteName,
+                'url' => url('/'),
+            ],
+        ];
+
+        if ($currentRouteName !== 'home') {
+            $jsonLdSchemas[] = [
+                '@context' => 'https://schema.org',
+                '@type' => 'BreadcrumbList',
+                'itemListElement' => [
+                    [
+                        '@type' => 'ListItem',
+                        'position' => 1,
+                        'name' => 'Home',
+                        'item' => route('home'),
+                    ],
+                    [
+                        '@type' => 'ListItem',
+                        'position' => 2,
+                        'name' => $publicIndexableRoutes[$currentRouteName] ?? ucfirst((string) $currentRouteName),
+                        'item' => $canonicalUrl,
+                    ],
+                ],
+            ];
+        }
+    }
 @endphp
 
 <!DOCTYPE html>
@@ -77,23 +169,38 @@
     <meta name="description" content="{{ $metaDescription }}">
     <meta name="keywords" content="{{ $metaKeywords }}">
     <meta name="author" content="{{ $metaAuthor }}">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="{{ $metaRobots }}">
+    <meta name="googlebot" content="{{ $metaRobots }}">
+    <meta name="theme-color" content="{{ $themePrimaryColor }}">
 
-    <link rel="canonical" href="{{ url()->current() }}">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
     <link rel="icon" href="{{ $themeFavicon }}" type="image/png">
     <link rel="shortcut icon" href="{{ $themeFavicon }}" type="image/png">
+    <link rel="apple-touch-icon" href="{{ $themeLogoMeta }}">
+
+    @if ($isSeoPublicPage)
+        <link rel="alternate" hreflang="{{ $metaLocale }}" href="{{ $canonicalUrl }}">
+        <link rel="alternate" hreflang="x-default" href="{{ route('home') }}">
+    @endif
 
     <meta property="og:title" content="{{ $metaTitle }}">
     <meta property="og:description" content="{{ $metaOgDescription }}">
     <meta property="og:image" content="{{ $metaOgImage }}">
-    <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:type" content="website">
+    <meta property="og:image:alt" content="{{ $metaSiteName }}">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:type" content="{{ $metaOgType }}">
     <meta property="og:site_name" content="{{ $metaSiteName }}">
+    <meta property="og:locale" content="{{ str_replace('-', '_', $metaLocale) }}">
 
-    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:card" content="{{ $twitterCard }}">
     <meta name="twitter:title" content="{{ $metaTitle }}">
     <meta name="twitter:description" content="{{ $metaOgDescription }}">
     <meta name="twitter:image" content="{{ $metaOgImage }}">
+    <meta name="twitter:image:alt" content="{{ $metaSiteName }}">
+
+    @foreach ($jsonLdSchemas as $schema)
+        <script type="application/ld+json">{!! json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
+    @endforeach
 
     <title>{{ $metaTitle }}</title>
 
