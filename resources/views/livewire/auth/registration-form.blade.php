@@ -1,22 +1,139 @@
 @isset($roles)
-    <form action="{{route('register')}}" method="POST" enctype="multipart/form-data" class="w-full space-y-3">
-        <div class="w-full">
-            <x-select id="role" name="role" label="Register as" class="capitalize">    
-                    @foreach ($roles as $item)
-                        <option value="{{$item['name']}}">{{$item['name']}}</option>
-                    @endforeach
-            </x-select>
-            <x-select id="school" name="school" label="School" class="text-capitalize">    
-                    @foreach ($schools as $item)
-                        <option value="{{$item['id']}}" >{{$item['name']}} - {{$item['address']}}</option>
-                    @endforeach
-            </x-select>
-            <livewire:create-user-fields/>
-            @csrf
-            <button type="submit" class="w-full rounded-lg bg-blue-600 py-3 text-white font-semibold hover:bg-blue-700 transition-colors">
-                Register
-            </button>
+    <form action="{{ route('register') }}" method="POST" class="w-full space-y-4">
+        @csrf
+
+        <div>
+            <label for="role" class="mb-2 block text-sm font-bold text-slate-700">Register As</label>
+            <select
+                id="role"
+                name="role"
+                required
+                @class([
+                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('role'),
+                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('role'),
+                ])
+            >
+                <option value="">Select role</option>
+                @foreach ($roles as $item)
+                    <option value="{{ $item['name'] }}" @selected(old('role') === $item['name']) class="capitalize">
+                        {{ $item['name'] }}
+                    </option>
+                @endforeach
+            </select>
+            @error('role')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
         </div>
+
+        <div>
+            <label for="school" class="mb-2 block text-sm font-bold text-slate-700">School</label>
+            <select
+                id="school"
+                name="school"
+                @class([
+                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('school'),
+                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('school'),
+                ])
+            >
+                <option value="">Select school</option>
+                @foreach ($schools as $item)
+                    <option value="{{ $item['id'] }}" @selected((string) old('school') === (string) $item['id'])>
+                        {{ $item['name'] }} - {{ $item['address'] }}
+                    </option>
+                @endforeach
+            </select>
+            @error('school')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="name" class="mb-2 block text-sm font-bold text-slate-700">Full Name</label>
+            <input
+                id="name"
+                name="name"
+                type="text"
+                value="{{ old('name') }}"
+                required
+                autocomplete="name"
+                @class([
+                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('name'),
+                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('name'),
+                ])
+                placeholder="Enter your full name"
+            >
+            @error('name')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="email" class="mb-2 block text-sm font-bold text-slate-700">Email Address</label>
+            <input
+                id="email"
+                name="email"
+                type="email"
+                value="{{ old('email') }}"
+                required
+                autocomplete="email"
+                @class([
+                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('email'),
+                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('email'),
+                ])
+                placeholder="you@example.com"
+            >
+            @error('email')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="password" class="mb-2 block text-sm font-bold text-slate-700">Password</label>
+            <input
+                id="password"
+                name="password"
+                type="password"
+                required
+                autocomplete="new-password"
+                @class([
+                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('password'),
+                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('password'),
+                ])
+                placeholder="Create a password"
+            >
+            @error('password')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <div>
+            <label for="password_confirmation" class="mb-2 block text-sm font-bold text-slate-700">Confirm Password</label>
+            <input
+                id="password_confirmation"
+                name="password_confirmation"
+                type="password"
+                required
+                autocomplete="new-password"
+                @class([
+                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('password_confirmation'),
+                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('password_confirmation'),
+                ])
+                placeholder="Confirm your password"
+            >
+            @error('password_confirmation')
+                <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
+            @enderror
+        </div>
+
+        <button type="submit" class="site-primary-bg w-full rounded-xl px-5 py-3 text-sm font-bold text-white transition hover:opacity-90">
+            Register
+        </button>
     </form>
 @else
    <p>Couldn't create user, Roles not found.</p> 
