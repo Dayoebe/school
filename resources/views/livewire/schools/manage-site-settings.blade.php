@@ -667,80 +667,18 @@
             </div>
 
             <div class="rounded-lg bg-white p-6 shadow lg:col-span-2">
-                <h3 class="text-lg font-bold text-slate-900">Export / Import / Clone Settings</h3>
-                <p class="mt-1 text-sm text-slate-600">Backup current settings, restore from JSON, or clone from another scope for faster school setup.</p>
+                <h3 class="text-lg font-bold text-slate-900">Database Backup</h3>
+                <p class="mt-1 text-sm text-slate-600">Download the current database directly. No backup file is saved in app storage.</p>
 
-                <div class="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <h4 class="text-sm font-semibold text-slate-800">Export Backup</h4>
-                        <p class="mt-1 text-xs text-slate-600">Download the current effective settings as JSON.</p>
-                        @if ($canExportSettings)
-                            <button type="button" wire:click="exportSettings" class="mt-3 rounded-lg bg-slate-700 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800">
-                                <i class="fas fa-download mr-2"></i>Export Settings JSON
-                            </button>
-                        @else
-                            <p class="mt-2 text-xs font-semibold text-slate-500">You do not have export permission.</p>
-                        @endif
-                    </div>
-
-                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-                        <h4 class="text-sm font-semibold text-slate-800">Import Backup</h4>
-                        <div class="mt-3 space-y-2">
-                            <input type="file" wire:model="importSettingsFile" accept=".json,.txt" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs" />
-                            @error('importSettingsFile') <p class="text-xs text-red-600">{{ $message }}</p> @enderror
-                            @if ($canApproveSettings)
-                                <label class="inline-flex items-center gap-2 text-xs text-slate-700">
-                                    <input type="checkbox" wire:model="importPublishNow" class="rounded border-slate-300 text-blue-600" />
-                                    Publish immediately after import
-                                </label>
-                            @endif
-                            @if ($canImportSettings)
-                                <button type="button" wire:click="importSettingsBackup" class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-blue-700">
-                                    <i class="fas fa-file-import mr-2"></i>Import Backup
-                                </button>
-                            @else
-                                <p class="text-xs font-semibold text-slate-500">You do not have import permission.</p>
-                            @endif
-                        </div>
-                    </div>
-
-                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 md:col-span-2">
-                        <h4 class="text-sm font-semibold text-slate-800">Clone Setup From Existing Scope</h4>
-                        <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Source Scope</label>
-                                <select wire:model="cloneSourceScope" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs">
-                                    <option value="general">General</option>
-                                    <option value="school">Per School</option>
-                                </select>
-                                @error('cloneSourceScope') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div>
-                                <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Source School</label>
-                                <select wire:model="cloneSourceSchoolId" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs" @disabled($cloneSourceScope !== 'school')>
-                                    <option value="">Select school</option>
-                                    @foreach ($schools as $school)
-                                        <option value="{{ $school->id }}">{{ $school->name }} ({{ $school->code }})</option>
-                                    @endforeach
-                                </select>
-                                @error('cloneSourceSchoolId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                            </div>
-                            <div class="flex items-end">
-                                <div class="w-full">
-                                    @if ($canApproveSettings)
-                                        <label class="mb-2 inline-flex items-center gap-2 text-xs text-slate-700">
-                                            <input type="checkbox" wire:model="clonePublishNow" class="rounded border-slate-300 text-blue-600" />
-                                            Publish after clone
-                                        </label>
-                                    @endif
-                                    <button type="button" wire:click="cloneFromExistingScope" class="w-full rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700">
-                                        <i class="fas fa-copy mr-2"></i>Clone Settings
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                @if (auth()->user()->hasAnyRole(['super-admin', 'super_admin']))
+                    <a href="{{ route('database.download') }}" class="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                        <i class="fas fa-database mr-2"></i>Download Database
+                    </a>
+                @else
+                    <p class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
+                        Database backup download is restricted to super-admin accounts.
+                    </p>
+                @endif
             </div>
         </div>
 

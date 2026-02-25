@@ -81,6 +81,8 @@ class ManageSiteSettings extends Component
         if (!$this->canManageGeneralSettings()) {
             $this->scope = 'school';
             $this->schoolId = auth()->user()?->school_id;
+            $this->cloneSourceScope = 'general';
+            $this->cloneSourceSchoolId = null;
         } else {
             if (!in_array($this->scope, ['general', 'school'], true)) {
                 $this->scope = 'school';
@@ -116,8 +118,17 @@ class ManageSiteSettings extends Component
 
     public function updatedCloneSourceScope(): void
     {
+        if (!$this->canManageGeneralSettings() && $this->cloneSourceScope === 'school') {
+            $this->cloneSourceScope = 'general';
+        }
+
         if ($this->cloneSourceScope !== 'school') {
             $this->cloneSourceSchoolId = null;
+            return;
+        }
+
+        if (!$this->cloneSourceSchoolId) {
+            $this->cloneSourceSchoolId = School::query()->orderBy('name')->value('id');
         }
     }
 
@@ -423,6 +434,11 @@ class ManageSiteSettings extends Component
             'cloneSourceSchoolId' => 'nullable|integer|required_if:cloneSourceScope,school',
             'clonePublishNow' => 'boolean',
         ]);
+
+        if ($validated['cloneSourceScope'] === 'school' && !$this->canManageGeneralSettings()) {
+            $this->addError('cloneSourceScope', 'Only super-admin can clone from a specific school scope.');
+            return;
+        }
 
         $sourceScopeKey = $validated['cloneSourceScope'] === 'general'
             ? SiteSetting::generalScopeKey()
