@@ -1,5 +1,5 @@
 @isset($roles)
-    <form action="{{ route('register') }}" method="POST" class="w-full space-y-4">
+    <form action="{{ route('register') }}" method="POST" class="w-full space-y-4" x-data="{ showPassword: false, showPasswordConfirmation: false }">
         @csrf
 
         <div>
@@ -93,19 +93,29 @@
 
         <div>
             <label for="password" class="mb-2 block text-sm font-bold text-slate-700">Password</label>
-            <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                autocomplete="new-password"
-                @class([
-                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
-                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('password'),
-                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('password'),
-                ])
-                placeholder="Create a password"
-            >
+            <div class="relative">
+                <input
+                    :type="showPassword ? 'text' : 'password'"
+                    id="password"
+                    name="password"
+                    required
+                    autocomplete="new-password"
+                    @class([
+                        'w-full rounded-xl border px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                        'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('password'),
+                        'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('password'),
+                    ])
+                    placeholder="Create a password"
+                >
+                <button
+                    type="button"
+                    @click="showPassword = !showPassword"
+                    class="absolute inset-y-0 right-0 px-4 text-slate-500 transition hover:text-slate-700"
+                    aria-label="Toggle password visibility"
+                >
+                    <i class="fas" :class="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+            </div>
             @error('password')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
@@ -113,19 +123,29 @@
 
         <div>
             <label for="password_confirmation" class="mb-2 block text-sm font-bold text-slate-700">Confirm Password</label>
-            <input
-                id="password_confirmation"
-                name="password_confirmation"
-                type="password"
-                required
-                autocomplete="new-password"
-                @class([
-                    'w-full rounded-xl border px-4 py-3 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
-                    'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('password_confirmation'),
-                    'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('password_confirmation'),
-                ])
-                placeholder="Confirm your password"
-            >
+            <div class="relative">
+                <input
+                    :type="showPasswordConfirmation ? 'text' : 'password'"
+                    id="password_confirmation"
+                    name="password_confirmation"
+                    required
+                    autocomplete="new-password"
+                    @class([
+                        'w-full rounded-xl border px-4 py-3 pr-12 text-sm text-slate-900 shadow-sm transition focus:outline-none focus:ring-4',
+                        'border-red-300 focus:border-red-500 focus:ring-red-100' => $errors->has('password_confirmation'),
+                        'border-slate-300 focus:border-red-400 focus:ring-red-100' => !$errors->has('password_confirmation'),
+                    ])
+                    placeholder="Confirm your password"
+                >
+                <button
+                    type="button"
+                    @click="showPasswordConfirmation = !showPasswordConfirmation"
+                    class="absolute inset-y-0 right-0 px-4 text-slate-500 transition hover:text-slate-700"
+                    aria-label="Toggle password confirmation visibility"
+                >
+                    <i class="fas" :class="showPasswordConfirmation ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+            </div>
             @error('password_confirmation')
                 <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
             @enderror
