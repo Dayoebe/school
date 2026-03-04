@@ -40,6 +40,7 @@ use App\Livewire\Syllabi\ManageSyllabi;
 // Controllers 
 use App\Http\Controllers\{
     PageController,
+    PwaController,
     SeoController,
     AuthController,
     DashboardController,
@@ -85,6 +86,7 @@ $adminMiddleware = [
 |--------------------------------------------------------------------------
 */
 
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 

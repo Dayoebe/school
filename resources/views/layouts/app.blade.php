@@ -171,9 +171,15 @@
     <meta name="author" content="{{ $metaAuthor }}">
     <meta name="robots" content="{{ $metaRobots }}">
     <meta name="googlebot" content="{{ $metaRobots }}">
+    <meta name="application-name" content="{{ $metaSiteName }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ $metaSiteName }}">
     <meta name="theme-color" content="{{ $themePrimaryColor }}">
 
     <link rel="canonical" href="{{ $canonicalUrl }}">
+    <link rel="manifest" href="{{ route('pwa.manifest') }}">
     <link rel="icon" href="{{ $themeFavicon }}" type="image/png">
     <link rel="shortcut icon" href="{{ $themeFavicon }}" type="image/png">
     <link rel="apple-touch-icon" href="{{ $themeLogoMeta }}">
@@ -245,6 +251,124 @@
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
         @endif
+    @endif
+
+    @if (!$isPrintMode)
+        <style>
+            .pwa-install-button {
+                position: fixed;
+                right: 1rem;
+                bottom: 1rem;
+                z-index: 9999;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                gap: 0.45rem;
+                border: 0;
+                border-radius: 999px;
+                background: {{ $themePrimaryColor }};
+                color: #ffffff;
+                padding: 0.72rem 1rem;
+                font-weight: 700;
+                font-size: 0.875rem;
+                line-height: 1;
+                cursor: pointer;
+                box-shadow: 0 12px 30px rgba(15, 23, 42, 0.25);
+            }
+
+            .pwa-install-button:hover {
+                filter: brightness(0.95);
+            }
+
+            .pwa-install-button:disabled {
+                opacity: 0.72;
+                cursor: wait;
+            }
+        </style>
+
+        <script>
+            (() => {
+                const isInstalled = () =>
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.navigator.standalone === true ||
+                    document.referrer.startsWith('android-app://');
+
+                let deferredInstallPrompt = null;
+                let installButton = null;
+
+                const hideInstallButton = () => {
+                    if (installButton) {
+                        installButton.style.display = 'none';
+                    }
+                };
+
+                const showInstallButton = () => {
+                    if (!installButton) {
+                        return;
+                    }
+
+                    if (deferredInstallPrompt && !isInstalled()) {
+                        installButton.style.display = 'inline-flex';
+                    }
+                };
+
+                const ensureInstallButton = () => {
+                    if (installButton || isInstalled()) {
+                        return;
+                    }
+
+                    installButton = document.createElement('button');
+                    installButton.type = 'button';
+                    installButton.id = 'pwa-install-button';
+                    installButton.className = 'pwa-install-button';
+                    installButton.setAttribute('aria-label', 'Install app');
+                    installButton.textContent = 'Install App';
+
+                    installButton.addEventListener('click', async () => {
+                        if (!deferredInstallPrompt) {
+                            return;
+                        }
+
+                        installButton.disabled = true;
+                        try {
+                            deferredInstallPrompt.prompt();
+                            await deferredInstallPrompt.userChoice;
+                        } catch (error) {
+                            console.warn('Install prompt failed.', error);
+                        } finally {
+                            deferredInstallPrompt = null;
+                            installButton.disabled = false;
+                            hideInstallButton();
+                        }
+                    });
+
+                    document.body.appendChild(installButton);
+                    showInstallButton();
+                };
+
+                window.addEventListener('DOMContentLoaded', ensureInstallButton);
+
+                window.addEventListener('beforeinstallprompt', (event) => {
+                    event.preventDefault();
+                    deferredInstallPrompt = event;
+                    ensureInstallButton();
+                    showInstallButton();
+                });
+
+                window.addEventListener('appinstalled', () => {
+                    deferredInstallPrompt = null;
+                    hideInstallButton();
+                });
+
+                if ('serviceWorker' in navigator && window.isSecureContext) {
+                    window.addEventListener('load', () => {
+                        navigator.serviceWorker.register('{{ asset('service-worker.js') }}').catch((error) => {
+                            console.warn('Service worker registration failed.', error);
+                        });
+                    });
+                }
+            })();
+        </script>
     @endif
 </head>
 
