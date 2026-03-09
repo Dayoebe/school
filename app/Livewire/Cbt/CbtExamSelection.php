@@ -15,18 +15,21 @@ class CbtExamSelection extends Component
     {
         $canViewUnpublished = $this->canViewUnpublishedResults();
 
-        // Get only standalone CBT assessments
+        // Get class-based CBT assessments available to the current user
         $availableAssessments = $this->assessmentsForCurrentSchool()
             ->with(['questions', 'course'])
             ->whereHas('questions') // Only show assessments that have questions
             ->get()
             ->map(function($assessment) use ($canViewUnpublished) {
+                $activeAttempt = $assessment->getActiveAttemptSession(Auth::id());
+
                 // Check if user has attempted this assessment
                 $userResult = $assessment->getStudentResults(Auth::id());
                 $resultsVisible = $canViewUnpublished || $assessment->isResultPublished();
                 $assessment->results_visible = $resultsVisible;
                 $assessment->user_result = $resultsVisible ? $userResult : null;
                 $assessment->has_submitted_attempt = $userResult !== null;
+                $assessment->has_active_attempt = $activeAttempt !== null && !$activeAttempt->isExpired();
                 
                 // Get attempt count and check if can take
                 $attemptCount = $assessment->getStudentAttemptCount(Auth::id());
@@ -75,26 +78,11 @@ class CbtExamSelection extends Component
         return redirect()->route('cbt.viewer');
     }
 
-    protected function currentSchoolId(): ?int
-    {
-        return auth()->user()?->school_id;
-    }
-
     protected function assessmentsForCurrentSchool(): Builder
     {
-        $query = Assessment::query()
-            ->where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id');
-
-        $schoolId = $this->currentSchoolId();
-        if (!$schoolId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
-            $classGroupQuery->where('school_id', $schoolId);
-        });
+        return Assessment::query()
+            ->standaloneCBT()
+            ->visibleToUser(auth()->user());
     }
 
     protected function canViewUnpublishedResults(): bool

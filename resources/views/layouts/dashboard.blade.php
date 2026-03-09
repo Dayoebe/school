@@ -36,6 +36,7 @@
 
     @vite('resources/css/app.css')
     <livewire:styles />
+    @stack('head')
 </head>
 
 <body class="font-sans">

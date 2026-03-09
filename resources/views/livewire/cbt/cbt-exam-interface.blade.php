@@ -2,6 +2,28 @@
      class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
+    @if (session()->has('error') || session()->has('warning') || session()->has('message'))
+        <div class="mx-auto w-full max-w-4xl px-4 pt-4">
+            @if (session()->has('error'))
+                <div class="mb-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                    <i class="fas fa-circle-exclamation mr-2"></i>{{ session('error') }}
+                </div>
+            @endif
+
+            @if (session()->has('warning'))
+                <div class="mb-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                    <i class="fas fa-triangle-exclamation mr-2"></i>{{ session('warning') }}
+                </div>
+            @endif
+
+            @if (session()->has('message'))
+                <div class="mb-3 rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
+                    <i class="fas fa-circle-check mr-2"></i>{{ session('message') }}
+                </div>
+            @endif
+        </div>
+    @endif
+
     {{-- Pre-Exam Welcome Screen --}}
     @if(!$examStarted)
     <div class="min-h-screen flex items-center justify-center p-4">

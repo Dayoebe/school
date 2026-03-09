@@ -3,9 +3,11 @@
 namespace App\Models\Assessment;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\Subject;
@@ -371,6 +373,66 @@ class Assessment extends Model
         return $query->where('type', 'quiz')
             ->whereNull('section_id')
             ->whereNull('lesson_id');
+    }
+
+    public function scopeForSchool(Builder $query, ?int $schoolId): Builder
+    {
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('course.classGroup', function (Builder $classGroupQuery) use ($schoolId) {
+            $classGroupQuery->where('school_id', $schoolId);
+        });
+    }
+
+    public function scopeVisibleToUser(Builder $query, ?User $user): Builder
+    {
+        if (!$user) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->forSchool($user->school_id);
+
+        if (!$user->hasRole('student')) {
+            return $query;
+        }
+
+        $classId = static::resolveAssignedClassIdForUser($user);
+        if (!$classId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('course_id', $classId);
+    }
+
+    public static function resolveAssignedClassIdForUser(?User $user): ?int
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $studentRecord = $user->relationLoaded('studentRecord')
+            ? $user->studentRecord
+            : $user->studentRecord()->first();
+
+        if (!$studentRecord) {
+            return null;
+        }
+
+        $academicYearId = $user->school?->academic_year_id;
+        if ($academicYearId) {
+            $classId = DB::table('academic_year_student_record')
+                ->where('student_record_id', $studentRecord->id)
+                ->where('academic_year_id', $academicYearId)
+                ->value('my_class_id');
+
+            if ($classId) {
+                return (int) $classId;
+            }
+        }
+
+        return $studentRecord->my_class_id ? (int) $studentRecord->my_class_id : null;
     }
 
     /**

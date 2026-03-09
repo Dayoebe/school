@@ -1,3 +1,31 @@
+@push('head')
+    <script>
+        window.MathJax = window.MathJax || {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            },
+            startup: {
+                pageReady: function () {
+                    return MathJax.startup.defaultPageReady().then(function () {
+                        document.dispatchEvent(new Event('mathjax-loaded'));
+                    });
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                renderActions: {
+                    addMenu: []
+                }
+            }
+        };
+    </script>
+    <script id="cbt-viewer-mathjax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+@endpush
+
 <div class="min-h-screen bg-themed-primary px-3 sm:px-4 lg:px-6 py-4 sm:py-6 transition-colors duration-300" 
      x-data="{ showDetails: @entangle('viewDetails'), selectedAttempt: @entangle('selectedAttempt') }"
      x-init="

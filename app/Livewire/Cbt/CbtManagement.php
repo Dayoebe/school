@@ -46,6 +46,13 @@ class CbtManagement extends Component
     public $correct_answers = [];
     public $explanation = '';
 
+    protected $validationAttributes = [
+        'course_id' => 'class',
+        'question_text' => 'question text',
+        'question_type' => 'question type',
+        'correct_answers' => 'correct answer',
+    ];
+
     protected $rules = [
         'title' => 'required|string|max:255',
         'description' => 'nullable|string',
@@ -86,7 +93,7 @@ class CbtManagement extends Component
             ->latest()
             ->paginate(10);
 
-        $courses = $this->coursesForCurrentSchool()
+        $classes = $this->classesForCurrentSchool()
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(function (MyClass $class) {
@@ -96,7 +103,7 @@ class CbtManagement extends Component
                 ];
             });
 
-        return view('livewire.cbt.cbt-management', compact('assessments', 'courses'));
+        return view('livewire.cbt.cbt-management', compact('assessments', 'classes'));
     }
 
     public function createAssessment()
@@ -113,7 +120,7 @@ class CbtManagement extends Component
             'course_id' => 'required|exists:my_classes,id',
         ]);
 
-        if (!$this->isCourseInCurrentSchool($this->course_id)) {
+        if (!$this->isClassInCurrentSchool($this->course_id)) {
             session()->flash('error', 'Selected class does not belong to your school.');
             return;
         }
@@ -179,7 +186,7 @@ class CbtManagement extends Component
             return;
         }
 
-        if (!$this->isCourseInCurrentSchool($this->course_id)) {
+        if (!$this->isClassInCurrentSchool($this->course_id)) {
             session()->flash('error', 'Selected class does not belong to your school.');
             return;
         }
@@ -647,22 +654,12 @@ class CbtManagement extends Component
 
     protected function assessmentsForCurrentSchool(): Builder
     {
-        $query = Assessment::query()
-            ->where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id');
-
-        $schoolId = $this->currentSchoolId();
-        if (!$schoolId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
-            $classGroupQuery->where('school_id', $schoolId);
-        });
+        return Assessment::query()
+            ->standaloneCBT()
+            ->forSchool($this->currentSchoolId());
     }
 
-    protected function coursesForCurrentSchool(): Builder
+    protected function classesForCurrentSchool(): Builder
     {
         $schoolId = $this->currentSchoolId();
         $query = MyClass::query();
@@ -685,13 +682,13 @@ class CbtManagement extends Component
         return $this->assessmentsForCurrentSchool()->find($assessmentId);
     }
 
-    protected function isCourseInCurrentSchool($courseId): bool
+    protected function isClassInCurrentSchool($courseId): bool
     {
         if (!$courseId) {
             return false;
         }
 
-        return $this->coursesForCurrentSchool()
+        return $this->classesForCurrentSchool()
             ->whereKey($courseId)
             ->exists();
     }

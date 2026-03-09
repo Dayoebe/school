@@ -8,6 +8,7 @@ use App\Models\Assessment\AttemptSession;
 use App\Models\Assessment\StudentAnswer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -198,7 +199,7 @@ class CbtExamInterface extends Component
             $this->dispatch('startTimer');
         } catch (\Throwable $e) {
             report($e);
-            session()->flash('error', 'Failed to start exam. Please try again.');
+            session()->flash('error', $this->resolveStartExamErrorMessage($e));
         }
     }
 
@@ -747,18 +748,24 @@ class CbtExamInterface extends Component
 
     protected function assessmentsForCurrentSchool(): Builder
     {
-        $query = Assessment::query()
-            ->where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id');
+        return Assessment::query()
+            ->standaloneCBT()
+            ->visibleToUser(auth()->user());
+    }
 
-        $schoolId = $this->currentSchoolId();
-        if (!$schoolId) {
-            return $query->whereRaw('1 = 0');
+    protected function resolveStartExamErrorMessage(\Throwable $exception): string
+    {
+        if ($exception instanceof QueryException) {
+            $message = $exception->getMessage();
+
+            if (
+                str_contains($message, 'assessment_attempt_sessions')
+                || str_contains($message, 'student_answers')
+            ) {
+                return 'CBT setup is incomplete. Ask the administrator to run the latest CBT database update, then try again.';
+            }
         }
 
-        return $query->whereHas('course.classGroup', function ($classGroupQuery) use ($schoolId) {
-            $classGroupQuery->where('school_id', $schoolId);
-        });
+        return 'Failed to start exam. Please try again.';
     }
 }

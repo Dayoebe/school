@@ -1,3 +1,31 @@
+@push('head')
+    <script>
+        window.MathJax = window.MathJax || {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            },
+            startup: {
+                pageReady: function () {
+                    return MathJax.startup.defaultPageReady().then(function () {
+                        document.dispatchEvent(new Event('mathjax-loaded'));
+                    });
+                }
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                renderActions: {
+                    addMenu: []
+                }
+            }
+        };
+    </script>
+    <script id="cbt-mathjax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+@endpush
+
 <div class="py-4 px-2 sm:px-4 bg-themed-primary dark:bg-gray-900 min-h-screen transition-colors duration-300">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
@@ -59,8 +87,8 @@
                             
                             <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
                                 <div>
-                                    <span class="text-themed-tertiary">Course:</span>
-                                    <p class="text-themed-primary truncate">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Standalone' }}</p>
+                                    <span class="text-themed-tertiary">Class:</span>
+                                    <p class="text-themed-primary truncate">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</p>
                                 </div>
                                 <div>
                                     <span class="text-themed-tertiary">Max Attempts:</span>
@@ -81,40 +109,46 @@
                                 @endif
                             </div>
 
-                            <div class="flex justify-end space-x-2 pt-3 border-t border-themed-secondary">
+                            <div class="flex flex-wrap justify-end gap-2 pt-3 border-t border-themed-secondary">
                                 <button wire:click="viewParticipants({{ $assessment->id }})"
-                                    class="text-purple-600 hover:text-purple-800 p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                    class="inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/30"
                                     title="View Participants">
                                     <i class="fas fa-users"></i>
+                                    <span>Participants</span>
                                 </button>
                                 <button wire:click="manageQuestions({{ $assessment->id }})"
-                                    class="text-accent-themed-primary hover:text-accent-themed-secondary p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                     title="Manage Questions">
                                     <i class="fas fa-question-circle"></i>
+                                    <span>Questions</span>
                                 </button>
                                 @if($assessment->results_published_at)
                                     <button wire:click="unpublishResults({{ $assessment->id }})"
-                                        class="text-amber-600 hover:text-amber-800 p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
                                         title="Unpublish Results">
                                         <i class="fas fa-eye-slash"></i>
+                                        <span>Hide Results</span>
                                     </button>
                                 @else
                                     <button wire:click="publishResults({{ $assessment->id }})"
-                                        class="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30"
                                         title="Publish Results">
                                         <i class="fas fa-bullhorn"></i>
+                                        <span>Publish Results</span>
                                     </button>
                                 @endif
                                 <button wire:click="editAssessment({{ $assessment->id }})"
-                                    class="text-themed-secondary hover:text-themed-primary p-2 rounded-lg hover:bg-themed-secondary transition-colors"
+                                    class="inline-flex items-center gap-2 rounded-lg border border-themed-secondary px-3 py-2 text-sm font-medium text-themed-secondary transition-colors hover:bg-themed-secondary hover:text-themed-primary"
                                     title="Edit">
                                     <i class="fas fa-edit"></i>
+                                    <span>Edit</span>
                                 </button>
                                 <button wire:click="deleteAssessment({{ $assessment->id }})"
                                     wire:confirm="Are you sure you want to delete this assessment?"
-                                    class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                    class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
                                     title="Delete">
                                     <i class="fas fa-trash"></i>
+                                    <span>Delete</span>
                                 </button>
                             </div>
                         </div>
@@ -127,7 +161,7 @@
                         <thead class="bg-themed-tertiary">
                             <tr>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Title</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Course</th>
+                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Class</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Questions</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Duration</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Pass %</th>
@@ -143,7 +177,7 @@
                                         <div class="text-sm text-themed-secondary">{{ Str::limit($assessment->description, 50) }}</div>
                                     </td>
                                     <td class="px-4 xl:px-6 py-4">
-                                        <div class="text-sm text-themed-primary">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Standalone' }}</div>
+                                        <div class="text-sm text-themed-primary">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</div>
                                     </td>
                                     <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-themed-tertiary text-accent-themed-primary">
@@ -169,40 +203,46 @@
                                         </div>
                                     </td>
                                     <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
-                                        <div class="flex space-x-2">
+                                        <div class="flex flex-wrap gap-2">
                                             <button wire:click="viewParticipants({{ $assessment->id }})"
-                                                class="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                class="inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/30"
                                                 title="View Participants">
                                                 <i class="fas fa-users"></i>
+                                                <span>Participants</span>
                                             </button>
                                             <button wire:click="manageQuestions({{ $assessment->id }})"
-                                                class="text-accent-themed-primary hover:text-accent-themed-secondary p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                                 title="Manage Questions">
                                                 <i class="fas fa-question-circle"></i>
+                                                <span>Questions</span>
                                             </button>
                                             @if($assessment->results_published_at)
                                                 <button wire:click="unpublishResults({{ $assessment->id }})"
-                                                    class="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300 p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                    class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
                                                     title="Unpublish Results">
                                                     <i class="fas fa-eye-slash"></i>
+                                                    <span>Hide Results</span>
                                                 </button>
                                             @else
                                                 <button wire:click="publishResults({{ $assessment->id }})"
-                                                    class="text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                    class="inline-flex items-center gap-2 rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30"
                                                     title="Publish Results">
                                                     <i class="fas fa-bullhorn"></i>
+                                                    <span>Publish Results</span>
                                                 </button>
                                             @endif
                                             <button wire:click="editAssessment({{ $assessment->id }})"
-                                                class="text-themed-secondary hover:text-themed-primary p-2 rounded-lg hover:bg-themed-tertiary transition-colors"
+                                                class="inline-flex items-center gap-2 rounded-lg border border-themed-secondary px-3 py-2 text-sm font-medium text-themed-secondary transition-colors hover:bg-themed-secondary hover:text-themed-primary"
                                                 title="Edit">
                                                 <i class="fas fa-edit"></i>
+                                                <span>Edit</span>
                                             </button>
                                             <button wire:click="deleteAssessment({{ $assessment->id }})"
                                                 wire:confirm="Are you sure you want to delete this assessment?"
-                                                class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                                class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
                                                 title="Delete">
                                                 <i class="fas fa-trash"></i>
+                                                <span>Delete</span>
                                             </button>
                                         </div>
                                     </td>
@@ -240,14 +280,14 @@
             <div>
                 <form wire:submit="createAssessment">
                     <div class="mb-3 sm:mb-4">
-                        <label for="course_id" class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Course (Optional)</label>
+                        <label for="course_id" class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Class</label>
                         <select wire:model="course_id" class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
-                            <option value="">Standalone CBT (No course)</option>
-                            @foreach($courses as $course)
-                                <option value="{{ $course->id }}">{{ $course->title }}</option>
+                            <option value="">Select class</option>
+                            @foreach($classes as $class)
+                                <option value="{{ $class->id }}">{{ $class->title }}</option>
                             @endforeach
                         </select>
-                        <p class="text-xs text-themed-tertiary mt-1">Leave empty for standalone CBT exam</p>
+                        <p class="text-xs text-themed-tertiary mt-1">Only students currently assigned to this class will see and take this CBT.</p>
                         @error('course_id') <div class="text-red-500 dark:text-red-400 text-xs sm:text-sm mt-1">{{ $message }}</div> @enderror
                     </div>
 
@@ -348,15 +388,15 @@
                 <form wire:submit="updateAssessment">
                     <div class="mb-3 sm:mb-4">
                         <label for="course_id"
-                            class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Course
-                            (Optional)</label>
+                            class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Class</label>
                         <select wire:model="course_id"
                             class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
-                            <option value="">Standalone CBT (No course)</option>
-                            @foreach($courses as $course)
-                                <option value="{{ $course->id }}">{{ $course->title }}</option>
+                            <option value="">Select class</option>
+                            @foreach($classes as $class)
+                                <option value="{{ $class->id }}">{{ $class->title }}</option>
                             @endforeach
                         </select>
+                        <p class="text-xs text-themed-tertiary mt-1">Only students currently assigned to this class will see and take this CBT.</p>
                         @error('course_id') <div class="text-red-500 dark:text-red-400 text-xs sm:text-sm mt-1">
                         {{ $message }}</div> @enderror
                     </div>
@@ -492,11 +532,16 @@
                     <!-- Add Question Form -->
                     <div>
                         <h6 class="text-lg font-semibold text-themed-primary mb-4">Add New Question</h6>
+                        <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+                            <p class="font-semibold">Math Upload Guide</p>
+                            <p class="mt-1">Inline math: <code>$x^2 + y^2 = 25$</code>. Block math: <code>$$\frac{-b \pm \sqrt{b^2-4ac}}{2a}$$</code>.</p>
+                            <p class="mt-1">Use normal text outside the math markers. The preview updates as you type.</p>
+                        </div>
                         <form wire:submit="addQuestion">
                             <div class="mb-4">
                                 <label for="question_text" class="block text-sm font-medium text-themed-primary mb-2">
                                     Question Text
-                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $...$ for
+                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
                                         display math)</span>
                                 </label>
                                 <textarea wire:model="question_text"
@@ -546,7 +591,7 @@
                                 <div class="mb-4">
                                     <label class="block text-sm font-medium text-themed-primary mb-2">
                                         Options
-                                        <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $...$ for
+                                        <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
                                             display math)</span>
                                     </label>
                                     @foreach($options as $index => $option)
@@ -611,7 +656,7 @@
                             <div class="mb-4">
                                 <label for="explanation" class="block text-sm font-medium text-themed-primary mb-2">
                                     Explanation
-                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $...$ for
+                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
                                         display math)</span>
                                 </label>
                                 <textarea wire:model="explanation"
@@ -693,17 +738,19 @@
                                             </div>
 
                                             <!-- Action Buttons -->
-                                            <div class="flex space-x-2 ml-3">
+                                            <div class="ml-3 flex flex-col gap-2">
                                                 <button wire:click="editQuestion({{ $question->id }})"
-                                                    class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                                     title="Edit Question">
                                                     <i class="fas fa-edit"></i>
+                                                    <span>Edit</span>
                                                 </button>
                                                 <button wire:click="deleteQuestion({{ $question->id }})"
                                                     wire:confirm="Are you sure you want to delete this question?"
-                                                    class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                                    class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
                                                     title="Delete">
                                                     <i class="fas fa-trash"></i>
+                                                    <span>Delete</span>
                                                 </button>
                                             </div>
                                         </div>
@@ -740,7 +787,7 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-themed-primary mb-2">
                                 Question Text
-                                <span class="text-xs text-themed-tertiary">(Use $...$ for inline math, $...$ for
+                                <span class="text-xs text-themed-tertiary">(Use $...$ for inline math, $$...$$ for
                                     display)</span>
                             </label>
                             <textarea wire:model="question_text" rows="3"
@@ -1040,17 +1087,34 @@
             });
         }
 
-        // Initialize MathJax integration
-        async function initMathJax() {
-            await waitForMathJax();
+        function renderMath(elements) {
+            if (typeof MathJax === 'undefined' || typeof MathJax.typesetPromise === 'undefined') {
+                return;
+            }
 
-            // Process all math content on page load
-            MathJax.typesetPromise().catch(err => {
+            const nodes = Array.isArray(elements)
+                ? elements.filter(Boolean)
+                : Array.from(elements || []).filter(Boolean);
+
+            if (!nodes.length) {
+                return;
+            }
+
+            if (typeof MathJax.typesetClear === 'function') {
+                MathJax.typesetClear(nodes);
+            }
+
+            MathJax.typesetPromise(nodes).catch(err => {
                 if (err) console.error('MathJax error:', err);
             });
+        }
 
-            // Set up live preview handlers
+        // Initialize MathJax integration
+        async function initMathJax() {
             setupLivePreviews();
+
+            await waitForMathJax();
+            renderMath(document.querySelectorAll('.math-content'));
         }
 
         // Set up live preview for question and explanation inputs
@@ -1067,9 +1131,7 @@
                 if (value.trim()) {
                     preview.innerHTML = value;
                     preview.querySelectorAll('mjx-container').forEach(el => el.remove());
-                    MathJax.typesetPromise([preview]).catch(err => {
-                        if (err) console.error('MathJax preview error:', err);
-                    });
+                    renderMath([preview]);
                 } else {
                     preview.innerHTML = '<span class="text-themed-tertiary">Preview will appear here</span>';
                 }
@@ -1175,9 +1237,7 @@
                 if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
                     const mathElements = el.querySelectorAll('.math-content');
                     if (mathElements.length > 0) {
-                        MathJax.typesetPromise(Array.from(mathElements)).catch(err => {
-                            if (err) console.error('MathJax rendering error:', err);
-                        });
+                        renderMath(mathElements);
                     }
                 }
             });

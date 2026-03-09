@@ -86,6 +86,11 @@
                                     <i class="fas fa-exclamation-triangle mr-1"></i>
                                     <span>{{ $assessment->attempt_message }}</span>
                                 </div>
+                            @elseif($assessment->has_active_attempt)
+                                <div class="mt-2 pt-2 border-t border-themed-secondary text-xs text-blue-700 dark:text-blue-300 flex items-center">
+                                    <i class="fas fa-rotate-left mr-1"></i>
+                                    <span>You already started this exam. Resume to continue from where you stopped.</span>
+                                </div>
                             @endif
                         </div>
 
@@ -113,7 +118,7 @@
                                     wire:confirm="Are you ready to start this exam? Once started, the timer will begin immediately."
                                     class="w-full bg-accent-themed-primary hover:bg-accent-themed-secondary text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center font-medium">
                                     <i class="fas fa-play mr-2"></i>
-                                    {{ $assessment->user_result ? 'Retake Exam' : 'Start Exam' }}
+                                    {{ $assessment->has_active_attempt ? 'Resume Exam' : ($assessment->user_result ? 'Retake Exam' : 'Start Exam') }}
                                 </button>
                             @else
                                 <button disabled
@@ -131,12 +136,12 @@
                             @endif
                         </div>
 
-                        <!-- Course Info -->
+                        <!-- Class Info -->
                         @if($assessment->course)
                             <div class="mt-4 pt-4 border-t border-themed-secondary">
                                 <div class="flex items-center text-sm text-themed-secondary">
-                                    <i class="fas fa-book mr-2"></i>
-                                    <span>{{ $assessment->course?->name ?? $assessment->course?->title ?? 'General Assessment' }}</span>
+                                    <i class="fas fa-school mr-2"></i>
+                                    <span>Class: {{ $assessment->course?->name ?? $assessment->course?->title ?? 'General Assessment' }}</span>
                                 </div>
                             </div>
                         @else
