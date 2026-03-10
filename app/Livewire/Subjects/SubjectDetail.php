@@ -13,6 +13,7 @@ class SubjectDetail extends Component
     public $teacherSearch = '';
     public $availableTeachers = [];
     public $subjectTeachers = [];
+    public $canUpdateSubject = false;
 
     public function mount($subjectId)
     {
@@ -24,6 +25,8 @@ class SubjectDetail extends Component
         if (!auth()->user()->can('read subject')) {
             abort(403, 'Unauthorized action.');
         }
+
+        $this->canUpdateSubject = auth()->user()->can('update subject');
         
         // Load initially assigned teachers
         $this->subjectTeachers = $this->subject->teachers()->pluck('users.id')->toArray();
@@ -36,6 +39,10 @@ class SubjectDetail extends Component
 
     public function getAvailableTeachers()
     {
+        if (!$this->canUpdateSubject || $this->teacherSearch === '') {
+            return collect();
+        }
+
         return User::role('teacher')
             ->where('school_id', auth()->user()->school_id)
             ->when($this->teacherSearch, function($q) {
@@ -51,8 +58,7 @@ class SubjectDetail extends Component
 
     public function assignTeacher($teacherId)
     {
-        // Check authorization manually
-        if (!auth()->user()->can('update subject')) {
+        if (!$this->canUpdateSubject) {
             abort(403, 'Unauthorized action.');
         }
         
@@ -71,8 +77,7 @@ class SubjectDetail extends Component
 
     public function removeTeacher($teacherId)
     {
-        // Check authorization manually
-        if (!auth()->user()->can('update subject')) {
+        if (!$this->canUpdateSubject) {
             abort(403, 'Unauthorized action.');
         }
         

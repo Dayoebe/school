@@ -209,3 +209,279 @@ Call-Stack:
 #48 /vendor/laravel/framework/src/Illuminate/Session/Middleware/StartSession.php:64
 #49 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
   
+[2026-03-10 10:31:50] local.INFO: Detected N+1 Query  
+[2026-03-10 10:31:50] local.INFO: Model: App\Models\StudentRecord
+Relation: myClass
+Num-Called: 53
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:367
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:31:50] local.INFO: Model: App\Models\StudentRecord
+Relation: section
+Num-Called: 24
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:373
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:37:26] local.INFO: Detected N+1 Query  
+[2026-03-10 10:37:26] local.INFO: Model: App\Models\StudentRecord
+Relation: myClass
+Num-Called: 53
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:376
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:37:26] local.INFO: Model: App\Models\StudentRecord
+Relation: section
+Num-Called: 24
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:382
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:37:32] local.INFO: Detected N+1 Query  
+[2026-03-10 10:37:32] local.INFO: Model: App\Models\StudentRecord
+Relation: myClass
+Num-Called: 53
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:376
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:37:32] local.INFO: Model: App\Models\StudentRecord
+Relation: section
+Num-Called: 24
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:382
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:38:08] local.INFO: Detected N+1 Query  
+[2026-03-10 10:38:08] local.INFO: Model: App\Models\StudentRecord
+Relation: myClass
+Num-Called: 152
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:376
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  
+[2026-03-10 10:38:08] local.INFO: Model: App\Models\StudentRecord
+Relation: section
+Num-Called: 24
+Call-Stack:
+#20 /storage/framework/views/e894554774332a7517eada36c0b560ff.php:382
+#22 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:38
+#23 /vendor/laravel/framework/src/Illuminate/View/Engines/CompilerEngine.php:72
+#24 /vendor/livewire/livewire/src/Mechanisms/ExtendBlade/ExtendedCompilerEngine.php:16
+#25 /vendor/laravel/framework/src/Illuminate/View/View.php:207
+#26 /vendor/laravel/framework/src/Illuminate/View/View.php:190
+#27 /vendor/laravel/framework/src/Illuminate/View/View.php:159
+#28 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:259
+#29 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:303
+#30 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:251
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:54
+#32 /vendor/livewire/livewire/src/LivewireManager.php:73
+#33 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:17
+#34 /vendor/livewire/livewire/src/Features/SupportPageComponents/SupportPageComponents.php:117
+#35 /vendor/livewire/livewire/src/Features/SupportPageComponents/HandlesPageComponents.php:14
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/spatie/laravel-permission/src/Middlewares/PermissionMiddleware.php:24
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /app/Http/Middleware/EnsureSuperAdminHasSchoolId.php:25
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Auth/Middleware/Authenticate.php:57
+  

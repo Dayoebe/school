@@ -41,10 +41,12 @@
                    class="px-4 py-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white rounded-lg transition">
                     <i class="fas fa-arrow-left mr-2"></i>Back
                 </a>
-                <a href="{{ route('subjects.edit', $subject->id) }}" 
-                   class="px-4 py-2 bg-white text-green-600 rounded-lg font-semibold shadow hover:shadow-lg transition">
-                    <i class="fas fa-edit mr-2"></i>Edit Subject
-                </a>
+                @if($canUpdateSubject)
+                    <a href="{{ route('subjects.edit', $subject->id) }}" 
+                       class="px-4 py-2 bg-white text-green-600 rounded-lg font-semibold shadow hover:shadow-lg transition">
+                        <i class="fas fa-edit mr-2"></i>Edit Subject
+                    </a>
+                @endif
             </div>
         </div>
     </div>
@@ -229,36 +231,38 @@
             <!-- Teachers Tab -->
             <div x-show="activeTab === 'teachers'" x-transition>
                 <div class="space-y-6">
-                    <!-- Assign New Teacher -->
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
-                        <h3 class="text-xl font-bold text-gray-900 mb-4">Assign Teachers</h3>
+                    @if($canUpdateSubject)
+                        <!-- Assign New Teacher -->
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg">
+                            <h3 class="text-xl font-bold text-gray-900 mb-4">Assign Teachers</h3>
 
-                        <div class="mb-4">
-                            <input type="text" wire:model.live="teacherSearch"
-                                placeholder="Search teachers to assign..."
-                                class="w-full rounded-lg border-2 border-gray-300 p-3 focus:ring-2 focus:ring-indigo-500">
-                        </div>
-
-                        @if($teacherSearch)
-                            <div class="bg-white rounded-lg border p-4 max-h-64 overflow-y-auto">
-                                @forelse($availableTeachers as $teacher)
-                                    <div
-                                        class="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-gray-50">
-                                        <div>
-                                            <span class="font-medium">{{ $teacher->name }}</span>
-                                            <span class="text-sm text-gray-600 ml-2">({{ $teacher->email }})</span>
-                                        </div>
-                                        <button wire:click="assignTeacher({{ $teacher->id }})"
-                                            class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm">
-                                            <i class="fas fa-plus mr-1"></i>Assign
-                                        </button>
-                                    </div>
-                                @empty
-                                    <p class="text-gray-500 text-center py-4">No teachers found</p>
-                                @endforelse
+                            <div class="mb-4">
+                                <input type="text" wire:model.live="teacherSearch"
+                                    placeholder="Search teachers to assign..."
+                                    class="w-full rounded-lg border-2 border-gray-300 p-3 focus:ring-2 focus:ring-indigo-500">
                             </div>
-                        @endif
-                    </div>
+
+                            @if($teacherSearch)
+                                <div class="bg-white rounded-lg border p-4 max-h-64 overflow-y-auto">
+                                    @forelse($availableTeachers as $teacher)
+                                        <div
+                                            class="flex items-center justify-between p-3 border-b last:border-b-0 hover:bg-gray-50">
+                                            <div>
+                                                <span class="font-medium">{{ $teacher->name }}</span>
+                                                <span class="text-sm text-gray-600 ml-2">({{ $teacher->email }})</span>
+                                            </div>
+                                            <button wire:click="assignTeacher({{ $teacher->id }})"
+                                                class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm">
+                                                <i class="fas fa-plus mr-1"></i>Assign
+                                            </button>
+                                        </div>
+                                    @empty
+                                        <p class="text-gray-500 text-center py-4">No teachers found</p>
+                                    @endforelse
+                                </div>
+                            @endif
+                        </div>
+                    @endif
 
                     <!-- Current Teachers -->
                     <div>
@@ -285,16 +289,18 @@
                                             </div>
                                         </div>
 
-                                        <div class="flex justify-between items-center pt-3 border-t">
+                                        <div class="flex items-center {{ $canUpdateSubject ? 'justify-between' : 'justify-start' }} pt-3 border-t">
                                             <a href="{{ route('teachers.show', $teacher->id) }}"
                                                 class="text-sm text-indigo-600 hover:text-indigo-800">
                                                 <i class="fas fa-external-link-alt mr-1"></i>View Profile
                                             </a>
-                                            <button wire:click="removeTeacher({{ $teacher->id }})"
-                                                wire:confirm="Are you sure you want to remove this teacher from this subject?"
-                                                class="text-sm text-red-600 hover:text-red-800">
-                                                <i class="fas fa-trash mr-1"></i>Remove
-                                            </button>
+                                            @if($canUpdateSubject)
+                                                <button wire:click="removeTeacher({{ $teacher->id }})"
+                                                    wire:confirm="Are you sure you want to remove this teacher from this subject?"
+                                                    class="text-sm text-red-600 hover:text-red-800">
+                                                    <i class="fas fa-trash mr-1"></i>Remove
+                                                </button>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
@@ -303,7 +309,9 @@
                             <div class="text-center py-8 bg-gray-50 rounded-lg">
                                 <i class="fas fa-chalkboard-teacher text-gray-300 text-4xl mb-3"></i>
                                 <p class="text-gray-500">No teachers assigned to this subject</p>
-                                <p class="text-gray-400 text-sm mt-1">Use the search above to assign teachers</p>
+                                <p class="text-gray-400 text-sm mt-1">
+                                    {{ $canUpdateSubject ? 'Use the search above to assign teachers' : 'No teachers are currently assigned to this subject' }}
+                                </p>
                             </div>
                         @endif
                     </div>
@@ -404,10 +412,12 @@
                             <i class="fas fa-chart-line mr-2"></i>View Analytics
                         </a>
 
-                        <a href="{{ route('subjects.edit', $subject->id) }}"
-                            class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                            <i class="fas fa-edit mr-2"></i>Edit Subject
-                        </a>
+                        @if($canUpdateSubject)
+                            <a href="{{ route('subjects.edit', $subject->id) }}"
+                                class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                <i class="fas fa-edit mr-2"></i>Edit Subject
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

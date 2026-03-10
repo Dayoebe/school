@@ -4,13 +4,20 @@
         <h2 class="text-2xl font-bold text-gray-800">
             <i class="fas fa-lightbulb text-green-600 mr-2"></i>Subjects
         </h2>
-        <div class="flex gap-3">
-            @livewire('subjects.subject-integrity-checker')
-            <button wire:click="switchMode('create')" 
-                    class="px-6 py-2.5 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 shadow-lg transition">
-                <i class="fas fa-plus mr-2"></i>Add New Subject
-            </button>
-        </div>
+        @if($canManageIntegrityTools || $canCreateSubject)
+            <div class="flex gap-3">
+                @if($canManageIntegrityTools)
+                    @livewire('subjects.subject-integrity-checker')
+                @endif
+
+                @if($canCreateSubject)
+                    <button wire:click="switchMode('create')" 
+                            class="px-6 py-2.5 bg-gradient-to-r from-green-600 to-teal-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-teal-700 shadow-lg transition">
+                        <i class="fas fa-plus mr-2"></i>Add New Subject
+                    </button>
+                @endif
+            </div>
+        @endif
     </div>
 </div>
 
@@ -157,15 +164,19 @@
                                    class="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <button wire:click="switchMode('edit', {{ $subject->id }})" 
-                                        class="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-sm">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button wire:click="deleteSubject({{ $subject->id }})" 
-                                        wire:confirm="Are you sure you want to delete this subject? This will affect all assigned classes and students."
-                                        class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                @if($canUpdateSubject)
+                                    <button wire:click="switchMode('edit', {{ $subject->id }})" 
+                                            class="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                @endif
+                                @if($canDeleteSubject)
+                                    <button wire:click="deleteSubject({{ $subject->id }})" 
+                                            wire:confirm="Are you sure you want to delete this subject? This will affect all assigned classes and students."
+                                            class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                @endif
                             </div>
                         </td>
                     </tr>

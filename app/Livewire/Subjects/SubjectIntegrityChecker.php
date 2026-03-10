@@ -15,9 +15,19 @@ class SubjectIntegrityChecker extends Component
     public $isFixing = false;
     public $checkResults = [];
     public $fixResults = [];
+
+    protected function ensureCanManageIntegrityTools(): void
+    {
+        abort_unless(
+            auth()->user()->can('update subject') && auth()->user()->can('delete subject'),
+            403,
+            'Unauthorized action.'
+        );
+    }
     
     public function openModal()
     {
+        $this->ensureCanManageIntegrityTools();
         $this->showModal = true;
         $this->checkResults = [];
         $this->fixResults = [];
@@ -32,6 +42,7 @@ class SubjectIntegrityChecker extends Component
     
     public function runIntegrityCheck()
     {
+        $this->ensureCanManageIntegrityTools();
         $this->isChecking = true;
         $this->checkResults = [];
         
@@ -181,6 +192,7 @@ class SubjectIntegrityChecker extends Component
     
     public function fixIssues()
     {
+        $this->ensureCanManageIntegrityTools();
         $this->isFixing = true;
         $this->fixResults = [];
         

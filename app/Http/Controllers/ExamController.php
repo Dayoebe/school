@@ -116,11 +116,13 @@ class ExamController extends Controller
     /**
      * Tabulation for academic year results.
      */
-    public function academicYearResultTabulation(): View
+    public function academicYearResultTabulation(): RedirectResponse
     {
         $this->authorize('viewAny', Exam::class);
 
-        return view('livewire.exams.pages.academic-year-result-tabulation');
+        return redirect()
+            ->route('result.annual')
+            ->with('status', 'Annual result tabulation has been moved to Annual Class Results.');
     }
 
     /**

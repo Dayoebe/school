@@ -14,6 +14,10 @@ class ManageSubjects extends Component
     use WithPagination;
 
     public $mode = 'list';
+    public $canCreateSubject = false;
+    public $canUpdateSubject = false;
+    public $canDeleteSubject = false;
+    public $canManageIntegrityTools = false;
     
     // Filters
     public $search = '';
@@ -45,6 +49,7 @@ class ManageSubjects extends Component
 
     public function mount()
     {
+        $this->setPermissionFlags();
         $this->classes = $this->getClassesForCurrentSchool();
         
         if (request()->routeIs('subjects.create')) {
@@ -59,6 +64,30 @@ class ManageSubjects extends Component
         }
     }
 
+    public function hydrate()
+    {
+        $this->setPermissionFlags();
+
+        if ($this->mode === 'create' && !$this->canCreateSubject) {
+            $this->mode = 'list';
+        }
+
+        if ($this->mode === 'edit' && !$this->canUpdateSubject) {
+            $this->mode = 'list';
+            $this->subjectId = null;
+        }
+    }
+
+    protected function setPermissionFlags(): void
+    {
+        $user = auth()->user();
+
+        $this->canCreateSubject = $user->can('create subject');
+        $this->canUpdateSubject = $user->can('update subject');
+        $this->canDeleteSubject = $user->can('delete subject');
+        $this->canManageIntegrityTools = $this->canUpdateSubject && $this->canDeleteSubject;
+    }
+
     protected function getClassesForCurrentSchool()
     {
         return MyClass::whereHas('classGroup', function ($query) {
@@ -71,27 +100,54 @@ class ManageSubjects extends Component
 
     public function switchMode($mode, $subjectId = null)
     {
-        $this->mode = $mode;
-        $this->subjectId = $subjectId;
         $this->resetValidation();
-        
-        if ($mode === 'edit' && $subjectId) {
-            $this->loadSubjectForEdit();
-        } elseif ($mode === 'create') {
+
+        if ($mode === 'create') {
+            if (!$this->canCreateSubject) {
+                $this->denyModeChange('You do not have permission to create subjects.');
+                return;
+            }
+
+            $this->mode = 'create';
+            $this->subjectId = null;
             $this->resetForm();
+            return;
         }
+
+        if ($mode === 'edit' && $subjectId) {
+            if (!$this->canUpdateSubject) {
+                $this->denyModeChange('You do not have permission to edit subjects.');
+                return;
+            }
+
+            $this->mode = 'edit';
+            $this->subjectId = $subjectId;
+            $this->loadSubjectForEdit();
+            return;
+        }
+
+        $this->mode = 'list';
+        $this->subjectId = null;
+    }
+
+    protected function denyModeChange(string $message): void
+    {
+        $this->mode = 'list';
+        $this->subjectId = null;
+        session()->flash('error', $message);
     }
 
     public function loadSubjectForEdit()
     {
+        if (!$this->canUpdateSubject) {
+            $this->denyModeChange('You do not have permission to edit subjects.');
+            return;
+        }
+
         $subject = Subject::query()
             ->with(['teachers', 'classes'])
             ->findOrFail($this->subjectId);
-        
-        if (!auth()->user()->can('update subject')) {
-            abort(403, 'Unauthorized action.');
-        }
-        
+
         $this->fill([
             'name' => $subject->name,
             'short_name' => $subject->short_name,
@@ -203,7 +259,7 @@ class ManageSubjects extends Component
 
     public function createSubject()
     {
-        if (!auth()->user()->can('create subject')) {
+        if (!$this->canCreateSubject) {
             abort(403, 'Unauthorized action.');
         }
         
@@ -266,7 +322,7 @@ class ManageSubjects extends Component
         $subject = Subject::query()
             ->findOrFail($this->subjectId);
         
-        if (!auth()->user()->can('update subject')) {
+        if (!$this->canUpdateSubject) {
             abort(403, 'Unauthorized action.');
         }
         
@@ -348,7 +404,7 @@ class ManageSubjects extends Component
     {
         $subject = Subject::query()->findOrFail($subjectId);
         
-        if (!auth()->user()->can('delete subject')) {
+        if (!$this->canDeleteSubject) {
             abort(403, 'Unauthorized action.');
         }
         

@@ -484,9 +484,9 @@ class Menu extends Component
                     ],
                     [
                         'type' => 'menu-item',
-                        'text' => 'Annual Tabulation',
-                        'route' => 'exams.academic-year-result-tabulation',
-                        'permissions' => ['read exam'],
+                        'text' => 'Annual Class Results',
+                        'route' => 'result.annual',
+                        'permissions' => ['view result'],
                     ],
                     [
                         'type' => 'menu-item',
