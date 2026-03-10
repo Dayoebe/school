@@ -29,9 +29,6 @@ class ManageSubjects extends Component
     public $sortDirection = 'asc';
     public $perPage = 15;
     
-    // Data
-    public $classes = [];
-    
     // Subject form
     public $subjectId = null;
     public $name = '';
@@ -50,7 +47,6 @@ class ManageSubjects extends Component
     public function mount()
     {
         $this->setPermissionFlags();
-        $this->classes = $this->getClassesForCurrentSchool();
         
         if (request()->routeIs('subjects.create')) {
             $this->mode = 'create';
@@ -515,9 +511,9 @@ class ManageSubjects extends Component
     public function render()
     {
         $subjects = collect();
+        $classes = $this->getClassesForCurrentSchool();
         
         if ($this->mode === 'list') {
-            // FIX: Eager load classes with classGroup to prevent N+1
             $subjects = $this->getSubjectsQuery()
                 ->with(['classes.classGroup', 'teachers'])
                 ->withCount('teachers')
@@ -526,7 +522,7 @@ class ManageSubjects extends Component
     
         return view('livewire.subjects.manage-subjects', [
             'subjects' => $subjects,
-            'classes' => $this->classes,
+            'classes' => $classes,
         ])
             ->layout('layouts.dashboard', [
                 'breadcrumbs' => [

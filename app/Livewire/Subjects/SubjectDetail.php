@@ -18,7 +18,13 @@ class SubjectDetail extends Component
     public function mount($subjectId)
     {
         $this->subject = Subject::query()
-            ->with(['myClass', 'teachers', 'studentRecords.user'])
+            ->with([
+                'myClass.classGroup',
+                'teachers',
+                'studentRecords.user',
+                'studentRecords.myClass',
+                'studentRecords.section',
+            ])
             ->findOrFail($subjectId);
         
         // Check authorization manually
@@ -100,7 +106,13 @@ class SubjectDetail extends Component
 
     public function render()
     {
-        $subject = $this->subject->load(['myClass', 'teachers', 'studentRecords.user']);
+        $subject = $this->subject->load([
+            'myClass.classGroup',
+            'teachers',
+            'studentRecords.user',
+            'studentRecords.myClass',
+            'studentRecords.section',
+        ]);
         
         $availableTeachers = $this->getAvailableTeachers();
 
