@@ -14,8 +14,6 @@
         </div>
     @endif
 
-    @livewire('dashboard.password-warning')
-
     <div class="mb-6">
         @livewire('dashboard.dashboard-stats')
     </div>

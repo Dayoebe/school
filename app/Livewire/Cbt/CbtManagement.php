@@ -2,19 +2,21 @@
 
 namespace App\Livewire\Cbt;
 
-use Livewire\Component;
 use App\Models\Assessment\Assessment;
 use App\Models\Assessment\Question;
 use App\Models\Assessment\StudentAnswer;
-use App\Models\MyClass;
 use App\Models\User;
+use App\Traits\RestrictsTeacherCbtManagement;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
 
 #[Layout('layouts.dashboard', ['title' => 'CBT Exam Management', 'description' => 'Manage CBT exams', 'icon' => 'fas fa-microphone-alt'])]
 class CbtManagement extends Component
 {
+    use RestrictsTeacherCbtManagement;
     use WithPagination;
 
     public $showCreateModal = false;
@@ -33,6 +35,7 @@ class CbtManagement extends Component
     public $shuffle_options = false;   // NEW
     public $type = 'quiz';
     public $course_id = null;
+    public $lesson_id = null;
 
     public $selectedAssessment = null;
     public $editingAssessment = null;
@@ -48,6 +51,7 @@ class CbtManagement extends Component
 
     protected $validationAttributes = [
         'course_id' => 'class',
+        'lesson_id' => 'subject',
         'question_text' => 'question text',
         'question_type' => 'question type',
         'correct_answers' => 'correct answer',
@@ -63,6 +67,7 @@ class CbtManagement extends Component
         'shuffle_questions' => 'boolean',
         'shuffle_options' => 'boolean',
         'course_id' => 'required|exists:my_classes,id',
+        'lesson_id' => 'required|exists:subjects,id',
         'question_text' => 'required|string',
         'question_type' => 'required|string',
         'points' => 'required|numeric|min:0.1',
@@ -86,24 +91,40 @@ class CbtManagement extends Component
         $this->dispatch('explanation-updated', $value);
     }
 
+    public function updatedCourseId($value): void
+    {
+        $classId = $value ? (int) $value : null;
+
+        if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
+            $this->lesson_id = null;
+            return;
+        }
+
+        if ($this->lesson_id && !$this->currentUserCanManageCbtSubject($this->lesson_id, $classId)) {
+            $this->lesson_id = null;
+        }
+    }
+
     public function render()
     {
         $assessments = $this->assessmentsForCurrentSchool()
-            ->with(['questions', 'course'])
+            ->with(['questions', 'course', 'lesson'])
             ->latest()
             ->paginate(10);
 
         $classes = $this->classesForCurrentSchool()
             ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(function (MyClass $class) {
-                return (object) [
-                    'id' => $class->id,
-                    'title' => $class->name,
-                ];
-            });
+            ->get(['id', 'name']);
 
-        return view('livewire.cbt.cbt-management', compact('assessments', 'classes'));
+        $subjects = $this->availableSubjectsForSelectedClass();
+        $isRestrictedTeacherManager = $this->isRestrictedTeacherCbtManager();
+
+        return view('livewire.cbt.cbt-management', compact(
+            'assessments',
+            'classes',
+            'subjects',
+            'isRestrictedTeacherManager',
+        ));
     }
 
     public function createAssessment()
@@ -118,15 +139,22 @@ class CbtManagement extends Component
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
             'course_id' => 'required|exists:my_classes,id',
+            'lesson_id' => 'required|exists:subjects,id',
         ]);
 
-        if (!$this->isClassInCurrentSchool($this->course_id)) {
-            session()->flash('error', 'Selected class does not belong to your school.');
+        if (!$this->currentUserCanManageCbtClass($this->course_id)) {
+            session()->flash('error', 'You can only create CBT assessments for your assigned classes.');
+            return;
+        }
+
+        if (!$this->currentUserCanManageCbtSubject($this->lesson_id, $this->course_id)) {
+            session()->flash('error', 'You can only create CBT assessments for subjects assigned to you in this class.');
             return;
         }
 
         Assessment::create([
             'course_id' => $this->course_id,
+            'lesson_id' => $this->lesson_id,
             'title' => $this->title,
             'description' => $this->description,
             'type' => 'quiz',
@@ -138,7 +166,6 @@ class CbtManagement extends Component
             'shuffle_options' => $this->shuffle_options,
             'is_mandatory' => true,
             'section_id' => null,
-            'lesson_id' => null,
         ]);
 
         $this->resetForm();
@@ -163,6 +190,7 @@ class CbtManagement extends Component
         $this->shuffle_questions = $this->editingAssessment->shuffle_questions ?? false;
         $this->shuffle_options = $this->editingAssessment->shuffle_options ?? false;
         $this->course_id = $this->editingAssessment->course_id;
+        $this->lesson_id = $this->editingAssessment->lesson_id;
 
         $this->showEditModal = true;
     }
@@ -179,6 +207,7 @@ class CbtManagement extends Component
             'shuffle_questions' => 'boolean',
             'shuffle_options' => 'boolean',
             'course_id' => 'required|exists:my_classes,id',
+            'lesson_id' => 'required|exists:subjects,id',
         ]);
 
         if (!$this->editingAssessment) {
@@ -186,8 +215,13 @@ class CbtManagement extends Component
             return;
         }
 
-        if (!$this->isClassInCurrentSchool($this->course_id)) {
-            session()->flash('error', 'Selected class does not belong to your school.');
+        if (!$this->currentUserCanManageCbtClass($this->course_id)) {
+            session()->flash('error', 'You can only update CBT assessments for your assigned classes.');
+            return;
+        }
+
+        if (!$this->currentUserCanManageCbtSubject($this->lesson_id, $this->course_id)) {
+            session()->flash('error', 'You can only update CBT assessments for subjects assigned to you in this class.');
             return;
         }
 
@@ -207,6 +241,7 @@ class CbtManagement extends Component
             'shuffle_questions' => $this->shuffle_questions,
             'shuffle_options' => $this->shuffle_options,
             'course_id' => $this->course_id,
+            'lesson_id' => $this->lesson_id,
         ]);
 
         $this->resetForm();
@@ -472,6 +507,8 @@ class CbtManagement extends Component
         $schoolId = $this->currentSchoolId();
 
         $this->selectedAssessment = $this->assessmentsForCurrentSchool()->with([
+            'course',
+            'lesson',
             'studentAnswers' => function ($query) {
                 $query->whereNotNull('submitted_at')
                     ->whereHas('user', function ($userQuery) {
@@ -621,6 +658,7 @@ class CbtManagement extends Component
         $this->shuffle_questions = false;
         $this->shuffle_options = false;
         $this->course_id = null;
+        $this->lesson_id = null;
         $this->editingAssessment = null;
     }
 
@@ -654,23 +692,12 @@ class CbtManagement extends Component
 
     protected function assessmentsForCurrentSchool(): Builder
     {
-        return Assessment::query()
-            ->standaloneCBT()
-            ->forSchool($this->currentSchoolId());
+        return $this->accessibleCbtAssessmentsQuery();
     }
 
     protected function classesForCurrentSchool(): Builder
     {
-        $schoolId = $this->currentSchoolId();
-        $query = MyClass::query();
-
-        if (!$schoolId) {
-            return $query->whereRaw('1 = 0');
-        }
-
-        return $query->whereHas('classGroup', function ($classGroupQuery) use ($schoolId) {
-            $classGroupQuery->where('school_id', $schoolId);
-        });
+        return $this->accessibleCbtClassesQuery();
     }
 
     protected function getAssessmentForCurrentSchool($assessmentId): ?Assessment
@@ -682,14 +709,15 @@ class CbtManagement extends Component
         return $this->assessmentsForCurrentSchool()->find($assessmentId);
     }
 
-    protected function isClassInCurrentSchool($courseId): bool
+    protected function availableSubjectsForSelectedClass(): Collection
     {
-        if (!$courseId) {
-            return false;
+        $classId = $this->course_id ? (int) $this->course_id : null;
+
+        if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
+            return collect();
         }
 
-        return $this->classesForCurrentSchool()
-            ->whereKey($courseId)
-            ->exists();
+        return $this->accessibleCbtSubjectsQuery($classId)
+            ->get(['subjects.id', 'subjects.name', 'subjects.short_name']);
     }
 }

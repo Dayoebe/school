@@ -196,6 +196,7 @@ class Assessment extends Model
     {
         return $this->studentAnswers()
             ->where('user_id', $userId)
+            ->whereNotNull('submitted_at')
             ->orderBy('attempt_number', 'desc')
             ->first();
     }
@@ -207,6 +208,7 @@ class Assessment extends Model
     {
         $query = $this->studentAnswers()
             ->where('user_id', $userId)
+            ->whereNotNull('submitted_at')
             ->with('question');
 
         if ($attemptNumber) {
@@ -366,13 +368,13 @@ class Assessment extends Model
     }
 
     /**
-     * NEW: Scope for standalone CBT assessments (not tied to sections/lessons)
+     * Scope for standalone CBT assessments that are not tied to lesson sections.
+     * Subject-linked CBTs still count as standalone assessments.
      */
     public function scopeStandaloneCBT($query)
     {
         return $query->where('type', 'quiz')
-            ->whereNull('section_id')
-            ->whereNull('lesson_id');
+            ->whereNull('section_id');
     }
 
     public function scopeForSchool(Builder $query, ?int $schoolId): Builder
@@ -403,7 +405,35 @@ class Assessment extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where('course_id', $classId);
+        $studentRecord = $user->relationLoaded('studentRecord')
+            ? $user->studentRecord
+            : $user->studentRecord()->first();
+
+        return $query
+            ->where('course_id', $classId)
+            ->where(function (Builder $assessmentQuery) use ($classId, $studentRecord) {
+                $assessmentQuery->whereNull('lesson_id')
+                    ->orWhereHas('lesson', function (Builder $lessonQuery) use ($classId, $studentRecord) {
+                        $lessonQuery->where(function (Builder $subjectQuery) use ($classId, $studentRecord) {
+                            $subjectQuery->where('subjects.my_class_id', $classId)
+                                ->orWhereHas('classes', function (Builder $classQuery) use ($classId) {
+                                    $classQuery->where('my_classes.id', $classId);
+                                });
+
+                            if ($studentRecord) {
+                                $subjectQuery->orWhereIn('subjects.id', function ($subQuery) use ($studentRecord, $classId) {
+                                    $subQuery->from('student_subject')
+                                        ->where('student_record_id', $studentRecord->id)
+                                        ->where(function ($classScope) use ($classId) {
+                                            $classScope->whereNull('my_class_id')
+                                                ->orWhere('my_class_id', $classId);
+                                        })
+                                        ->select('subject_id');
+                                });
+                            }
+                        });
+                    });
+            });
     }
 
     public static function resolveAssignedClassIdForUser(?User $user): ?int

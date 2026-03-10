@@ -66,6 +66,12 @@
         </div>
     @endif
 
+    @if($isRestrictedTeacherManager)
+        <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+            CBT access is limited to the classes and subjects assigned to you. You can manage questions, view performance, and print results only for those assessments.
+        </div>
+    @endif
+
     <!-- Assessments List -->
     <div class="bg-themed-secondary rounded-lg shadow-lg border border-themed-primary overflow-hidden">
         <div class="bg-themed-secondary py-3 sm:py-4 px-4 sm:px-6 border-b border-themed-secondary">
@@ -89,6 +95,10 @@
                                 <div>
                                     <span class="text-themed-tertiary">Class:</span>
                                     <p class="text-themed-primary truncate">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-themed-tertiary">Subject:</span>
+                                    <p class="text-themed-primary truncate">{{ $assessment->lesson?->name ?? 'Not assigned' }}</p>
                                 </div>
                                 <div>
                                     <span class="text-themed-tertiary">Max Attempts:</span>
@@ -162,6 +172,7 @@
                             <tr>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Title</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Class</th>
+                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Subject</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Questions</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Duration</th>
                                 <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Pass %</th>
@@ -178,6 +189,9 @@
                                     </td>
                                     <td class="px-4 xl:px-6 py-4">
                                         <div class="text-sm text-themed-primary">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</div>
+                                    </td>
+                                    <td class="px-4 xl:px-6 py-4">
+                                        <div class="text-sm text-themed-primary">{{ $assessment->lesson?->name ?? 'Not assigned' }}</div>
                                     </td>
                                     <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-themed-tertiary text-accent-themed-primary">
@@ -281,14 +295,26 @@
                 <form wire:submit="createAssessment">
                     <div class="mb-3 sm:mb-4">
                         <label for="course_id" class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Class</label>
-                        <select wire:model="course_id" class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
+                        <select wire:model.live="course_id" class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
                             <option value="">Select class</option>
                             @foreach($classes as $class)
-                                <option value="{{ $class->id }}">{{ $class->title }}</option>
+                                <option value="{{ $class->id }}">{{ $class->name }}</option>
                             @endforeach
                         </select>
                         <p class="text-xs text-themed-tertiary mt-1">Only students currently assigned to this class will see and take this CBT.</p>
                         @error('course_id') <div class="text-red-500 dark:text-red-400 text-xs sm:text-sm mt-1">{{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="mb-3 sm:mb-4">
+                        <label for="lesson_id" class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Subject</label>
+                        <select wire:model="lesson_id" class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
+                            <option value="">{{ $course_id ? 'Select subject' : 'Select class first' }}</option>
+                            @foreach($subjects as $subject)
+                                <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-themed-tertiary mt-1">Restricted teachers only see subjects they teach in the selected class.</p>
+                        @error('lesson_id') <div class="text-red-500 dark:text-red-400 text-xs sm:text-sm mt-1">{{ $message }}</div> @enderror
                     </div>
 
                     <div class="mb-3 sm:mb-4">
@@ -389,15 +415,30 @@
                     <div class="mb-3 sm:mb-4">
                         <label for="course_id"
                             class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Class</label>
-                        <select wire:model="course_id"
+                        <select wire:model.live="course_id"
                             class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
                             <option value="">Select class</option>
                             @foreach($classes as $class)
-                                <option value="{{ $class->id }}">{{ $class->title }}</option>
+                                <option value="{{ $class->id }}">{{ $class->name }}</option>
                             @endforeach
                         </select>
                         <p class="text-xs text-themed-tertiary mt-1">Only students currently assigned to this class will see and take this CBT.</p>
                         @error('course_id') <div class="text-red-500 dark:text-red-400 text-xs sm:text-sm mt-1">
+                        {{ $message }}</div> @enderror
+                    </div>
+
+                    <div class="mb-3 sm:mb-4">
+                        <label for="lesson_id"
+                            class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Subject</label>
+                        <select wire:model="lesson_id"
+                            class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
+                            <option value="">{{ $course_id ? 'Select subject' : 'Select class first' }}</option>
+                            @foreach($subjects as $subject)
+                                <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+                            @endforeach
+                        </select>
+                        <p class="text-xs text-themed-tertiary mt-1">Restricted teachers only see subjects they teach in the selected class.</p>
+                        @error('lesson_id') <div class="text-red-500 dark:text-red-400 text-xs sm:text-sm mt-1">
                         {{ $message }}</div> @enderror
                     </div>
 
@@ -905,10 +946,15 @@
             <div class="bg-themed-secondary rounded-lg max-w-6xl w-full max-h-screen overflow-hidden"
                 x-data="{ expandedUser: null }">
                 <div class="p-6 border-b border-themed-secondary flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-themed-primary">
-                        <i class="fas fa-users mr-2"></i>
-                        Participants - {{ $selectedAssessment->title }}
-                    </h3>
+                    <div>
+                        <h3 class="text-xl font-bold text-themed-primary">
+                            <i class="fas fa-users mr-2"></i>
+                            Participants - {{ $selectedAssessment->title }}
+                        </h3>
+                        <p class="mt-1 text-sm text-themed-secondary">
+                            {{ $selectedAssessment->course?->name ?? 'No class' }} • {{ $selectedAssessment->lesson?->name ?? 'No subject' }}
+                        </p>
+                    </div>
                     <button type="button" wire:click="closeModals" class="text-themed-tertiary hover:text-themed-secondary">
                         <i class="fas fa-times text-xl"></i>
                     </button>
@@ -1026,13 +1072,23 @@
                                                                     {{ $attempt['submitted_at']->format('M d, Y - H:i') }}
                                                                 </span>
                                                             </div>
-                                                            <button
-                                                                wire:click="clearAttempt({{ $participant['user_id'] }}, {{ $attempt['attempt_number'] }})"
-                                                                wire:confirm="Are you sure you want to clear attempt #{{ $attempt['attempt_number'] }} for {{ $participant['user']->name }}?"
-                                                                class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                                                                title="Clear this attempt">
-                                                                <i class="fas fa-times-circle"></i>
-                                                            </button>
+                                                            <div class="flex items-center gap-2">
+                                                                <a href="{{ route('cbt.results.print', ['assessment' => $selectedAssessment->id, 'student' => $participant['user_id'], 'attemptNumber' => $attempt['attempt_number']]) }}"
+                                                                    target="_blank"
+                                                                    rel="noopener"
+                                                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                                                                    title="Print result">
+                                                                    <i class="fas fa-print"></i>
+                                                                    <span>Print</span>
+                                                                </a>
+                                                                <button
+                                                                    wire:click="clearAttempt({{ $participant['user_id'] }}, {{ $attempt['attempt_number'] }})"
+                                                                    wire:confirm="Are you sure you want to clear attempt #{{ $attempt['attempt_number'] }} for {{ $participant['user']->name }}?"
+                                                                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-2 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                                                                    title="Clear this attempt">
+                                                                    <i class="fas fa-times-circle"></i>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                     @endforeach
                                                 </div>

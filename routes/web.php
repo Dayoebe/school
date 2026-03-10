@@ -45,6 +45,7 @@ use App\Http\Controllers\{
     AuthController,
     DashboardController,
     DatabaseBackupController,
+    CbtResultController,
     ProfileController,
     FeeInvoiceController,
     MyClassController,
@@ -333,6 +334,10 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
     Route::get('/manage', CbtManagement::class)
         ->middleware('permission:manage cbt')
         ->name('manage');
+
+    Route::get('/results/{assessment}/students/{student}/attempts/{attemptNumber}/print', [CbtResultController::class, 'print'])
+        ->middleware('permission:manage cbt')
+        ->name('results.print');
 });
 
 /*

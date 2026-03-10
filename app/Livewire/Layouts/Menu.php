@@ -424,6 +424,9 @@ class Menu extends Component
 
     protected function assessmentMenu(): array
     {
+        $canAccessClassOnlyResultTools = $this->currentUserCanAccessClassOnlyResultTools();
+        $canAccessSubjectResultTools = $this->currentUserCanAccessSubjectResultTools();
+
         return [
             ['header' => 'Assessment & Results'],
             [
