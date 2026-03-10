@@ -6,11 +6,13 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use Livewire\WithPagination;
 use App\Models\{StudentRecord, MyClass, Section, Result, Subject};
+use App\Traits\ResolvesAccessibleStudentResults;
 use Illuminate\Support\Facades\DB;
 
 class StudentResults extends Component
 {
     use WithPagination;
+    use ResolvesAccessibleStudentResults;
 
     public $academicYearId;
     public $semesterId;
@@ -33,6 +35,10 @@ class StudentResults extends Component
     {
         $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
         $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
+
+        if ($this->isStudentResultViewer() && auth()->user()?->studentRecord) {
+            $this->viewStudent(auth()->user()->studentRecord->id);
+        }
     }
 
     #[On('academic-period-changed')]
@@ -40,21 +46,33 @@ class StudentResults extends Component
     {
         $this->academicYearId = $data['academicYearId'];
         $this->semesterId = $data['semesterId'];
-        $this->reset(['selectedClass', 'selectedSection', 'viewingStudent']);
+
+        $this->reset([
+            'selectedClass',
+            'selectedSection',
+            'viewingStudent',
+            'studentRecord',
+            'subjects',
+            'results',
+            'studentPosition',
+            'totalStudents',
+        ]);
+
+        if ($this->isStudentResultViewer() && auth()->user()?->studentRecord) {
+            $this->viewStudent(auth()->user()->studentRecord->id);
+        }
     }
 
     public function viewStudent($studentId)
     {
-        $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
-            ->whereHas('user', function ($query) {
-                $query->where('school_id', auth()->user()->school_id)
-                    ->whereNull('deleted_at');
-            })
+        $this->studentRecord = $this->accessibleStudentRecordsQuery()
+            ->with(['user', 'myClass', 'section'])
             ->findOrFail($studentId);
 
         // Get subjects for this student
         $this->subjects = Subject::query()
             ->where('my_class_id', $this->studentRecord->my_class_id)
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
             ->get();
 
@@ -147,65 +165,103 @@ class StudentResults extends Component
 
     public function render()
     {
-        $classes = MyClass::whereHas('classGroup', function ($query) {
+        $canBrowseAllStudents = $this->canBrowseAllStudentResults();
+        $isStudentResultViewer = $this->isStudentResultViewer();
+        $isParentResultViewer = $this->isParentResultViewer();
+
+        $classes = $canBrowseAllStudents
+            ? MyClass::whereHas('classGroup', function ($query) {
                 $query->where('school_id', auth()->user()->school_id);
-            })
-            ->orderBy('name')
-            ->get();
-        $sections = Section::when($this->selectedClass, function ($q) {
-            $q->where('my_class_id', $this->selectedClass)
-                ->whereHas('myClass.classGroup', function ($query) {
-                    $query->where('school_id', auth()->user()->school_id);
-                });
-        })->get();
+            })->orderBy('name')->get()
+            : collect();
+
+        $sections = $canBrowseAllStudents
+            ? Section::when($this->selectedClass, function ($q) {
+                $q->where('my_class_id', $this->selectedClass)
+                    ->whereHas('myClass.classGroup', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id);
+                    });
+            })->get()
+            : collect();
     
         $students = collect();
-        
-        if ($this->selectedClass && !$this->viewingStudent) {
-            $classExists = MyClass::where('id', $this->selectedClass)
-                ->whereHas('classGroup', function ($query) {
-                    $query->where('school_id', auth()->user()->school_id);
-                })
-                ->exists();
 
-            if (!$classExists) {
-                return view('livewire.result.view.student-results', compact('classes', 'sections', 'students'))
-                    ->layout('layouts.result', [
-                        'title' => 'View Student Results',
-                        'page_heading' => 'View Student Results'
-                    ]);
+        if (!$this->viewingStudent) {
+            if ($canBrowseAllStudents && $this->selectedClass) {
+                $classExists = MyClass::where('id', $this->selectedClass)
+                    ->whereHas('classGroup', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id);
+                    })
+                    ->exists();
+
+                if (!$classExists) {
+                    return view('livewire.result.view.student-results', compact(
+                        'classes',
+                        'sections',
+                        'students',
+                        'canBrowseAllStudents',
+                        'isStudentResultViewer',
+                        'isParentResultViewer'
+                    ))
+                        ->layout('layouts.result', [
+                            'title' => 'View Student Results',
+                            'page_heading' => 'View Student Results'
+                        ]);
+                }
+
+                $studentRecordIds = DB::table('academic_year_student_record')
+                    ->where('academic_year_id', $this->academicYearId)
+                    ->where('my_class_id', $this->selectedClass)
+                    ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
+                    ->pluck('student_record_id');
+
+                $students = $this->accessibleStudentRecordsQuery()
+                    ->whereIn('student_records.id', $studentRecordIds)
+                    ->with(['user' => function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at');
+                    }, 'results' => function ($q) {
+                        $q->where('academic_year_id', $this->academicYearId)
+                            ->where('semester_id', $this->semesterId);
+                    }])
+                    ->when($this->searchTerm, function ($q) {
+                        $q->whereHas('user', function ($query) {
+                            $query->where('name', 'like', '%' . $this->searchTerm . '%')
+                                ->where('school_id', auth()->user()->school_id)
+                                ->whereNull('deleted_at');
+                        });
+                    })
+                    ->orderByName()
+                    ->paginate($this->perPage);
+            } elseif (!$canBrowseAllStudents) {
+                $students = $this->accessibleStudentRecordsQuery()
+                    ->with(['user' => function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at');
+                    }, 'results' => function ($q) {
+                        $q->where('academic_year_id', $this->academicYearId)
+                            ->where('semester_id', $this->semesterId);
+                    }])
+                    ->when($this->searchTerm, function ($q) {
+                        $q->whereHas('user', function ($query) {
+                            $query->where('name', 'like', '%' . $this->searchTerm . '%')
+                                ->where('school_id', auth()->user()->school_id)
+                                ->whereNull('deleted_at');
+                        });
+                    })
+                    ->orderByName()
+                    ->paginate($this->perPage);
             }
-
-            $studentRecordIds = DB::table('academic_year_student_record')
-                ->where('academic_year_id', $this->academicYearId)
-                ->where('my_class_id', $this->selectedClass)
-                ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-                ->pluck('student_record_id');
-    
-            $students = StudentRecord::whereIn('student_records.id', $studentRecordIds) // Change here
-                ->with(['user' => function($query) {
-                    $query->where('school_id', auth()->user()->school_id)
-                        ->whereNull('deleted_at');
-                }, 'results' => function($q) {
-                    $q->where('academic_year_id', $this->academicYearId)
-                      ->where('semester_id', $this->semesterId);
-                }])
-                ->when($this->searchTerm, function($q) {
-                    $q->whereHas('user', function($query) {
-                        $query->where('name', 'like', '%' . $this->searchTerm . '%')
-                              ->where('school_id', auth()->user()->school_id)
-                              ->whereNull('deleted_at');
-                    });
-                })
-                ->whereHas('user', function($query) {
-                    $query->where('school_id', auth()->user()->school_id)
-                        ->whereNull('deleted_at');
-                })
-                ->orderByName()
-                ->paginate($this->perPage);
         }    
     
-        return view('livewire.result.view.student-results', compact('classes', 'sections', 'students'))
+        return view('livewire.result.view.student-results', compact(
+            'classes',
+            'sections',
+            'students',
+            'canBrowseAllStudents',
+            'isStudentResultViewer',
+            'isParentResultViewer'
+        ))
             ->layout('layouts.result', [
                 'title' => 'View Student Results',
                 'page_heading' => 'View Student Results'

@@ -11,11 +11,13 @@ use App\Models\TermReport;
 use App\Models\Result;
 use App\Models\MyClass;
 use App\Models\TermSettings;
+use App\Traits\ResolvesAccessibleStudentResults;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB; // Import DB facade
 
 class ResultController extends Controller
 {
+    use ResolvesAccessibleStudentResults;
 
     public function viewResults(Request $request)
     {
@@ -274,8 +276,9 @@ class ResultController extends Controller
         if (!$academicYearId || !$semesterId) {
             abort(400, 'Academic year and semester are required. Please ensure your school has an active academic year and semester.');
         }
+
         
-        $studentRecord = $this->studentRecordsForCurrentSchool()->with([
+        $studentRecord = $this->accessibleStudentRecordsQuery()->with([
             'user',
             'myClass',
             'section',
@@ -292,6 +295,8 @@ class ResultController extends Controller
     }
     public function printClassResults($academicYearId, $semesterId, $classId)
     {
+        abort_if($this->isRestrictedToOwnFamilyResults(), 403);
+
         $academicYear = $this->findAcademicYearForCurrentSchool($academicYearId);
         $semester = $this->findSemesterForCurrentSchool($semesterId);
         $class = $this->findClassForCurrentSchool($classId);
@@ -768,6 +773,8 @@ class ResultController extends Controller
 
     public function annualClassResult(Request $request)
     {
+        abort_if($this->isRestrictedToOwnFamilyResults(), 403);
+
         $classes = $this->classesForCurrentSchool()->orderBy('name')->get();
         $academicYears = $this->academicYearsForCurrentSchool()
             ->orderBy('start_year', 'desc')
@@ -1011,7 +1018,8 @@ class ResultController extends Controller
 
     public function showStudentAnnualResult($studentId, $academicYearId)
     {
-        $studentRecord = $this->studentRecordsForCurrentSchool()->with(['user', 'myClass'])
+        $studentRecord = $this->accessibleStudentRecordsQuery()
+            ->with(['user', 'myClass'])
             ->where('user_id', $studentId)
             ->firstOrFail();
         $academicYear = $this->findAcademicYearForCurrentSchool($academicYearId);
@@ -1065,6 +1073,8 @@ class ResultController extends Controller
     }
     public function exportAnnualResult(Request $request)
 {
+    abort_if($this->isRestrictedToOwnFamilyResults(), 403);
+
     $classId = $request->input('classId');
     $academicYearId = $request->input('academicYearId');
     
@@ -1074,6 +1084,8 @@ class ResultController extends Controller
 
 public function exportAnnualPdf(Request $request)
 {
+    abort_if($this->isRestrictedToOwnFamilyResults(), 403);
+
     $classId = $request->input('classId');
     $academicYearId = $request->input('academicYearId');
     

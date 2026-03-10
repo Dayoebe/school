@@ -4,11 +4,14 @@ namespace App\Livewire\Result\View;
 
 use Livewire\Component;
 use Livewire\Attributes\On;
-use App\Models\{StudentRecord, MyClass, Subject, Result};
+use App\Models\{MyClass, Subject, Result};
+use App\Traits\ResolvesAccessibleStudentResults;
 use Illuminate\Support\Facades\DB;
 
 class SubjectResults extends Component
 {
+    use ResolvesAccessibleStudentResults;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClass;
@@ -25,6 +28,8 @@ class SubjectResults extends Component
         $this->subjects = collect(); // ADD THIS
         $this->subjectResults = collect(); // ADD THIS
         $this->subjectStats = []; // Keep as array for stats
+
+        abort_unless($this->canBrowseAllStudentResults(), 403);
     }
 
     #[On('academic-period-changed')]

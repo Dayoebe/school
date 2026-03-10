@@ -5,10 +5,13 @@ namespace App\Livewire\Result\View;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{StudentRecord, MyClass, Section, Result, Subject};
+use App\Traits\ResolvesAccessibleStudentResults;
 use Illuminate\Support\Facades\DB;
 
 class ClassResults extends Component
 {
+    use ResolvesAccessibleStudentResults;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClass;
@@ -22,6 +25,8 @@ class ClassResults extends Component
         $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
         $this->classResults = collect(); // ADD THIS
         $this->subjects = collect(); // ADD THIS
+
+        abort_unless($this->canBrowseAllStudentResults(), 403);
     }
 
     #[On('academic-period-changed')]

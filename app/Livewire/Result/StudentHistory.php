@@ -4,12 +4,13 @@ namespace App\Livewire\Result;
 
 use Livewire\Component;
 use Livewire\WithPagination;
-use App\Models\{StudentRecord, MyClass, Section, AcademicYear, Semester, Result};
-use Illuminate\Support\Facades\DB;
+use App\Models\{MyClass, Section, AcademicYear, Result};
+use App\Traits\ResolvesAccessibleStudentResults;
 
 class StudentHistory extends Component
 {
     use WithPagination;
+    use ResolvesAccessibleStudentResults;
 
     public $selectedClass;
     public $selectedSection;
@@ -25,13 +26,17 @@ class StudentHistory extends Component
 
     protected $paginationTheme = 'tailwind';
 
+    public function mount()
+    {
+        if ($this->isStudentResultViewer() && auth()->user()?->studentRecord) {
+            $this->viewHistory(auth()->user()->studentRecord->id);
+        }
+    }
+
     public function viewHistory($studentId)
     {
-        $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
-            ->whereHas('user', function ($query) {
-                $query->where('school_id', auth()->user()->school_id)
-                    ->whereNull('deleted_at');
-            })
+        $this->studentRecord = $this->accessibleStudentRecordsQuery()
+            ->with(['user', 'myClass', 'section'])
             ->findOrFail($studentId);
 
         // Get all academic years this student has results for
@@ -133,40 +138,73 @@ class StudentHistory extends Component
 
     public function render()
     {
-        $classes = MyClass::whereHas('classGroup', function ($query) {
+        $canBrowseAllStudents = $this->canBrowseAllStudentResults();
+        $isStudentResultViewer = $this->isStudentResultViewer();
+        $isParentResultViewer = $this->isParentResultViewer();
+
+        $classes = $canBrowseAllStudents
+            ? MyClass::whereHas('classGroup', function ($query) {
                 $query->where('school_id', auth()->user()->school_id);
-            })
-            ->orderBy('name')
-            ->get();
-        $sections = Section::when($this->selectedClass, function ($q) {
-            $q->where('my_class_id', $this->selectedClass)
-                ->whereHas('myClass.classGroup', function ($query) {
-                    $query->where('school_id', auth()->user()->school_id);
-                });
-        })->get();
+            })->orderBy('name')->get()
+            : collect();
+
+        $sections = $canBrowseAllStudents
+            ? Section::when($this->selectedClass, function ($q) {
+                $q->where('my_class_id', $this->selectedClass)
+                    ->whereHas('myClass.classGroup', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id);
+                    });
+            })->get()
+            : collect();
     
         $students = collect();
-        
-        if ($this->selectedClass && !$this->viewingHistory) {
-            $students = StudentRecord::with(['user' => function($query) {
-                    $query->where('school_id', auth()->user()->school_id)
-                        ->whereNull('deleted_at');
-                }, 'myClass'])
-                ->where('my_class_id', $this->selectedClass)
-                ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-                ->whereHas('user', function($query) {
-                    $query->where('school_id', auth()->user()->school_id)
-                        ->whereNull('deleted_at')
-                        ->when($this->searchTerm, function($q) {
-                            $q->where('name', 'like', '%' . $this->searchTerm . '%');
-                        });
-                })
-                ->whereHas('results')
-                ->orderByName()
-                ->paginate(10);
+
+        if (!$this->viewingHistory) {
+            if ($canBrowseAllStudents && $this->selectedClass) {
+                $students = $this->accessibleStudentRecordsQuery()
+                    ->with(['user' => function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at');
+                    }, 'myClass'])
+                    ->where('my_class_id', $this->selectedClass)
+                    ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
+                    ->whereHas('user', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at')
+                            ->when($this->searchTerm, function ($q) {
+                                $q->where('name', 'like', '%' . $this->searchTerm . '%');
+                            });
+                    })
+                    ->whereHas('results')
+                    ->orderByName()
+                    ->paginate(10);
+            } elseif (!$canBrowseAllStudents) {
+                $students = $this->accessibleStudentRecordsQuery()
+                    ->with(['user' => function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at');
+                    }, 'myClass'])
+                    ->whereHas('user', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id)
+                            ->whereNull('deleted_at')
+                            ->when($this->searchTerm, function ($q) {
+                                $q->where('name', 'like', '%' . $this->searchTerm . '%');
+                            });
+                    })
+                    ->whereHas('results')
+                    ->orderByName()
+                    ->paginate(10);
+            }
         }
     
-        return view('livewire.result.student-history', compact('classes', 'sections', 'students'))
+        return view('livewire.result.student-history', compact(
+            'classes',
+            'sections',
+            'students',
+            'canBrowseAllStudents',
+            'isStudentResultViewer',
+            'isParentResultViewer'
+        ))
             ->layout('layouts.result', [
                 'title' => 'Student Academic History',
                 'page_heading' => 'Student Academic History'

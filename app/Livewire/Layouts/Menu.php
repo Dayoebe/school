@@ -71,12 +71,14 @@ class Menu extends Component
                         'type' => 'menu-item',
                         'text' => 'View Student Results',
                         'route' => 'result.view.student',
+                        'roles' => ['student', 'parent'],
                         'permissions' => ['view result'],
                     ],
                     [
                         'type' => 'menu-item',
                         'text' => 'Academic History',
                         'route' => 'result.history',
+                        'roles' => ['student', 'parent'],
                         'permissions' => ['view result'],
                     ],
                     [
@@ -89,6 +91,7 @@ class Menu extends Component
                         'type' => 'menu-item',
                         'text' => 'Child Attendance & Discipline',
                         'route' => 'parent.student-welfare',
+                        'roles' => ['parent'],
                         'permissions' => ['read own child attendance', 'read own child discipline'],
                     ],
                 ],
@@ -497,6 +500,7 @@ class Menu extends Component
                 'type' => 'menu-item',
                 'icon' => 'fas fa-chart-line',
                 'text' => 'Results',
+                'roles' => ['teacher', 'principal', 'admin', 'super-admin', 'super_admin'],
                 'permissions' => ['upload result', 'view result'],
                 'submenu' => [
                     [
@@ -749,6 +753,10 @@ class Menu extends Component
         }
 
         if (!empty($item['permissions']) && is_array($item['permissions']) && !$this->hasAnyPermission($item['permissions'])) {
+            return false;
+        }
+
+        if (!empty($item['roles']) && is_array($item['roles']) && !$user->hasAnyRole($item['roles'])) {
             return false;
         }
 

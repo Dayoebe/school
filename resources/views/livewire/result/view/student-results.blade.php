@@ -1,43 +1,64 @@
 <div class="space-y-6">
     @if(!$viewingStudent)
-        <!-- Student List View -->
-        <div class="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 shadow-sm">
-            <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
-                <i class="fas fa-search mr-2 text-indigo-600"></i>
-                Find Students
-            </h3>
+        @if($canBrowseAllStudents)
+            <!-- Student List View -->
+            <div class="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 shadow-sm">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4 flex items-center">
+                    <i class="fas fa-search mr-2 text-indigo-600"></i>
+                    Find Students
+                </h3>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
-                    <select wire:model.live="selectedClass"
-                        class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Select Class</option>
-                        @foreach($classes as $class)
-                            <option value="{{ $class->id }}">{{ $class->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
+                        <select wire:model.live="selectedClass"
+                            class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select Class</option>
+                            @foreach($classes as $class)
+                                <option value="{{ $class->id }}">{{ $class->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Section (Optional)</label>
-                    <select wire:model.live="selectedSection"
-                        class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500">
-                        <option value="">All Sections</option>
-                        @foreach($sections as $section)
-                            <option value="{{ $section->id }}">{{ $section->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Section (Optional)</label>
+                        <select wire:model.live="selectedSection"
+                            class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500">
+                            <option value="">All Sections</option>
+                            @foreach($sections as $section)
+                                <option value="{{ $section->id }}">{{ $section->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
-                    <input type="text" wire:model.live.debounce.300ms="searchTerm"
-                        class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
-                        placeholder="Search by name...">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
+                        <input type="text" wire:model.live.debounce.300ms="searchTerm"
+                            class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Search by name...">
+                    </div>
                 </div>
             </div>
-        </div>
+        @else
+            <div class="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 shadow-sm">
+                <h3 class="text-xl font-semibold text-gray-800 mb-2 flex items-center">
+                    <i class="fas fa-user-shield mr-2 text-indigo-600"></i>
+                    {{ $isStudentResultViewer ? 'My Result' : 'My Children\'s Results' }}
+                </h3>
+                <p class="text-sm text-gray-600">
+                    {{ $isStudentResultViewer ? 'You can only view your own result.' : 'You can only view results for students linked to your parent account.' }}
+                </p>
+
+                @if($isParentResultViewer)
+                    <div class="mt-4 max-w-xl">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Search Child</label>
+                        <input type="text" wire:model.live.debounce.300ms="searchTerm"
+                            class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
+                            placeholder="Search by name...">
+                    </div>
+                @endif
+            </div>
+        @endif
 
         @if($students->isNotEmpty())
             <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -107,11 +128,13 @@
                     {{ $students->links() }}
                 </div>
             </div>
-        @elseif($selectedClass)
+        @elseif($canBrowseAllStudents ? $selectedClass : true)
             <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center">
                 <i class="fas fa-user-slash text-5xl text-gray-300 mb-4"></i>
                 <h3 class="text-xl font-semibold text-gray-600 mb-2">No Students Found</h3>
-                <p class="text-gray-500">Try adjusting your search filters</p>
+                <p class="text-gray-500">
+                    {{ $canBrowseAllStudents ? 'Try adjusting your search filters' : ($isStudentResultViewer ? 'No result record is available for your account yet.' : 'No linked child result matched your search.') }}
+                </p>
             </div>
         @endif
 
@@ -120,10 +143,14 @@
         <div class="bg-white rounded-2xl shadow-xl p-8">
             <!-- Header with Back Button -->
             <div class="flex items-center justify-between mb-6">
-                <button wire:click="backToList"
-                    class="flex items-center text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
-                    <i class="fas fa-arrow-left mr-2"></i> Back to List
-                </button>
+                <div>
+                    @if(!$isStudentResultViewer)
+                        <button wire:click="backToList"
+                            class="flex items-center text-indigo-600 hover:text-indigo-800 font-medium transition-colors">
+                            <i class="fas fa-arrow-left mr-2"></i> Back to List
+                        </button>
+                    @endif
+                </div>
                 <a href="{{ route('result.print', [
                     'student' => $studentRecord->id,
                     'academicYearId' => $academicYearId,
