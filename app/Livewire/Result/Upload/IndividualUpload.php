@@ -5,10 +5,13 @@ namespace App\Livewire\Result\Upload;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{AcademicYear, StudentRecord, Subject, Result, TermReport, MyClass, Section, Semester};
+use App\Traits\RestrictsTeacherResultUploads;
 use Illuminate\Support\Facades\DB;
 
 class IndividualUpload extends Component
 {
+    use RestrictsTeacherResultUploads;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClass;
@@ -31,8 +34,6 @@ class IndividualUpload extends Component
 
     public function mount()
     {
-        $schoolId = auth()->user()->school_id;
-
         // First check session, then fall back to school's current academic year/semester
         $this->academicYearId = session('result_academic_year_id') 
             ?? auth()->user()->school?->academic_year_id
@@ -63,6 +64,11 @@ class IndividualUpload extends Component
 
     public function updatedSelectedClass()
     {
+        if ($this->selectedClass && !$this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
+            $this->selectedClass = null;
+            $this->dispatch('error', 'You can only upload results for classes assigned to you.');
+        }
+
         $this->reset(['selectedStudent', 'studentRecord', 'selectedSection']);
     }
 
@@ -126,6 +132,21 @@ class IndividualUpload extends Component
         }
 
         try {
+            if ($this->selectedClass && !$this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
+                $this->dispatch('error', 'You can only upload results for classes assigned to you.');
+                return;
+            }
+
+            if (!$this->currentUserCanUploadResultStudent(
+                $this->selectedStudent,
+                $this->selectedClass,
+                $this->academicYearId,
+                $this->selectedSection
+            )) {
+                $this->dispatch('error', 'You can only load students from classes assigned to you.');
+                return;
+            }
+
             $this->studentRecord = StudentRecord::with(['user', 'myClass', 'section'])
                 ->whereHas('user', function ($query) {
                     $query->where('school_id', auth()->user()->school_id)
@@ -199,8 +220,12 @@ class IndividualUpload extends Component
                 ->where('subjects.school_id', auth()->user()->school_id)
                 ->pluck('subjects.id');
 
+            $allowedSubjectIds = $this->accessibleResultUploadSubjectsQuery($classId, $this->academicYearId)
+                ->pluck('subjects.id');
+
             // Prefer subjects tied to the selected/derived class.
             $this->subjects = Subject::whereIn('subjects.id', $studentSubjectIds)
+                ->whereIn('subjects.id', $allowedSubjectIds)
                 ->where('subjects.school_id', auth()->user()->school_id)
                 ->where(function ($query) use ($classId) {
                     $query->where('subjects.my_class_id', $classId)
@@ -220,8 +245,9 @@ class IndividualUpload extends Component
                 ->get();
 
             // Fallback: if class mappings are incomplete, still use student's assigned subjects.
-            if ($this->subjects->isEmpty() && $studentSubjectIds->isNotEmpty()) {
+            if ($this->subjects->isEmpty() && $studentSubjectIds->isNotEmpty() && $allowedSubjectIds->isNotEmpty()) {
                 $this->subjects = Subject::whereIn('subjects.id', $studentSubjectIds)
+                    ->whereIn('subjects.id', $allowedSubjectIds)
                     ->where('subjects.school_id', auth()->user()->school_id)
                     ->orderBy('subjects.name')
                     ->distinct()
@@ -332,6 +358,28 @@ class IndividualUpload extends Component
     
         try {
             DB::beginTransaction();
+
+            $classId = (int) ($this->selectedClass ?: $this->studentRecord->my_class_id);
+            $subjectId = (int) $subjectId;
+
+            if (
+                !$this->currentUserCanUploadResultStudent(
+                    $this->studentRecord->id,
+                    $classId,
+                    $this->academicYearId,
+                    $this->selectedSection
+                ) ||
+                !$this->currentUserCanUploadResultSubject($subjectId, $classId, $this->academicYearId)
+            ) {
+                DB::rollBack();
+                \Log::warning('Blocked unauthorized individual result upload attempt', [
+                    'user_id' => auth()->id(),
+                    'student_id' => $this->studentRecord->id,
+                    'subject_id' => $subjectId,
+                    'class_id' => $classId,
+                ]);
+                return;
+            }
     
             // ✅ VALIDATION: Check if student is enrolled in subject
             $isEnrolled = $this->studentRecord->studentSubjects()
@@ -397,12 +445,30 @@ class IndividualUpload extends Component
             $this->dispatch('error', 'No student loaded');
             return;
         }
+
+        $classId = (int) ($this->selectedClass ?: $this->studentRecord->my_class_id);
+
+        if (
+            !$this->currentUserCanUploadResultStudent(
+                $this->studentRecord->id,
+                $classId,
+                $this->academicYearId,
+                $this->selectedSection
+            )
+        ) {
+            $this->dispatch('error', 'You can only upload results for students in your assigned classes.');
+            return;
+        }
     
         try {
             DB::beginTransaction();
     
             $savedSubjects = 0;
             $errors = [];
+            $allowedSubjectIds = $this->accessibleResultUploadSubjectsQuery($classId, $this->academicYearId)
+                ->pluck('subjects.id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
             
             // ✅ PRE-VALIDATE: Get all subjects student is enrolled in
             $enrolledSubjectIds = $this->studentRecord->studentSubjects()
@@ -411,6 +477,11 @@ class IndividualUpload extends Component
             
             // Save all results
             foreach ($this->subjects as $subject) {
+                if (!in_array((int) $subject->id, $allowedSubjectIds, true)) {
+                    $errors[] = $subject->name . ' - You are not assigned to upload this subject for the selected class';
+                    continue;
+                }
+
                 // ✅ SKIP if student not enrolled in this subject
                 if (!in_array($subject->id, $enrolledSubjectIds)) {
                     $errors[] = $subject->name . ' - Student not enrolled';
@@ -547,26 +618,25 @@ class IndividualUpload extends Component
 
     public function render()
     {
-        $classesQuery = MyClass::query();
+        $isRestrictedTeacherResultUploader = $this->isRestrictedTeacherResultUploader();
+        $classes = $this->accessibleResultUploadClassesQuery($this->academicYearId)
+            ->orderBy('name')
+            ->get();
 
-        if (auth()->user()->school_id) {
-            $classesQuery->whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            });
+        $sections = collect();
+
+        if ($this->selectedClass && $this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
+            $sections = Section::when($this->selectedClass, function ($q) {
+                $q->where('my_class_id', $this->selectedClass)
+                    ->whereHas('myClass.classGroup', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id);
+                    });
+            })->get();
         }
-
-        $classes = $classesQuery->orderBy('name')->get();
-
-        $sections = Section::when($this->selectedClass, function($q) {
-            $q->where('my_class_id', $this->selectedClass)
-                ->whereHas('myClass.classGroup', function ($query) {
-                    $query->where('school_id', auth()->user()->school_id);
-                });
-        })->get();
 
         $students = collect();
 
-        if ($this->selectedClass) {
+        if ($this->selectedClass && $this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
             // Prefer academic-year specific class/section, fallback to current student_records assignment.
             if ($this->academicYearId) {
                 $query = DB::table('academic_year_student_record')
@@ -604,7 +674,12 @@ class IndividualUpload extends Component
             }
         }
     
-        return view('livewire.result.upload.individual-upload', compact('classes', 'sections', 'students'))
+        return view('livewire.result.upload.individual-upload', compact(
+            'classes',
+            'sections',
+            'students',
+            'isRestrictedTeacherResultUploader'
+        ))
             ->layout('layouts.result', [
                 'title' => 'Individual Result Upload',
                 'page_heading' => 'Individual Result Upload'

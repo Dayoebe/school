@@ -29,7 +29,10 @@ class SubjectResults extends Component
         $this->subjectResults = collect(); // ADD THIS
         $this->subjectStats = []; // Keep as array for stats
 
-        abort_unless($this->canBrowseAllStudentResults(), 403);
+        abort_unless(
+            $this->canBrowseAllStudentResults() || $this->currentUserCanAccessSubjectResultTools(),
+            403
+        );
     }
 
     #[On('academic-period-changed')]
@@ -55,9 +58,13 @@ class SubjectResults extends Component
             return;
         }
 
-        $this->subjects = Subject::query()
-            ->where('my_class_id', $this->selectedClass)
-            ->orderBy('name')
+        if (!$this->currentUserCanViewSubjectTeacherClass($this->selectedClass)) {
+            $this->subjects = collect();
+            $this->selectedClass = null;
+            return;
+        }
+
+        $this->subjects = $this->accessibleSubjectTeacherSubjectsQuery((int) $this->selectedClass)
             ->get();
         $this->reset(['selectedSubject']);
         $this->subjectResults = collect(); // CHANGE from [] to collect()
@@ -80,11 +87,16 @@ class SubjectResults extends Component
             return;
         }
 
-        $subjectExists = Subject::where('id', $this->selectedSubject)
-            ->where('school_id', auth()->user()->school_id)
+        if (!$this->currentUserCanViewSubjectTeacherClass($this->selectedClass)) {
+            $this->dispatch('error', 'You can only view subject results for classes assigned to you.');
+            return;
+        }
+
+        $subjectExists = $this->accessibleSubjectTeacherSubjectsQuery((int) $this->selectedClass)
+            ->where('subjects.id', $this->selectedSubject)
             ->exists();
         if (!$subjectExists) {
-            $this->dispatch('error', 'Selected subject is not in your current school.');
+            $this->dispatch('error', 'You can only view results for subjects assigned to you.');
             return;
         }
 
@@ -183,9 +195,7 @@ class SubjectResults extends Component
 
     public function render()
     {
-        $classes = MyClass::whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            })
+        $classes = $this->accessibleSubjectTeacherClassesQuery()
             ->orderBy('name')
             ->get();
     

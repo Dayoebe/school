@@ -5,10 +5,13 @@ namespace App\Livewire\Result;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{Result, MyClass, StudentRecord, Semester};
+use App\Traits\RestrictsTeacherResultViewing;
 use Illuminate\Support\Facades\DB;
 
 class AwardsManager extends Component
 {
+    use RestrictsTeacherResultViewing;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClassId;
@@ -20,13 +23,18 @@ class AwardsManager extends Component
 
     public function mount()
     {
-        $this->classes = MyClass::whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            })
+        $this->classes = $this->accessibleClassTeacherClassesQuery()
             ->orderBy('name')
             ->get();
+
+        abort_unless($this->currentUserCanAccessClassOnlyResultTools(), 403);
+
         $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
         $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
+
+        if ($this->isRestrictedTeacherResultViewer() && $this->selectedClassId === null) {
+            $this->selectedClassId = $this->classes->first()?->id;
+        }
         
         $this->loadSemesters();
         $this->loadTopPerformers();
@@ -67,6 +75,11 @@ class AwardsManager extends Component
             return;
         }
 
+        if ($this->isRestrictedTeacherResultViewer() && !$this->selectedClassId) {
+            $this->topPerformers = [];
+            return;
+        }
+
         // For termly, we need a semester selected
         if ($this->viewType === 'termly' && !$this->semesterId) {
             $this->topPerformers = [];
@@ -84,7 +97,7 @@ class AwardsManager extends Component
                 })
                 ->exists();
 
-            if (!$classExists) {
+            if (!$classExists || !$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
                 $this->topPerformers = [];
                 return;
             }
@@ -272,9 +285,7 @@ class AwardsManager extends Component
  */
 protected function getTotalSubjectsPerClass()
 {
-    $classes = MyClass::whereHas('classGroup', function ($query) {
-            $query->where('school_id', auth()->user()->school_id);
-        })
+    $classes = $this->accessibleClassTeacherClassesQuery()
         ->withCount('subjects')
         ->get();
     $subjectCounts = [];
@@ -299,6 +310,8 @@ protected function getTotalSubjectsPerClass()
 
     public function render()
     {
-        return view('livewire.result.awards-manager');
+        return view('livewire.result.awards-manager', [
+            'isRestrictedTeacherResultViewer' => $this->isRestrictedTeacherResultViewer(),
+        ]);
     }
 }

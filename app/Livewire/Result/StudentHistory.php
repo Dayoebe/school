@@ -28,6 +28,10 @@ class StudentHistory extends Component
 
     public function mount()
     {
+        if ($this->isRestrictedTeacherResultViewer() && !$this->currentUserCanAccessClassOnlyResultTools()) {
+            abort(403);
+        }
+
         if ($this->isStudentResultViewer() && auth()->user()?->studentRecord) {
             $this->viewHistory(auth()->user()->studentRecord->id);
         }
@@ -141,6 +145,7 @@ class StudentHistory extends Component
         $canBrowseAllStudents = $this->canBrowseAllStudentResults();
         $isStudentResultViewer = $this->isStudentResultViewer();
         $isParentResultViewer = $this->isParentResultViewer();
+        $isRestrictedTeacherResultViewer = $this->isRestrictedTeacherResultViewer();
 
         $classes = $canBrowseAllStudents
             ? MyClass::whereHas('classGroup', function ($query) {
@@ -203,7 +208,8 @@ class StudentHistory extends Component
             'students',
             'canBrowseAllStudents',
             'isStudentResultViewer',
-            'isParentResultViewer'
+            'isParentResultViewer',
+            'isRestrictedTeacherResultViewer'
         ))
             ->layout('layouts.result', [
                 'title' => 'Student Academic History',

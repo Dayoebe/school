@@ -8,9 +8,11 @@ use Illuminate\Support\Collection;
 
 trait ResolvesAccessibleStudentResults
 {
+    use RestrictsTeacherResultViewing;
+
     protected function resultStaffRoles(): array
     {
-        return ['super-admin', 'super_admin', 'admin', 'principal', 'teacher'];
+        return ['super-admin', 'super_admin', 'admin', 'principal'];
     }
 
     protected function canBrowseAllStudentResults(): bool
@@ -81,6 +83,16 @@ trait ResolvesAccessibleStudentResults
 
         if ($this->canBrowseAllStudentResults()) {
             return $query;
+        }
+
+        if ($this->isRestrictedTeacherResultViewer()) {
+            $classIds = $this->accessibleClassTeacherClassIds();
+
+            if ($classIds->isEmpty()) {
+                return $query->whereRaw('1 = 0');
+            }
+
+            return $query->whereIn('student_records.my_class_id', $classIds);
         }
 
         $studentUserIds = $this->accessibleStudentUserIds();

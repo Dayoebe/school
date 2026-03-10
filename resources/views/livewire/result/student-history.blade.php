@@ -39,6 +39,23 @@
                     </div>
                 </div>
             </div>
+        @elseif($isRestrictedTeacherResultViewer)
+            <div class="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 shadow-sm">
+                <h3 class="text-xl font-semibold text-gray-800 mb-2 flex items-center">
+                    <i class="fas fa-chalkboard-teacher mr-2 text-indigo-600"></i>
+                    Assigned Class History
+                </h3>
+                <p class="text-sm text-gray-600">
+                    You can only view academic history for students in your class-teacher assignment.
+                </p>
+
+                <div class="mt-4 max-w-xl">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Search Student</label>
+                    <input type="text" wire:model.live.debounce.300ms="searchTerm"
+                        class="w-full border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Search by name...">
+                </div>
+            </div>
         @else
             <div class="bg-gradient-to-r from-gray-50 to-white rounded-2xl p-6 shadow-sm">
                 <h3 class="text-xl font-semibold text-gray-800 mb-2 flex items-center">
@@ -117,7 +134,7 @@
                 <i class="fas fa-user-slash text-5xl text-gray-300 mb-4"></i>
                 <h3 class="text-xl font-semibold text-gray-600 mb-2">No Students Found</h3>
                 <p class="text-gray-500">
-                    {{ $canBrowseAllStudents ? 'No students with results in this class' : ($isStudentResultViewer ? 'No academic history is available for your account yet.' : 'No linked child history matched your search.') }}
+                    {{ $canBrowseAllStudents ? 'No students with results in this class' : ($isRestrictedTeacherResultViewer ? 'No student in your assigned class matched your search.' : ($isStudentResultViewer ? 'No academic history is available for your account yet.' : 'No linked child history matched your search.')) }}
                 </p>
             </div>
         @endif

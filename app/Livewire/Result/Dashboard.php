@@ -12,6 +12,8 @@ class Dashboard extends Component
     public $academicYearId;
     public $semesterId;
     public $stats = [];
+    public bool $canOpenViewResults = true;
+    public bool $canOpenHistory = true;
 
     public function mount()
     {

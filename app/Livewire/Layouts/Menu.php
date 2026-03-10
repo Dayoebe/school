@@ -2,12 +2,15 @@
 
 namespace App\Livewire\Layouts;
 
+use App\Traits\RestrictsTeacherResultViewing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Livewire\Component;
 
 class Menu extends Component
 {
+    use RestrictsTeacherResultViewing;
+
     public array $menu = [];
 
     public function mount(): void
@@ -272,6 +275,9 @@ class Menu extends Component
 
     protected function academicsMenu(): array
     {
+        $canAccessClassOnlyResultTools = $this->currentUserCanAccessClassOnlyResultTools();
+        $canAccessSubjectResultTools = $this->currentUserCanAccessSubjectResultTools();
+
         return [
             ['header' => 'Academics'],
             [
@@ -502,7 +508,7 @@ class Menu extends Component
                 'text' => 'Results',
                 'roles' => ['teacher', 'principal', 'admin', 'super-admin', 'super_admin'],
                 'permissions' => ['upload result', 'view result'],
-                'submenu' => [
+                'submenu' => array_values(array_filter([
                     [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-tachometer-alt',
@@ -524,56 +530,56 @@ class Menu extends Component
                         'route' => 'result.upload.bulk',
                         'permissions' => ['upload result'],
                     ],
-                    [
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-users',
                         'text' => 'Class Results',
                         'route' => 'result.view.class',
                         'permissions' => ['view result'],
-                    ],
-                    [
+                    ] : null,
+                    $canAccessSubjectResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-book',
                         'text' => 'Subject Results',
                         'route' => 'result.view.subject',
                         'permissions' => ['view result'],
-                    ],
-                    [
+                    ] : null,
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-user-graduate',
                         'text' => 'Student Results',
                         'route' => 'result.view.student',
                         'permissions' => ['view result'],
-                    ],
-                    [
+                    ] : null,
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-history',
                         'text' => 'Student History',
                         'route' => 'result.history',
                         'permissions' => ['view result'],
-                    ],
-                    [
+                    ] : null,
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-calendar-alt',
                         'text' => 'Annual Class Results',
                         'route' => 'result.annual',
                         'permissions' => ['view result'],
-                    ],
-                    [
+                    ] : null,
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-file-excel',
                         'text' => 'Annual Export (Excel)',
                         'route' => 'result.annual.export',
                         'permissions' => ['view result'],
-                    ],
-                    [
+                    ] : null,
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'icon' => 'fas fa-file-pdf',
                         'text' => 'Annual Export (PDF)',
                         'route' => 'result.annual.export.pdf',
                         'permissions' => ['view result'],
-                    ],
-                ],
+                    ] : null,
+                ])),
             ],
             [
                 'type' => 'menu-item',

@@ -26,7 +26,10 @@ class ClassResults extends Component
         $this->classResults = collect(); // ADD THIS
         $this->subjects = collect(); // ADD THIS
 
-        abort_unless($this->canBrowseAllStudentResults(), 403);
+        abort_unless(
+            $this->canBrowseAllStudentResults() || $this->currentUserCanAccessClassOnlyResultTools(),
+            403
+        );
     }
 
     #[On('academic-period-changed')]
@@ -52,6 +55,11 @@ class ClassResults extends Component
             ->exists();
         if (!$classExists) {
             $this->dispatch('error', 'Selected class is not in your current school.');
+            return;
+        }
+
+        if (!$this->currentUserCanViewClassTeacherClass($this->selectedClass)) {
+            $this->dispatch('error', 'You can only view class results for your assigned class.');
             return;
         }
 
@@ -171,9 +179,7 @@ class ClassResults extends Component
 
     public function render()
     {
-        $classes = MyClass::whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            })
+        $classes = $this->accessibleClassTeacherClassesQuery()
             ->orderBy('name')
             ->get();
         $sections = Section::when($this->selectedClass, function ($q) {

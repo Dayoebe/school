@@ -11,12 +11,15 @@ use App\Models\User;
 use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\ClassGroup;
+use App\Traits\RestrictsTeacherResultViewing;
 use Livewire\Component;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Route;
 
 class DashboardStats extends Component
 {
+    use RestrictsTeacherResultViewing;
+
     public $stats = [];
     public $snapshot = [];
     public $quickActions = [];
@@ -164,6 +167,12 @@ class DashboardStats extends Component
     {
         $adminAndStaffRoles = ['super-admin', 'super_admin', 'principal', 'admin', 'teacher'];
         $adminRoles = ['super-admin', 'super_admin', 'principal', 'admin'];
+        $viewResultsRoute = $this->currentUserCanAccessClassOnlyResultTools()
+            ? 'result.view.class'
+            : ($this->currentUserCanAccessSubjectResultTools() ? 'result.view.subject' : 'result');
+        $viewResultsDescription = $this->currentUserCanAccessClassOnlyResultTools()
+            ? 'Review class-level published result records.'
+            : 'Review only the subjects and classes assigned to you.';
 
         $actions = [
             [
@@ -209,9 +218,9 @@ class DashboardStats extends Component
             ],
             [
                 'title' => 'View Results',
-                'description' => 'Review class-level published result records.',
+                'description' => $viewResultsDescription,
                 'icon' => 'fas fa-eye',
-                'route' => 'result.view.class',
+                'route' => $viewResultsRoute,
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['view result'],
             ],

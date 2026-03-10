@@ -5,10 +5,13 @@ namespace App\Livewire\Result;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{StudentRecord, Result, MyClass, Subject, Semester};
+use App\Traits\RestrictsTeacherResultViewing;
 use Illuminate\Support\Facades\DB;
 
 class PerformanceAnalytics extends Component
 {
+    use RestrictsTeacherResultViewing;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClassId;
@@ -30,11 +33,12 @@ class PerformanceAnalytics extends Component
 
     public function mount()
     {
-        $this->classes = MyClass::whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            })
+        $this->classes = $this->accessibleClassTeacherClassesQuery()
             ->orderBy('name')
             ->get();
+
+        abort_unless($this->currentUserCanAccessClassOnlyResultTools(), 403);
+
         $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
         $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
     }
@@ -76,7 +80,7 @@ class PerformanceAnalytics extends Component
                 $query->where('school_id', auth()->user()->school_id);
             })
             ->exists();
-        if (!$classExists) {
+        if (!$classExists || !$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
             $this->students = [];
             return;
         }
@@ -120,10 +124,13 @@ class PerformanceAnalytics extends Component
 
     protected function loadStudentAnalytics()
     {
-        $student = StudentRecord::whereHas('user', function ($query) {
-            $query->where('school_id', auth()->user()->school_id)
-                ->whereNull('deleted_at');
-        })->find($this->selectedStudentId);
+        $student = StudentRecord::where('id', $this->selectedStudentId)
+            ->where('my_class_id', $this->selectedClassId)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->find($this->selectedStudentId);
         if (!$student) return;
 
         // Load all semesters for trend analysis
@@ -153,6 +160,14 @@ class PerformanceAnalytics extends Component
 
     protected function loadClassAnalytics()
     {
+        if (!$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
+            $this->performanceDistribution = [];
+            $this->atRiskStudents = [];
+            $this->subjectAnalysis = [];
+            $this->insights = [];
+            return;
+        }
+
         $studentRecordIds = DB::table('academic_year_student_record')
             ->where('academic_year_id', $this->academicYearId)
             ->where('my_class_id', $this->selectedClassId)
@@ -185,6 +200,11 @@ class PerformanceAnalytics extends Component
 
     protected function loadSubjectAnalytics()
     {
+        if (!$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
+            $this->subjectAnalysis = [];
+            return;
+        }
+
         $studentRecordIds = DB::table('academic_year_student_record')
             ->where('academic_year_id', $this->academicYearId)
             ->where('my_class_id', $this->selectedClassId)
@@ -507,6 +527,8 @@ class PerformanceAnalytics extends Component
 
     public function render()
     {
-        return view('livewire.result.performance-analytics');
+        return view('livewire.result.performance-analytics', [
+            'isRestrictedTeacherResultViewer' => $this->isRestrictedTeacherResultViewer(),
+        ]);
     }
 }

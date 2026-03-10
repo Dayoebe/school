@@ -15,7 +15,9 @@
                 <label class="text-sm font-medium text-gray-700">Class:</label>
                 <select wire:model.live="selectedClassId"
                     class="flex-1 border-gray-300 rounded-xl px-4 py-2 focus:ring-2 focus:ring-orange-500">
-                    <option value="">All Classes (School-Wide)</option>
+                    @if(!$isRestrictedTeacherResultViewer)
+                        <option value="">All Classes (School-Wide)</option>
+                    @endif
                     @foreach($classes as $class)
                         <option value="{{ $class->id }}">{{ $class->name }}</option>
                     @endforeach

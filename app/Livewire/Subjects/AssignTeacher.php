@@ -12,7 +12,7 @@ class AssignTeacher extends Component
 {
     public $selectedSubject = null;
     public $selectedTeacher = null;
-    public $selectedClass = null;
+    public $selectedClasses = [];
     public $isGeneralAssignment = true;
     
     public $subjects = [];
@@ -25,7 +25,7 @@ class AssignTeacher extends Component
     public $bulkMode = false;
     public $bulkSubjects = [];
     public $bulkTeacher = null;
-    public $bulkClass = null;
+    public $bulkClasses = [];
     public $bulkIsGeneral = true;
 
     public function mount()
@@ -48,7 +48,7 @@ class AssignTeacher extends Component
                       ->orWhere('short_name', 'like', '%' . $this->searchSubject . '%');
                 });
             })
-            ->with(['classes.classGroup', 'teachers'])
+            ->with(['classes.classGroup', 'teachers', 'myClass.classGroup'])
             ->orderBy('name')
             ->get();
             
@@ -78,7 +78,8 @@ class AssignTeacher extends Component
         $this->validate([
             'selectedSubject' => 'required|exists:subjects,id',
             'selectedTeacher' => 'required|exists:users,id',
-            'selectedClass' => 'required_if:isGeneralAssignment,false|nullable|exists:my_classes,id',
+            'selectedClasses' => 'required_if:isGeneralAssignment,false|array|min:1',
+            'selectedClasses.*' => 'exists:my_classes,id',
         ]);
 
         $subject = Subject::query()
@@ -98,33 +99,52 @@ class AssignTeacher extends Component
             return;
         }
 
-        if (!$this->isGeneralAssignment && $this->selectedClass && !$this->classBelongsToCurrentSchool($this->selectedClass)) {
-            session()->flash('error', 'Selected class is not in your current school.');
+        $selectedClassIds = $this->getValidClassIdsForCurrentSchool($this->selectedClasses);
+
+        if (!$this->isGeneralAssignment && count($selectedClassIds) !== count($this->selectedClasses)) {
+            $this->addError('selectedClasses', 'One or more selected classes are not in your current school.');
             return;
         }
-        
-        DB::transaction(function () use ($subject) {
-            // Check if subject is assigned to the selected class (if class-specific)
-            if (!$this->isGeneralAssignment && $this->selectedClass) {
-                if (!$subject->classes->contains($this->selectedClass)) {
-                    throw new \Exception("Subject is not assigned to the selected class");
-                }
+
+        if (!$this->isGeneralAssignment) {
+            $invalidClassIds = array_diff($selectedClassIds, $this->getAssignableClassIdsForSubject($subject));
+            if ($invalidClassIds !== []) {
+                $this->addError('selectedClasses', 'One or more selected classes are not assigned to this subject.');
+                return;
             }
-            
-            $subject->assignTeacher(
-                $this->selectedTeacher,
-                $this->isGeneralAssignment ? null : $this->selectedClass,
-                $this->isGeneralAssignment
-            );
+        }
+        
+        DB::transaction(function () use ($subject, $selectedClassIds) {
+            if ($this->isGeneralAssignment) {
+                $subject->assignTeacher(
+                    $this->selectedTeacher,
+                    null,
+                    true
+                );
+
+                return;
+            }
+
+            foreach ($selectedClassIds as $classId) {
+                if (!in_array($classId, $this->getAssignableClassIdsForSubject($subject), true)) {
+                    throw new \Exception("Subject is not assigned to one or more selected classes");
+                }
+
+                $subject->assignTeacher(
+                    $this->selectedTeacher,
+                    $classId,
+                    false
+                );
+            }
         });
         
         $assignmentType = $this->isGeneralAssignment 
             ? 'all classes' 
-            : $this->getClassNameForCurrentSchool($this->selectedClass);
+            : $this->formatClassSelectionSummary($selectedClassIds);
             
         session()->flash('success', "Teacher assigned successfully for {$assignmentType}!");
         
-        $this->reset(['selectedSubject', 'selectedTeacher', 'selectedClass', 'isGeneralAssignment']);
+        $this->reset(['selectedSubject', 'selectedTeacher', 'selectedClasses', 'isGeneralAssignment']);
         $this->isGeneralAssignment = true;
         $this->loadData();
     }
@@ -139,7 +159,8 @@ class AssignTeacher extends Component
             'bulkSubjects' => 'required|array|min:1',
             'bulkSubjects.*' => 'exists:subjects,id',
             'bulkTeacher' => 'required|exists:users,id',
-            'bulkClass' => 'required_if:bulkIsGeneral,false|nullable|exists:my_classes,id',
+            'bulkClasses' => 'required_if:bulkIsGeneral,false|array|min:1',
+            'bulkClasses.*' => 'exists:my_classes,id',
         ]);
 
         $teacherExists = User::role('teacher')
@@ -151,52 +172,65 @@ class AssignTeacher extends Component
             return;
         }
 
-        if (!$this->bulkIsGeneral && $this->bulkClass && !$this->classBelongsToCurrentSchool($this->bulkClass)) {
-            session()->flash('error', 'Selected class is not in your current school.');
+        $bulkClassIds = $this->getValidClassIdsForCurrentSchool($this->bulkClasses);
+
+        if (!$this->bulkIsGeneral && count($bulkClassIds) !== count($this->bulkClasses)) {
+            $this->addError('bulkClasses', 'One or more selected classes are not in your current school.');
             return;
         }
 
         $assignedCount = 0;
         $skippedCount = 0;
 
-        DB::transaction(function () use (&$assignedCount, &$skippedCount) {
+        DB::transaction(function () use (&$assignedCount, &$skippedCount, $bulkClassIds) {
             foreach ($this->bulkSubjects as $subjectId) {
                 $subject = Subject::query()
-                    ->with('classes')
+                    ->with(['classes', 'myClass'])
                     ->find($subjectId);
                 
                 if ($subject) {
-                    // Verify class assignment if class-specific
-                    if (!$this->bulkIsGeneral && $this->bulkClass) {
-                        if (!$subject->classes->contains($this->bulkClass)) {
+                    if ($this->bulkIsGeneral) {
+                        $subject->assignTeacher(
+                            $this->bulkTeacher,
+                            null,
+                            true
+                        );
+                        $assignedCount++;
+                        continue;
+                    }
+
+                    $assignableClassIds = $this->getAssignableClassIdsForSubject($subject);
+
+                    foreach ($bulkClassIds as $classId) {
+                        if (!in_array($classId, $assignableClassIds, true)) {
                             $skippedCount++;
                             continue;
                         }
+
+                        $subject->assignTeacher(
+                            $this->bulkTeacher,
+                            $classId,
+                            false
+                        );
+                        $assignedCount++;
                     }
-                    
-                    $subject->assignTeacher(
-                        $this->bulkTeacher,
-                        $this->bulkIsGeneral ? null : $this->bulkClass,
-                        $this->bulkIsGeneral
-                    );
-                    $assignedCount++;
                 }
             }
         });
 
         $assignmentType = $this->bulkIsGeneral 
             ? 'all classes' 
-            : $this->getClassNameForCurrentSchool($this->bulkClass);
+            : $this->formatClassSelectionSummary($bulkClassIds);
             
-        $message = "{$assignedCount} subject(s) assigned to teacher for {$assignmentType}!";
+        $message = "Teacher assignments updated successfully for {$assignmentType}. {$assignedCount} assignment(s) saved.";
         
         if ($skippedCount > 0) {
-            $message .= " ({$skippedCount} skipped - subject not in selected class)";
+            $message .= " ({$skippedCount} skipped - subject not available in one or more selected classes)";
         }
         
         session()->flash('success', $message);
 
-        $this->reset(['bulkMode', 'bulkSubjects', 'bulkTeacher', 'bulkClass', 'bulkIsGeneral']);
+        $this->reset(['bulkMode', 'bulkSubjects', 'bulkTeacher', 'bulkClasses', 'bulkIsGeneral']);
         $this->bulkIsGeneral = true;
         $this->loadData();
     }
@@ -245,8 +279,36 @@ class AssignTeacher extends Component
     public function toggleBulkMode()
     {
         $this->bulkMode = !$this->bulkMode;
-        $this->reset(['bulkSubjects', 'bulkTeacher', 'bulkClass', 'bulkIsGeneral']);
+        $this->reset(['bulkSubjects', 'bulkTeacher', 'bulkClasses', 'bulkIsGeneral']);
         $this->bulkIsGeneral = true;
+    }
+
+    public function toggleSelectedClass($classId)
+    {
+        if (in_array($classId, $this->selectedClasses, true)) {
+            $this->selectedClasses = array_values(array_filter(
+                $this->selectedClasses,
+                fn ($id) => (int) $id !== (int) $classId
+            ));
+
+            return;
+        }
+
+        $this->selectedClasses[] = (int) $classId;
+    }
+
+    public function toggleBulkClass($classId)
+    {
+        if (in_array($classId, $this->bulkClasses, true)) {
+            $this->bulkClasses = array_values(array_filter(
+                $this->bulkClasses,
+                fn ($id) => (int) $id !== (int) $classId
+            ));
+
+            return;
+        }
+
+        $this->bulkClasses[] = (int) $classId;
     }
     
     public function toggleBulkSubject($subjectId)
@@ -270,7 +332,7 @@ class AssignTeacher extends Component
     
     public function updatedSelectedSubject()
     {
-        $this->selectedClass = null;
+        $this->selectedClasses = [];
     }
 
     protected function classBelongsToCurrentSchool($classId): bool
@@ -293,6 +355,53 @@ class AssignTeacher extends Component
                 $query->where('school_id', auth()->user()->school_id);
             })
             ->value('name') ?? 'selected class';
+    }
+
+    protected function getValidClassIdsForCurrentSchool(array $classIds): array
+    {
+        if ($classIds === []) {
+            return [];
+        }
+
+        return MyClass::whereIn('id', $classIds)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    protected function getAssignableClassIdsForSubject(Subject $subject): array
+    {
+        $classIds = $subject->classes->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if ($subject->my_class_id && !in_array((int) $subject->my_class_id, $classIds, true)) {
+            $classIds[] = (int) $subject->my_class_id;
+        }
+
+        return array_values(array_unique($classIds));
+    }
+
+    protected function formatClassSelectionSummary(array $classIds): string
+    {
+        $classNames = MyClass::whereIn('id', $classIds)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->orderBy('name')
+            ->pluck('name')
+            ->all();
+
+        if ($classNames === []) {
+            return 'selected classes';
+        }
+
+        if (count($classNames) <= 3) {
+            return implode(', ', $classNames);
+        }
+
+        return count($classNames) . ' classes';
     }
 
     public function render()

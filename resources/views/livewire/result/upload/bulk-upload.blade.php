@@ -6,6 +6,12 @@
             Select Class and Subject
         </h3>
 
+        @if($isRestrictedTeacherResultUploader)
+            <p class="mb-4 text-sm text-gray-600">
+                Only classes assigned to you are listed, and each class only shows subjects you are allowed to upload.
+            </p>
+        @endif
+
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
@@ -43,6 +49,10 @@
 
                 @if($selectedClass && $subjects->isEmpty())
                     <p class="mt-2 text-sm text-amber-600">No subjects found for this class. Assign class subjects or student subjects first.</p>
+                @endif
+
+                @if($classes->isEmpty())
+                    <p class="mt-2 text-sm text-amber-600">No uploadable classes are currently assigned to your account.</p>
                 @endif
 
                 @if($selectedClass && !$semesterId)

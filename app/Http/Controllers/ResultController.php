@@ -305,6 +305,8 @@ class ResultController extends Controller
             abort(404);
         }
 
+        abort_unless($this->currentUserCanViewClassTeacherClass($classId), 403);
+
         // Fetch all students for the class with their related data in one go
         $students = $this->studentRecordsForCurrentSchool()->with([
             'user' => function ($query) {
@@ -774,8 +776,9 @@ class ResultController extends Controller
     public function annualClassResult(Request $request)
     {
         abort_if($this->isRestrictedToOwnFamilyResults(), 403);
+        abort_unless($this->currentUserCanAccessClassOnlyResultTools(), 403);
 
-        $classes = $this->classesForCurrentSchool()->orderBy('name')->get();
+        $classes = $this->accessibleClassTeacherClassesQuery()->orderBy('name')->get();
         $academicYears = $this->academicYearsForCurrentSchool()
             ->orderBy('start_year', 'desc')
             ->get();
@@ -803,6 +806,8 @@ class ResultController extends Controller
         if (!$class || !$academicYear) {
             abort(404);
         }
+
+        abort_unless($this->currentUserCanViewClassTeacherClass($request->classId), 403);
 
         $semesters = $this->semestersForCurrentSchool()
             ->where('academic_year_id', $academicYear->id)
@@ -1077,6 +1082,8 @@ class ResultController extends Controller
 
     $classId = $request->input('classId');
     $academicYearId = $request->input('academicYearId');
+
+    abort_unless($this->currentUserCanViewClassTeacherClass($classId), 403);
     
     // Your export logic here
     // Return CSV file
@@ -1088,6 +1095,8 @@ public function exportAnnualPdf(Request $request)
 
     $classId = $request->input('classId');
     $academicYearId = $request->input('academicYearId');
+
+    abort_unless($this->currentUserCanViewClassTeacherClass($classId), 403);
     
     // Your PDF export logic here
     // Return PDF file

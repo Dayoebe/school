@@ -5,10 +5,13 @@ namespace App\Livewire\Result\Upload;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{AcademicYear, StudentRecord, Subject, Result, MyClass, Section, Semester};
+use App\Traits\RestrictsTeacherResultUploads;
 use Illuminate\Support\Facades\DB;
 
 class BulkUpload extends Component
 {
+    use RestrictsTeacherResultUploads;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClass;
@@ -23,8 +26,6 @@ class BulkUpload extends Component
 
     public function mount()
     {
-        $schoolId = auth()->user()->school_id;
-
         $this->academicYearId = session('result_academic_year_id')
             ?? auth()->user()->school?->academic_year_id
             ?? AcademicYear::query()
@@ -57,34 +58,12 @@ class BulkUpload extends Component
         $this->subjects = collect();
 
         if ($this->selectedClass) {
-            if (!$this->classBelongsToCurrentSchool($this->selectedClass)) {
+            if (!$this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
                 $this->selectedClass = null;
-                $this->dispatch('error', 'Selected class is not in your current school.');
+                $this->dispatch('error', 'You can only upload results for classes assigned to you.');
             } else {
-            $this->subjects = Subject::where(function ($query) {
-                    $query->where('my_class_id', $this->selectedClass)
-                        ->orWhereHas('classes', function ($classQuery) {
-                            $classQuery->where('my_classes.id', $this->selectedClass);
-                        })
-                        ->orWhereIn('subjects.id', function ($subQuery) {
-                            $subQuery->from('student_subject')
-                                ->where('my_class_id', $this->selectedClass)
-                                ->select('subject_id');
-                        })
-                        ->orWhereIn('subjects.id', function ($subQuery) {
-                            $subQuery->from('student_subject as ss')
-                                ->join('academic_year_student_record as aysr', 'aysr.student_record_id', '=', 'ss.student_record_id')
-                                ->where('aysr.my_class_id', $this->selectedClass)
-                                ->when($this->academicYearId, function ($q) {
-                                    $q->where('aysr.academic_year_id', $this->academicYearId);
-                                })
-                                ->select('ss.subject_id');
-                        });
-                })
-                ->where('subjects.school_id', auth()->user()->school_id)
-                ->orderBy('name')
-                ->distinct()
-                ->get();
+                $this->subjects = $this->accessibleResultUploadSubjectsQuery($this->selectedClass, $this->academicYearId)
+                    ->get();
             }
         }
 
@@ -130,8 +109,8 @@ class BulkUpload extends Component
             return;
         }
 
-        if (!$this->classBelongsToCurrentSchool($this->selectedClass)) {
-            $this->dispatch('error', 'Selected class is not in your current school.');
+        if (!$this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
+            $this->dispatch('error', 'You can only upload results for classes assigned to you.');
             return;
         }
 
@@ -157,31 +136,8 @@ class BulkUpload extends Component
             return;
         }
 
-        // Validate subject belongs to class
-        $subject = Subject::query()->find($this->selectedSubject);
-        $subjectFromStudentClassPivot = DB::table('student_subject')
-            ->where('subject_id', $this->selectedSubject)
-            ->where('my_class_id', $this->selectedClass)
-            ->exists();
-
-        $subjectFromStudentYearClassPivot = DB::table('student_subject as ss')
-            ->join('academic_year_student_record as aysr', 'aysr.student_record_id', '=', 'ss.student_record_id')
-            ->where('ss.subject_id', $this->selectedSubject)
-            ->where('aysr.my_class_id', $this->selectedClass)
-            ->when($this->academicYearId, function ($q) {
-                $q->where('aysr.academic_year_id', $this->academicYearId);
-            })
-            ->exists();
-
-        $subjectBelongsToClass = $subject && (
-            (int) $subject->my_class_id === (int) $this->selectedClass
-            || $subject->classes()->where('my_classes.id', $this->selectedClass)->exists()
-            || $subjectFromStudentClassPivot
-            || $subjectFromStudentYearClassPivot
-        );
-
-        if (!$subjectBelongsToClass) {
-            $this->dispatch('error', 'Invalid subject for selected class');
+        if (!$this->currentUserCanUploadResultSubject($this->selectedSubject, $this->selectedClass, $this->academicYearId)) {
+            $this->dispatch('error', 'You can only upload results for subjects assigned to you in this class.');
             $this->students = collect();
             return;
         }
@@ -315,6 +271,20 @@ class BulkUpload extends Component
     {
         try {
             DB::beginTransaction();
+
+            if (
+                !$this->currentUserCanUploadResultSubject($this->selectedSubject, $this->selectedClass, $this->academicYearId) ||
+                !$this->currentUserCanUploadResultStudent($studentId, $this->selectedClass, $this->academicYearId, $this->selectedSection)
+            ) {
+                DB::rollBack();
+                \Log::warning('Blocked unauthorized bulk field upload attempt', [
+                    'user_id' => auth()->id(),
+                    'student_id' => $studentId,
+                    'subject_id' => $this->selectedSubject,
+                    'class_id' => $this->selectedClass,
+                ]);
+                return;
+            }
     
             // Validate student is enrolled in the subject
             $student = $this->getStudentRecordForCurrentSchool($studentId);
@@ -376,6 +346,15 @@ class BulkUpload extends Component
     public function saveAll()
     {
         $this->isSaving = true;
+
+        if (
+            !$this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId) ||
+            !$this->currentUserCanUploadResultSubject($this->selectedSubject, $this->selectedClass, $this->academicYearId)
+        ) {
+            session()->flash('error', 'You can only upload results for your assigned class and subject.');
+            $this->isSaving = false;
+            return redirect()->route('result');
+        }
     
         try {
             DB::beginTransaction();
@@ -392,6 +371,12 @@ class BulkUpload extends Component
     
             foreach ($this->bulkResults as $studentId => $data) {
                 try {
+                    if (!$this->currentUserCanUploadResultStudent($studentId, $this->selectedClass, $this->academicYearId, $this->selectedSection)) {
+                        $student = $this->getStudentRecordForCurrentSchool($studentId);
+                        $errors[] = ($student?->user?->name ?? "Student {$studentId}") . ' - Not in your assigned class';
+                        continue;
+                    }
+
                     // Check if student is enrolled in the subject
                     if (!in_array($studentId, $enrolledStudentIds)) {
                         $student = $this->getStudentRecordForCurrentSchool($studentId);
@@ -474,6 +459,14 @@ class BulkUpload extends Component
     public function deleteResult($studentId)
     {
         try {
+            if (
+                !$this->currentUserCanUploadResultSubject($this->selectedSubject, $this->selectedClass, $this->academicYearId) ||
+                !$this->currentUserCanUploadResultStudent($studentId, $this->selectedClass, $this->academicYearId, $this->selectedSection)
+            ) {
+                $this->dispatch('error', 'You can only delete results for your assigned class and subject.');
+                return;
+            }
+
             $student = $this->getStudentRecordForCurrentSchool($studentId);
             if (!$student) {
                 $this->dispatch('error', 'Student not found in your current school.');
@@ -615,24 +608,27 @@ class BulkUpload extends Component
 
     public function render()
     {
-        $classesQuery = MyClass::query();
+        $isRestrictedTeacherResultUploader = $this->isRestrictedTeacherResultUploader();
+        $classes = $this->accessibleResultUploadClassesQuery($this->academicYearId)
+            ->orderBy('name')
+            ->get();
 
-        if (auth()->user()->school_id) {
-            $classesQuery->whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            });
+        $sections = collect();
+
+        if ($this->selectedClass && $this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
+            $sections = Section::when($this->selectedClass, function ($q) {
+                $q->where('my_class_id', $this->selectedClass)
+                    ->whereHas('myClass.classGroup', function ($query) {
+                        $query->where('school_id', auth()->user()->school_id);
+                    });
+            })->get();
         }
-
-        $classes = $classesQuery->orderBy('name')->get();
-
-        $sections = Section::when($this->selectedClass, function ($q) {
-            $q->where('my_class_id', $this->selectedClass)
-                ->whereHas('myClass.classGroup', function ($query) {
-                    $query->where('school_id', auth()->user()->school_id);
-                });
-        })->get();
     
-        return view('livewire.result.upload.bulk-upload', compact('classes', 'sections'))
+        return view('livewire.result.upload.bulk-upload', compact(
+            'classes',
+            'sections',
+            'isRestrictedTeacherResultUploader'
+        ))
             ->layout('layouts.result', [
                 'title' => 'Bulk Result Upload',
                 'page_heading' => 'Bulk Result Upload'

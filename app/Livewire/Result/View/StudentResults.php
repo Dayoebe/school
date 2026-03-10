@@ -36,6 +36,10 @@ class StudentResults extends Component
         $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
         $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
 
+        if ($this->isRestrictedTeacherResultViewer() && !$this->currentUserCanAccessClassOnlyResultTools()) {
+            abort(403);
+        }
+
         if ($this->isStudentResultViewer() && auth()->user()?->studentRecord) {
             $this->viewStudent(auth()->user()->studentRecord->id);
         }
@@ -168,6 +172,7 @@ class StudentResults extends Component
         $canBrowseAllStudents = $this->canBrowseAllStudentResults();
         $isStudentResultViewer = $this->isStudentResultViewer();
         $isParentResultViewer = $this->isParentResultViewer();
+        $isRestrictedTeacherResultViewer = $this->isRestrictedTeacherResultViewer();
 
         $classes = $canBrowseAllStudents
             ? MyClass::whereHas('classGroup', function ($query) {
@@ -201,7 +206,8 @@ class StudentResults extends Component
                         'students',
                         'canBrowseAllStudents',
                         'isStudentResultViewer',
-                        'isParentResultViewer'
+                        'isParentResultViewer',
+                        'isRestrictedTeacherResultViewer'
                     ))
                         ->layout('layouts.result', [
                             'title' => 'View Student Results',
@@ -260,7 +266,8 @@ class StudentResults extends Component
             'students',
             'canBrowseAllStudents',
             'isStudentResultViewer',
-            'isParentResultViewer'
+            'isParentResultViewer',
+            'isRestrictedTeacherResultViewer'
         ))
             ->layout('layouts.result', [
                 'title' => 'View Student Results',

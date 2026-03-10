@@ -89,7 +89,7 @@
                                 <i class="fas fa-chalkboard text-2xl mr-3 {{ !$bulkIsGeneral ? 'text-blue-600' : 'text-gray-400' }}"></i>
                                 <div>
                                     <p class="font-semibold">Class-Specific</p>
-                                    <p class="text-xs text-gray-600">Teacher teaches only ONE class</p>
+                                    <p class="text-xs text-gray-600">Teacher teaches selected classes only</p>
                                 </div>
                             </div>
                         </button>
@@ -98,17 +98,32 @@
                     <!-- Class Selection (if class-specific) -->
                     @if(!$bulkIsGeneral)
                         <div class="mt-4">
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Class *</label>
-                            <select wire:model="bulkClass" 
-                                    class="w-full rounded-lg border-2 border-gray-300 p-3 focus:ring-2 focus:ring-blue-500">
-                                <option value="">Choose a class...</option>
+                            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Classes *</label>
+                            <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto rounded-lg border bg-white p-3">
                                 @foreach($classes as $class)
-                                    <option value="{{ $class->id }}">{{ $class->name }}</option>
+                                    <button type="button"
+                                            wire:click="toggleBulkClass({{ $class->id }})"
+                                            class="w-full rounded-lg border-2 px-3 py-3 text-left transition {{ in_array($class->id, $bulkClasses) ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300' }}">
+                                        <div class="flex items-center justify-between">
+                                            <span class="font-medium">{{ $class->name }}</span>
+                                            @if(in_array($class->id, $bulkClasses))
+                                                <i class="fas fa-check-circle text-blue-600"></i>
+                                            @endif
+                                        </div>
+                                        @if($class->classGroup)
+                                            <span class="text-xs text-gray-600">{{ $class->classGroup->name }}</span>
+                                        @endif
+                                    </button>
                                 @endforeach
-                            </select>
-                            @error('bulkClass') 
-                                <span class="text-red-500 text-sm mt-2">{{ $message }}</span>
+                            </div>
+                            @error('bulkClasses')
+                                <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span>
                             @enderror
+                            @if(count($bulkClasses) > 0)
+                                <p class="mt-2 text-sm text-blue-600">
+                                    <i class="fas fa-check mr-1"></i>{{ count($bulkClasses) }} class{{ count($bulkClasses) !== 1 ? 'es' : '' }} selected
+                                </p>
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -234,17 +249,17 @@
                                 </div>
                             </button>
                             
-                            <button type="button"
-                                    wire:click="$set('isGeneralAssignment', false)"
-                                    class="w-full text-left p-4 rounded-lg border-2 {{ !$isGeneralAssignment ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-300' }}">
-                                <div class="flex items-center">
-                                    <i class="fas fa-chalkboard text-2xl mr-3 {{ !$isGeneralAssignment ? 'text-blue-600' : 'text-gray-400' }}"></i>
-                                    <div>
-                                        <p class="font-semibold">Specific Class</p>
-                                        <p class="text-xs text-gray-600">Class-specific</p>
-                                    </div>
+                        <button type="button"
+                                wire:click="$set('isGeneralAssignment', false)"
+                                class="w-full text-left p-4 rounded-lg border-2 {{ !$isGeneralAssignment ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-300' }}">
+                            <div class="flex items-center">
+                                <i class="fas fa-chalkboard text-2xl mr-3 {{ !$isGeneralAssignment ? 'text-blue-600' : 'text-gray-400' }}"></i>
+                                <div>
+                                    <p class="font-semibold">Specific Classes</p>
+                                    <p class="text-xs text-gray-600">Assign selected classes</p>
                                 </div>
-                            </button>
+                            </div>
+                        </button>
                         </div>
                         
                         @if(!$isGeneralAssignment && $selectedSubject)
@@ -252,18 +267,40 @@
                                 $selectedSubjectModel = $subjects->firstWhere('id', $selectedSubject);
                             @endphp
                             @if($selectedSubjectModel)
+                                @php
+                                    $subjectClassIds = $selectedSubjectModel->classes->pluck('id')->map(fn($id) => (int) $id)->all();
+                                    if ($selectedSubjectModel->my_class_id && !in_array((int) $selectedSubjectModel->my_class_id, $subjectClassIds, true)) {
+                                        $subjectClassIds[] = (int) $selectedSubjectModel->my_class_id;
+                                    }
+                                    $subjectClasses = $classes->whereIn('id', $subjectClassIds);
+                                @endphp
                                 <div class="mt-4">
-                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Class *</label>
-                                    <select wire:model="selectedClass" 
-                                            class="w-full rounded-lg border-2 border-gray-300 p-3 focus:ring-2 focus:ring-blue-500">
-                                        <option value="">Choose a class...</option>
-                                        @foreach($selectedSubjectModel->classes as $class)
-                                            <option value="{{ $class->id }}">{{ $class->name }}</option>
+                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Classes *</label>
+                                    <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto rounded-lg border bg-white p-3">
+                                        @foreach($subjectClasses as $class)
+                                            <button type="button"
+                                                    wire:click="toggleSelectedClass({{ $class->id }})"
+                                                    class="w-full rounded-lg border-2 px-3 py-3 text-left transition {{ in_array($class->id, $selectedClasses) ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300' }}">
+                                                <div class="flex items-center justify-between">
+                                                    <span class="font-medium">{{ $class->name }}</span>
+                                                    @if(in_array($class->id, $selectedClasses))
+                                                        <i class="fas fa-check-circle text-blue-600"></i>
+                                                    @endif
+                                                </div>
+                                                @if($class->classGroup)
+                                                    <span class="text-xs text-gray-600">{{ $class->classGroup->name }}</span>
+                                                @endif
+                                            </button>
                                         @endforeach
-                                    </select>
-                                    @error('selectedClass') 
-                                        <span class="text-red-500 text-sm mt-2">{{ $message }}</span>
+                                    </div>
+                                    @error('selectedClasses')
+                                        <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span>
                                     @enderror
+                                    @if(count($selectedClasses) > 0)
+                                        <p class="mt-2 text-sm text-blue-600">
+                                            <i class="fas fa-check mr-1"></i>{{ count($selectedClasses) }} class{{ count($selectedClasses) !== 1 ? 'es' : '' }} selected
+                                        </p>
+                                    @endif
                                 </div>
                             @endif
                         @endif

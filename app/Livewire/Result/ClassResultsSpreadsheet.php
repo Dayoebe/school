@@ -6,12 +6,15 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Exports\ClassResultsExport;
 use App\Models\{MyClass, AcademicYear, Semester, Result, StudentRecord, Subject};
+use App\Traits\RestrictsTeacherResultViewing;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ClassResultsSpreadsheet extends Component
 {
+    use RestrictsTeacherResultViewing;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClassId;
@@ -28,11 +31,12 @@ class ClassResultsSpreadsheet extends Component
     
     public function mount()
     {
-        $this->classes = MyClass::whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            })
+        $this->classes = $this->accessibleClassTeacherClassesQuery()
             ->orderBy('name')
             ->get();
+
+        abort_unless($this->currentUserCanAccessClassOnlyResultTools(), 403);
+
         $this->academicYears = AcademicYear::query()
             ->orderBy('start_year', 'desc')
             ->get();
@@ -110,6 +114,11 @@ class ClassResultsSpreadsheet extends Component
             ->exists();
 
         if (!$classExists || !$yearExists) {
+            $this->spreadsheetData = [];
+            return;
+        }
+
+        if (!$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
             $this->spreadsheetData = [];
             return;
         }
@@ -431,6 +440,11 @@ class ClassResultsSpreadsheet extends Component
 
         $this->loadSpreadsheet();
 
+        if (!$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
+            session()->flash('error', 'You can only export spreadsheets for your assigned class.');
+            return;
+        }
+
         $class = MyClass::where('id', $this->selectedClassId)
             ->whereHas('classGroup', function ($query) {
                 $query->where('school_id', auth()->user()->school_id);
@@ -492,6 +506,11 @@ class ClassResultsSpreadsheet extends Component
         }
 
         $this->loadSpreadsheet();
+
+        if (!$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
+            session()->flash('error', 'You can only export spreadsheets for your assigned class.');
+            return;
+        }
 
         $class = MyClass::where('id', $this->selectedClassId)
             ->whereHas('classGroup', function ($query) {

@@ -114,7 +114,7 @@
         <!-- Quick Actions -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-2xl p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                 onclick="document.querySelector('[x-data] button:nth-child(2)').click()">
+                 onclick="window.dispatchEvent(new CustomEvent('result-tab-change', { detail: 'individual' }))">
                 <div class="flex items-center mb-4">
                     <div class="bg-blue-100 p-3 rounded-xl mr-4">
                         <i class="fas fa-upload text-blue-600 text-2xl"></i>
@@ -124,27 +124,31 @@
                 <p class="text-gray-600">Upload individual or bulk student results</p>
             </div>
 
-            <div class="bg-gradient-to-br from-green-50 to-teal-50 border-2 border-green-100 rounded-2xl p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                 onclick="document.querySelector('[x-data] button:nth-child(3)').click()">
-                <div class="flex items-center mb-4">
-                    <div class="bg-green-100 p-3 rounded-xl mr-4">
-                        <i class="fas fa-eye text-green-600 text-2xl"></i>
+            @if($canOpenViewResults)
+                <div class="bg-gradient-to-br from-green-50 to-teal-50 border-2 border-green-100 rounded-2xl p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                     onclick="window.dispatchEvent(new CustomEvent('result-tab-change', { detail: 'view' }))">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-green-100 p-3 rounded-xl mr-4">
+                            <i class="fas fa-eye text-green-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">View Results</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-800">View Results</h3>
+                    <p class="text-gray-600">View and analyze student performance</p>
                 </div>
-                <p class="text-gray-600">View and analyze student performance</p>
-            </div>
+            @endif
 
-            <div class="bg-gradient-to-br from-purple-50 to-violet-50 border-2 border-purple-100 rounded-2xl p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                 onclick="document.querySelector('[x-data] button:nth-child(4)').click()">
-                <div class="flex items-center mb-4">
-                    <div class="bg-purple-100 p-3 rounded-xl mr-4">
-                        <i class="fas fa-history text-purple-600 text-2xl"></i>
+            @if($canOpenHistory)
+                <div class="bg-gradient-to-br from-purple-50 to-violet-50 border-2 border-purple-100 rounded-2xl p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                     onclick="window.dispatchEvent(new CustomEvent('result-tab-change', { detail: 'history' }))">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-purple-100 p-3 rounded-xl mr-4">
+                            <i class="fas fa-history text-purple-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">Student History</h3>
                     </div>
-                    <h3 class="text-lg font-bold text-gray-800">Student History</h3>
+                    <p class="text-gray-600">Track academic progress over time</p>
                 </div>
-                <p class="text-gray-600">Track academic progress over time</p>
-            </div>
+            @endif
         </div>
     @endif
 </div>

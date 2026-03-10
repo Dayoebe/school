@@ -6,6 +6,12 @@
             Select Student
         </h3>
 
+        @if($isRestrictedTeacherResultUploader)
+            <p class="mb-4 text-sm text-gray-600">
+                Only classes assigned to you are available, and you can only upload results for subjects you teach in that class.
+            </p>
+        @endif
+
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">Class</label>
@@ -46,6 +52,10 @@
                 
                 @if($selectedClass && $students->isEmpty())
                     <p class="mt-2 text-sm text-amber-600">⚠️ No students found in this class for the selected academic period.</p>
+                @endif
+
+                @if($classes->isEmpty())
+                    <p class="mt-2 text-sm text-amber-600">No uploadable classes are currently assigned to your account.</p>
                 @endif
 
                 @if($selectedClass && !$semesterId)

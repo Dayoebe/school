@@ -5,9 +5,12 @@ namespace App\Livewire\Result;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{TermSettings, MyClass};
+use App\Traits\RestrictsTeacherResultViewing;
 
 class TermSettingsManager extends Component
 {
+    use RestrictsTeacherResultViewing;
+
     public $academicYearId;
     public $semesterId;
     public $selectedClassId;
@@ -22,6 +25,8 @@ class TermSettingsManager extends Component
 
     public function mount()
     {
+        abort_unless($this->currentUserCanManageTermResultSettings(), 403);
+
         $this->classes = MyClass::whereHas('classGroup', function ($query) {
                 $query->where('school_id', auth()->user()->school_id);
             })
