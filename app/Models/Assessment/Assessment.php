@@ -397,7 +397,7 @@ class Assessment extends Model
         $query->forSchool($user->school_id);
 
         if (!$user->hasRole('student')) {
-            return $query;
+            return $query->whereRaw('1 = 0');
         }
 
         $classId = static::resolveAssignedClassIdForUser($user);

@@ -162,7 +162,6 @@ class PermissionMatrix
             'read class',
             'read section',
             'read subject',
-            'update subject',
             'read syllabus',
 
             'read exam',
@@ -188,17 +187,6 @@ class PermissionMatrix
             'read broadcast message',
             'create broadcast message',
             'view own broadcasts',
-
-            'read admission registration',
-            'review admission registration',
-            'reject admission registration',
-            'update admission admin note',
-            'read contact message',
-            'reply contact message',
-            'manage gallery',
-
-            'take cbt exam',
-            'view cbt result',
             'manage cbt',
         ];
 

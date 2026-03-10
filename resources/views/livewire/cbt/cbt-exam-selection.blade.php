@@ -2,7 +2,7 @@
     <!-- Page Header -->
     <div class="mb-8">
         <h2 class="text-3xl font-bold text-themed-primary mb-2">CBT Examinations</h2>
-        <p class="text-themed-secondary">Select an assessment to begin your computer-based test</p>
+        <p class="text-themed-secondary">Only authorised students in the approved class and subject can begin a computer-based test.</p>
     </div>
 
     <!-- Flash Messages -->
@@ -65,6 +65,17 @@
                             <div class="text-center">
                                 <div class="text-xs text-themed-tertiary mb-1">Pass %</div>
                                 <div class="font-semibold text-themed-primary">{{ $assessment->pass_percentage }}%</div>
+                            </div>
+                        </div>
+
+                        <div class="bg-themed-tertiary rounded-lg p-3 mb-4 text-sm">
+                            <div class="flex justify-between items-center">
+                                <span class="text-themed-secondary">Class</span>
+                                <span class="font-semibold text-themed-primary">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</span>
+                            </div>
+                            <div class="mt-1 flex justify-between items-center">
+                                <span class="text-themed-secondary">Subject</span>
+                                <span class="font-semibold text-themed-primary">{{ $assessment->lesson?->name ?? 'General CBT' }}</span>
                             </div>
                         </div>
 
@@ -137,21 +148,12 @@
                         </div>
 
                         <!-- Class Info -->
-                        @if($assessment->course)
-                            <div class="mt-4 pt-4 border-t border-themed-secondary">
-                                <div class="flex items-center text-sm text-themed-secondary">
-                                    <i class="fas fa-school mr-2"></i>
-                                    <span>Class: {{ $assessment->course?->name ?? $assessment->course?->title ?? 'General Assessment' }}</span>
-                                </div>
+                        <div class="mt-4 pt-4 border-t border-themed-secondary">
+                            <div class="flex items-center text-sm text-themed-secondary">
+                                <i class="fas fa-user-shield mr-2"></i>
+                                <span>Access is limited to students assigned to this class and subject.</span>
                             </div>
-                        @else
-                            <div class="mt-4 pt-4 border-t border-themed-secondary">
-                                <div class="flex items-center text-sm text-themed-secondary">
-                                    <i class="fas fa-certificate mr-2"></i>
-                                    <span>Standalone CBT Exam</span>
-                                </div>
-                            </div>
-                        @endif
+                        </div>
                     </div>
                 </div>
             @endforeach
@@ -194,8 +196,14 @@
             <div class="w-24 h-24 bg-themed-tertiary rounded-full flex items-center justify-center mx-auto mb-6">
                 <i class="fas fa-clipboard-list text-themed-secondary text-4xl"></i>
             </div>
-            <h3 class="text-xl font-semibold text-themed-secondary mb-2">No CBT Assessments Available</h3>
-            <p class="text-themed-tertiary mb-6">There are currently no computer-based tests available for you to take.</p>
+            <h3 class="text-xl font-semibold text-themed-secondary mb-2">
+                {{ $isAuthorizedStudent ? 'No CBT Assessments Available' : 'CBT Access Restricted' }}
+            </h3>
+            <p class="text-themed-tertiary mb-6">
+                {{ $isAuthorizedStudent
+                    ? 'There are currently no computer-based tests available for you to take.'
+                    : 'Only authorised students assigned to an approved class can access CBT exams.' }}
+            </p>
             <a href="{{ route('dashboard') }}" 
                 class="inline-flex items-center px-4 py-2 bg-accent-themed-primary text-white rounded-lg hover:bg-accent-themed-secondary transition-colors">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard

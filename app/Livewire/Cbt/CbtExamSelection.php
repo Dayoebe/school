@@ -15,60 +15,62 @@ class CbtExamSelection extends Component
 {
     public function render()
     {
+        $isAuthorizedStudent = $this->isAuthorizedStudent();
         $userId = Auth::id();
         $canViewUnpublished = $this->canViewUnpublishedResults();
+        $availableAssessments = collect();
 
-        // Get class-based CBT assessments available to the current user
-        $availableAssessments = $this->assessmentsForCurrentSchool()
-            ->with([
-                'questions',
-                'course',
-                'studentAnswers' => fn ($query) => $query
-                    ->where('user_id', $userId)
-                    ->with('question'),
-                'attemptSessions' => fn ($query) => $query
-                    ->where('user_id', $userId),
-            ])
-            ->whereHas('questions') // Only show assessments that have questions
-            ->get()
-            ->map(function ($assessment) use ($canViewUnpublished) {
-                $submittedAnswers = $assessment->studentAnswers
-                    ->whereNotNull('submitted_at');
-                $attemptCount = $submittedAnswers
-                    ->pluck('attempt_number')
-                    ->unique()
-                    ->count();
-                $activeAttempt = $this->resolveActiveAttempt($assessment->attemptSessions);
-                $resultsVisible = $canViewUnpublished || $assessment->isResultPublished();
+        if ($isAuthorizedStudent) {
+            $availableAssessments = $this->assessmentsForCurrentSchool()
+                ->with([
+                    'questions',
+                    'course',
+                    'lesson',
+                    'studentAnswers' => fn ($query) => $query
+                        ->where('user_id', $userId)
+                        ->with('question'),
+                    'attemptSessions' => fn ($query) => $query
+                        ->where('user_id', $userId),
+                ])
+                ->whereHas('questions')
+                ->get()
+                ->map(function ($assessment) use ($canViewUnpublished) {
+                    $submittedAnswers = $assessment->studentAnswers
+                        ->whereNotNull('submitted_at');
+                    $attemptCount = $submittedAnswers
+                        ->pluck('attempt_number')
+                        ->unique()
+                        ->count();
+                    $activeAttempt = $this->resolveActiveAttempt($assessment->attemptSessions);
+                    $resultsVisible = $canViewUnpublished || $assessment->isResultPublished();
 
-                // Check if user has attempted this assessment
-                $userResult = $resultsVisible
-                    ? $this->buildUserResultSummary($assessment, $submittedAnswers)
-                    : null;
-                $assessment->results_visible = $resultsVisible;
-                $assessment->user_result = $userResult;
-                $assessment->has_submitted_attempt = $attemptCount > 0;
-                $assessment->has_active_attempt = $activeAttempt !== null && !$activeAttempt->isExpired();
-                
-                // Get attempt count and check if can take
-                $assessment->attempts_count = $attemptCount;
-                
-                // Check if user can take the assessment
-                [$canTake, $message] = $this->determineAttemptAvailability($assessment, $attemptCount, $activeAttempt);
-                $assessment->can_take = $canTake;
-                $assessment->attempt_message = $message;
-                
-                // Calculate remaining attempts
-                $assessment->remaining_attempts = $this->calculateRemainingAttempts($assessment, $attemptCount);
-                
-                return $assessment;
-            });
+                    $assessment->results_visible = $resultsVisible;
+                    $assessment->user_result = $resultsVisible
+                        ? $this->buildUserResultSummary($assessment, $submittedAnswers)
+                        : null;
+                    $assessment->has_submitted_attempt = $attemptCount > 0;
+                    $assessment->has_active_attempt = $activeAttempt !== null && !$activeAttempt->isExpired();
+                    $assessment->attempts_count = $attemptCount;
 
-        return view('livewire.cbt.cbt-exam-selection', compact('availableAssessments'));
+                    [$canTake, $message] = $this->determineAttemptAvailability($assessment, $attemptCount, $activeAttempt);
+                    $assessment->can_take = $canTake;
+                    $assessment->attempt_message = $message;
+                    $assessment->remaining_attempts = $this->calculateRemainingAttempts($assessment, $attemptCount);
+
+                    return $assessment;
+                });
+        }
+
+        return view('livewire.cbt.cbt-exam-selection', compact('availableAssessments', 'isAuthorizedStudent'));
     }
 
     public function startExam($assessmentId)
     {
+        if (!$this->isAuthorizedStudent()) {
+            session()->flash('error', 'Only authorised students assigned to the approved class can take CBT exams.');
+            return;
+        }
+
         $assessment = $this->assessmentsForCurrentSchool()
             ->with('questions')
             ->find($assessmentId);
@@ -94,6 +96,15 @@ class CbtExamSelection extends Component
     public function viewResults($assessmentId)
     {
         return redirect()->route('cbt.viewer');
+    }
+
+    protected function isAuthorizedStudent(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null
+            && $user->hasRole('student')
+            && Assessment::resolveAssignedClassIdForUser($user) !== null;
     }
 
     protected function assessmentsForCurrentSchool(): Builder

@@ -226,15 +226,19 @@ class DashboardStats extends Component
             ],
             [
                 'title' => 'CBT Exams',
-                'description' => 'Take or review CBT exams and outcomes.',
+                'description' => 'Start an authorised CBT for your class and subject.',
                 'icon' => 'fas fa-laptop-code',
                 'route' => 'cbt.exams',
+                'roles' => ['student'],
+                'permissions' => ['take cbt exam'],
             ],
             [
                 'title' => 'CBT Results',
-                'description' => 'Open CBT result history and performance view.',
+                'description' => 'Open your CBT result history.',
                 'icon' => 'fas fa-list-alt',
                 'route' => 'cbt.viewer',
+                'roles' => ['student'],
+                'permissions' => ['view cbt result'],
             ],
             [
                 'title' => 'Manage CBT',
@@ -242,6 +246,7 @@ class DashboardStats extends Component
                 'icon' => 'fas fa-cogs',
                 'route' => 'cbt.manage',
                 'roles' => $adminAndStaffRoles,
+                'permissions' => ['manage cbt'],
             ],
             [
                 'title' => 'Notices',

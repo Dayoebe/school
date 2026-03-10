@@ -60,18 +60,6 @@ class Menu extends Component
                 'submenu' => [
                     [
                         'type' => 'menu-item',
-                        'text' => 'Take CBT Exams',
-                        'route' => 'cbt.exams',
-                        'permissions' => ['take cbt exam'],
-                    ],
-                    [
-                        'type' => 'menu-item',
-                        'text' => 'CBT Results',
-                        'route' => 'cbt.viewer',
-                        'permissions' => ['view cbt result'],
-                    ],
-                    [
-                        'type' => 'menu-item',
                         'text' => 'View Student Results',
                         'route' => 'result.view.student',
                         'roles' => ['student', 'parent'],
@@ -439,18 +427,21 @@ class Menu extends Component
                         'type' => 'menu-item',
                         'text' => 'Take CBT Exams',
                         'route' => 'cbt.exams',
+                        'roles' => ['student'],
                         'permissions' => ['take cbt exam'],
                     ],
                     [
                         'type' => 'menu-item',
                         'text' => 'CBT Results',
                         'route' => 'cbt.viewer',
+                        'roles' => ['student'],
                         'permissions' => ['view cbt result'],
                     ],
                     [
                         'type' => 'menu-item',
                         'text' => 'Manage CBT',
                         'route' => 'cbt.manage',
+                        'roles' => ['teacher', 'principal', 'admin', 'super-admin', 'super_admin'],
                         'permissions' => ['manage cbt'],
                     ],
                 ],
