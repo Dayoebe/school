@@ -4,7 +4,9 @@ namespace App\Livewire\Cbt;
 
 use Livewire\Component;
 use App\Models\Assessment\Assessment;
+use App\Models\Assessment\AttemptSession;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 
@@ -13,35 +15,51 @@ class CbtExamSelection extends Component
 {
     public function render()
     {
+        $userId = Auth::id();
         $canViewUnpublished = $this->canViewUnpublishedResults();
 
         // Get class-based CBT assessments available to the current user
         $availableAssessments = $this->assessmentsForCurrentSchool()
-            ->with(['questions', 'course'])
+            ->with([
+                'questions',
+                'course',
+                'studentAnswers' => fn ($query) => $query
+                    ->where('user_id', $userId)
+                    ->with('question'),
+                'attemptSessions' => fn ($query) => $query
+                    ->where('user_id', $userId),
+            ])
             ->whereHas('questions') // Only show assessments that have questions
             ->get()
-            ->map(function($assessment) use ($canViewUnpublished) {
-                $activeAttempt = $assessment->getActiveAttemptSession(Auth::id());
+            ->map(function ($assessment) use ($canViewUnpublished) {
+                $submittedAnswers = $assessment->studentAnswers
+                    ->whereNotNull('submitted_at');
+                $attemptCount = $submittedAnswers
+                    ->pluck('attempt_number')
+                    ->unique()
+                    ->count();
+                $activeAttempt = $this->resolveActiveAttempt($assessment->attemptSessions);
+                $resultsVisible = $canViewUnpublished || $assessment->isResultPublished();
 
                 // Check if user has attempted this assessment
-                $userResult = $assessment->getStudentResults(Auth::id());
-                $resultsVisible = $canViewUnpublished || $assessment->isResultPublished();
+                $userResult = $resultsVisible
+                    ? $this->buildUserResultSummary($assessment, $submittedAnswers)
+                    : null;
                 $assessment->results_visible = $resultsVisible;
-                $assessment->user_result = $resultsVisible ? $userResult : null;
-                $assessment->has_submitted_attempt = $userResult !== null;
+                $assessment->user_result = $userResult;
+                $assessment->has_submitted_attempt = $attemptCount > 0;
                 $assessment->has_active_attempt = $activeAttempt !== null && !$activeAttempt->isExpired();
                 
                 // Get attempt count and check if can take
-                $attemptCount = $assessment->getStudentAttemptCount(Auth::id());
                 $assessment->attempts_count = $attemptCount;
                 
                 // Check if user can take the assessment
-                [$canTake, $message] = $assessment->canUserTakeAssessment(Auth::id());
+                [$canTake, $message] = $this->determineAttemptAvailability($assessment, $attemptCount, $activeAttempt);
                 $assessment->can_take = $canTake;
                 $assessment->attempt_message = $message;
                 
                 // Calculate remaining attempts
-                $assessment->remaining_attempts = $assessment->getRemainingAttempts(Auth::id());
+                $assessment->remaining_attempts = $this->calculateRemainingAttempts($assessment, $attemptCount);
                 
                 return $assessment;
             });
@@ -88,5 +106,77 @@ class CbtExamSelection extends Component
     protected function canViewUnpublishedResults(): bool
     {
         return (bool) auth()->user()?->can('manage cbt');
+    }
+
+    protected function resolveActiveAttempt(Collection $attemptSessions): ?AttemptSession
+    {
+        return $attemptSessions
+            ->where('status', 'in_progress')
+            ->sortByDesc(fn ($attemptSession) => $attemptSession->started_at?->getTimestamp() ?? 0)
+            ->first();
+    }
+
+    protected function buildUserResultSummary(Assessment $assessment, Collection $submittedAnswers): ?array
+    {
+        if ($submittedAnswers->isEmpty()) {
+            return null;
+        }
+
+        $latestAttemptNumber = $submittedAnswers->max('attempt_number');
+        $answers = $submittedAnswers->where('attempt_number', $latestAttemptNumber);
+
+        if ($answers->isEmpty()) {
+            return null;
+        }
+
+        $maxPoints = $assessment->questions->sum('points');
+        $totalPoints = $answers->sum('points_earned');
+        $percentage = $maxPoints > 0
+            ? round(($totalPoints / $maxPoints) * 100, 1)
+            : 0;
+
+        return [
+            'total_questions' => $assessment->questions->count(),
+            'answered_questions' => $answers->count(),
+            'correct_answers' => $answers->where('is_correct', true)->count(),
+            'total_points' => $totalPoints,
+            'max_points' => $maxPoints,
+            'percentage' => $percentage,
+            'passed' => $percentage >= $assessment->pass_percentage,
+            'attempt_number' => $latestAttemptNumber,
+            'submitted_at' => $answers->sortByDesc('submitted_at')->first()?->submitted_at,
+            'answers' => $answers->keyBy('question_id'),
+        ];
+    }
+
+    protected function determineAttemptAvailability(
+        Assessment $assessment,
+        int $attemptCount,
+        ?AttemptSession $activeAttempt
+    ): array {
+        if ($activeAttempt && !$activeAttempt->isExpired()) {
+            return [true, 'You have an in-progress attempt that can be resumed'];
+        }
+
+        if ($assessment->max_attempts === null) {
+            return [true, 'You can take this assessment'];
+        }
+
+        if ($attemptCount >= $assessment->max_attempts) {
+            return [false, "Maximum attempts ({$assessment->max_attempts}) exhausted"];
+        }
+
+        $remainingAttempts = $assessment->max_attempts - $attemptCount;
+
+        return [true, "You have {$remainingAttempts} attempt(s) remaining"];
+    }
+
+    protected function calculateRemainingAttempts(Assessment $assessment, int $attemptCount): int|string
+    {
+        if ($assessment->max_attempts === null) {
+            return 'Unlimited';
+        }
+
+        return max(0, $assessment->max_attempts - $attemptCount);
     }
 }

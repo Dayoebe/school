@@ -1,4 +1,5 @@
 <div x-data="modernCbtExam()"
+     data-cbt-exam-root
      class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
@@ -93,15 +94,44 @@
                     </div>
                 </div>
 
+                @if (session()->has('error') || session()->has('warning'))
+                    <div class="mb-6 space-y-3">
+                        @if (session()->has('error'))
+                            <div class="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                                <i class="fas fa-circle-exclamation mr-2"></i>{{ session('error') }}
+                            </div>
+                        @endif
+
+                        @if (session()->has('warning'))
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+                                <i class="fas fa-triangle-exclamation mr-2"></i>{{ session('warning') }}
+                            </div>
+                        @endif
+                    </div>
+                @endif
+
+                <div x-show="startExamMessage"
+                     x-transition.opacity.duration.250ms
+                     x-cloak
+                     class="mb-6 rounded-2xl border px-4 py-3 text-sm font-medium"
+                     :class="startExamStatusClasses()">
+                    <div class="flex items-start">
+                        <i class="mr-2 mt-0.5"
+                           :class="startExamStatusIcon()"></i>
+                        <span x-text="startExamMessage"></span>
+                    </div>
+                </div>
+
                 {{-- Start Button --}}
-                <button wire:click="startExam" 
-                        wire:loading.attr="disabled"
+                <button type="button"
+                        x-on:click="handleStartButtonClick()"
+                        :disabled="startExamSubmitting"
                         class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xl font-bold py-5 rounded-2xl transition-all shadow-lg disabled:opacity-50">
-                    <div wire:loading.remove class="flex items-center justify-center">
+                    <div x-show="!startExamSubmitting" class="flex items-center justify-center">
                         <i class="fas fa-rocket mr-3"></i>
                         <span>Start Exam Now</span>
                     </div>
-                    <div wire:loading class="flex items-center justify-center">
+                    <div x-show="startExamSubmitting" x-cloak class="flex items-center justify-center">
                         <i class="fas fa-spinner fa-spin mr-3"></i>
                         <span>Preparing Exam...</span>
                     </div>
@@ -681,8 +711,13 @@
 
 {{-- OPTIMIZED Alpine.js Components - Register BEFORE page render --}}
 <script>
-// Register Alpine components IMMEDIATELY before Alpine initializes
-document.addEventListener('alpine:init', () => {
+function registerCbtExamAlpineComponents() {
+    if (!window.Alpine || window.__cbtExamAlpineRegistered) {
+        return;
+    }
+
+    window.__cbtExamAlpineRegistered = true;
+
     // Enhanced Timer Component
     Alpine.data('enhancedTimer', () => ({
         // Props from data attributes
@@ -869,6 +904,11 @@ document.addEventListener('alpine:init', () => {
         timerInterval: null,
         heartbeatInterval: null,
         heartbeatInFlight: false,
+        livewireListenersRegistered: false,
+        startExamFeedbackTimeout: null,
+        startExamStatus: '',
+        startExamMessage: '',
+        startExamSubmitting: false,
         sidebarOpen: false,
         examStarted: @js($examStarted ?? false),
         examCompleted: @js($examCompleted ?? false),
@@ -930,31 +970,186 @@ document.addEventListener('alpine:init', () => {
         },
 
         setupEventListeners() {
-            Livewire.on('startTimer', () => {
-                this.examStarted = true;
-                this.examCompleted = false;
-                this.startTimer();
-                this.syncWithServer(true);
-            });
+            const registerLivewireListeners = () => {
+                if (!window.Livewire || this.livewireListenersRegistered) {
+                    return;
+                }
 
-            Livewire.on('examCompleted', () => {
-                this.examCompleted = true;
-                this.stopTimer();
-            });
+                this.livewireListenersRegistered = true;
 
-            Livewire.on('questionChanged', () => {
-                clearTimeout(this.mathJaxTimeout);
-                this.mathJaxTimeout = setTimeout(() => {
-                    this.renderMath();
-                }, 100);
-            });
+                Livewire.on('exam-start-feedback', ({ state, message }) => {
+                    this.updateStartExamFeedback(state, message);
+                });
 
-            Livewire.hook('morph.updated', () => {
-                clearTimeout(this.mathJaxTimeout);
-                this.mathJaxTimeout = setTimeout(() => {
-                    this.renderMath();
-                }, 100);
-            });
+                Livewire.on('startTimer', () => {
+                    this.startExamSubmitting = false;
+                    this.updateStartExamFeedback('success', 'Exam started successfully. Timer is now running.');
+                    this.examStarted = true;
+                    this.examCompleted = false;
+                    this.startTimer();
+                    this.syncWithServer(true);
+                });
+
+                Livewire.on('examCompleted', () => {
+                    this.examCompleted = true;
+                    this.stopTimer();
+                });
+
+                Livewire.on('questionChanged', () => {
+                    clearTimeout(this.mathJaxTimeout);
+                    this.mathJaxTimeout = setTimeout(() => {
+                        this.renderMath();
+                    }, 100);
+                });
+
+                Livewire.hook('morph.updated', () => {
+                    clearTimeout(this.mathJaxTimeout);
+                    this.mathJaxTimeout = setTimeout(() => {
+                        this.renderMath();
+                    }, 100);
+                });
+
+                Livewire.hook('request', ({ fail }) => {
+                    fail(({ status, content, preventDefault }) => {
+                        if (!this.startExamSubmitting && this.startExamStatus !== 'starting') {
+                            return;
+                        }
+
+                        this.startExamSubmitting = false;
+
+                        if (typeof preventDefault === 'function') {
+                            preventDefault();
+                        }
+
+                        this.updateStartExamFeedback(
+                            'error',
+                            this.resolveRequestFailureMessage(status, content)
+                        );
+                    });
+                });
+            };
+
+            if (window.Livewire) {
+                registerLivewireListeners();
+            } else {
+                document.addEventListener('livewire:init', registerLivewireListeners, { once: true });
+            }
+        },
+
+        async handleStartButtonClick() {
+            if (this.startExamSubmitting) {
+                return;
+            }
+
+            if (!window.Livewire || !this.$wire || typeof this.$wire.startExam !== 'function') {
+                this.updateStartExamFeedback(
+                    'error',
+                    'Livewire is not ready on this page, so the exam cannot start yet. Refresh the page and try again.'
+                );
+                return;
+            }
+
+            this.startExamSubmitting = true;
+            this.updateStartExamFeedback('starting', 'Start request sent. Waiting for exam confirmation...');
+
+            if (this.startExamFeedbackTimeout) {
+                clearTimeout(this.startExamFeedbackTimeout);
+            }
+
+            this.startExamFeedbackTimeout = setTimeout(() => {
+                if (this.startExamStatus === 'starting') {
+                    this.updateStartExamFeedback(
+                        'warning',
+                        'No confirmation yet. If the exam does not open, check your connection and the message above.'
+                    );
+                }
+            }, 8000);
+
+            try {
+                await this.$wire.startExam();
+            } catch (error) {
+                this.updateStartExamFeedback('error', this.resolveClientErrorMessage(error));
+            } finally {
+                if (this.startExamStatus !== 'success') {
+                    this.startExamSubmitting = false;
+                }
+            }
+        },
+
+        updateStartExamFeedback(state, message) {
+            this.startExamStatus = state || '';
+            this.startExamMessage = message || '';
+
+            if (state !== 'starting' && this.startExamFeedbackTimeout) {
+                clearTimeout(this.startExamFeedbackTimeout);
+                this.startExamFeedbackTimeout = null;
+            }
+        },
+
+        startExamStatusClasses() {
+            switch (this.startExamStatus) {
+                case 'success':
+                    return 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200';
+                case 'error':
+                    return 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200';
+                case 'warning':
+                    return 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-200';
+                case 'starting':
+                    return 'border-blue-200 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200';
+                default:
+                    return 'border-gray-200 bg-gray-50 text-gray-800 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200';
+            }
+        },
+
+        startExamStatusIcon() {
+            switch (this.startExamStatus) {
+                case 'success':
+                    return 'fas fa-circle-check';
+                case 'error':
+                    return 'fas fa-circle-exclamation';
+                case 'warning':
+                    return 'fas fa-triangle-exclamation';
+                case 'starting':
+                    return 'fas fa-spinner fa-spin';
+                default:
+                    return 'fas fa-info-circle';
+            }
+        },
+
+        resolveRequestFailureMessage(status, content) {
+            if (status === 419) {
+                return 'Your session expired. Refresh the page, sign in again if needed, then restart the exam.';
+            }
+
+            if (status === 403) {
+                return 'You do not have permission to start this exam.';
+            }
+
+            if (status === 404) {
+                return 'The exam start endpoint could not be found.';
+            }
+
+            if (status >= 500) {
+                return 'The server returned an internal error while starting the exam.';
+            }
+
+            if (typeof content === 'string' && content.trim() !== '') {
+                return `Exam start failed: ${content.slice(0, 180)}`;
+            }
+
+            return 'The exam start request failed before the page could confirm success.';
+        },
+
+        resolveClientErrorMessage(error) {
+            if (error?.status) {
+                return this.resolveRequestFailureMessage(error.status, error.content || error.message || '');
+            }
+
+            if (error?.message) {
+                return `Exam start failed: ${error.message}`;
+            }
+
+            return 'The exam start request could not be completed.';
         },
 
         setupSecurityListeners() {
@@ -1110,7 +1305,20 @@ document.addEventListener('alpine:init', () => {
             }
         }
     }));
-});
+
+    queueMicrotask(() => {
+        const root = document.querySelector('[data-cbt-exam-root]');
+        if (root && !root._x_dataStack && typeof Alpine.initTree === 'function') {
+            Alpine.initTree(root);
+        }
+    });
+}
+
+if (window.Alpine) {
+    registerCbtExamAlpineComponents();
+} else {
+    document.addEventListener('alpine:init', registerCbtExamAlpineComponents, { once: true });
+}
 
 // Global helper for rendering math in specific elements
 window.renderMathInElement = function(element) {

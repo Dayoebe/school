@@ -180,10 +180,12 @@ class CbtExamInterface extends Component
     public function startExam(): void
     {
         if ($this->examCompleted) {
+            $this->dispatch('exam-start-feedback', state: 'warning', message: 'This attempt is already completed.');
             return;
         }
 
         if ($this->examStarted && $this->attemptSessionId) {
+            $this->dispatch('exam-start-feedback', state: 'info', message: 'Exam is already running.');
             return;
         }
 
@@ -196,10 +198,13 @@ class CbtExamInterface extends Component
             $this->startTime = $session->started_at ?: Carbon::now();
             $this->timeRemaining = max(0, now()->diffInSeconds($session->expires_at, false));
             $this->startQuestionTimer();
+            $this->dispatch('exam-start-feedback', state: 'success', message: 'Exam started successfully. Timer is now running.');
             $this->dispatch('startTimer');
         } catch (\Throwable $e) {
             report($e);
-            session()->flash('error', $this->resolveStartExamErrorMessage($e));
+            $message = $this->resolveStartExamErrorMessage($e);
+            $this->dispatch('exam-start-feedback', state: 'error', message: $message);
+            session()->flash('error', $message);
         }
     }
 

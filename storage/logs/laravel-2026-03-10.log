@@ -1,0 +1,36 @@
+[2026-03-10 08:42:14] local.INFO: Detected N+1 Query  
+[2026-03-10 08:42:14] local.INFO: Model: App\Models\User
+Relation: App\Models\StudentRecord
+Num-Called: 2
+Call-Stack:
+#14 /vendor/laravel/framework/src/Illuminate/Support/Traits/ForwardsCalls.php:23
+#15 /vendor/laravel/framework/src/Illuminate/Support/Traits/ForwardsCalls.php:52
+#17 /app/Models/Assessment/Assessment.php:417
+#18 /app/Models/Assessment/Assessment.php:401
+#24 /app/Livewire/Cbt/CbtViewer.php:123
+#25 /app/Livewire/Cbt/CbtViewer.php:27
+#26 /vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:36
+#27 /vendor/laravel/framework/src/Illuminate/Container/Util.php:41
+#28 /vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:93
+#29 /vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php:35
+#30 /vendor/livewire/livewire/src/Wrapped.php:23
+#31 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:289
+#32 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:249
+#33 /vendor/livewire/livewire/src/Mechanisms/HandleComponents/HandleComponents.php:104
+#34 /vendor/livewire/livewire/src/LivewireManager.php:102
+#35 /vendor/livewire/livewire/src/Mechanisms/HandleRequests/HandleRequests.php:131
+#36 /vendor/laravel/framework/src/Illuminate/Routing/ControllerDispatcher.php:46
+#37 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:259
+#38 /vendor/laravel/framework/src/Illuminate/Routing/Route.php:205
+#39 /vendor/laravel/framework/src/Illuminate/Routing/Router.php:806
+#40 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:144
+#41 /vendor/barryvdh/laravel-debugbar/src/Middleware/InjectDebugbar.php:59
+#42 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#43 /vendor/laravel/framework/src/Illuminate/Routing/Middleware/SubstituteBindings.php:50
+#44 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#45 /vendor/laravel/framework/src/Illuminate/Foundation/Http/Middleware/VerifyCsrfToken.php:78
+#46 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#47 /vendor/laravel/framework/src/Illuminate/View/Middleware/ShareErrorsFromSession.php:49
+#48 /vendor/laravel/framework/src/Illuminate/Pipeline/Pipeline.php:183
+#49 /vendor/laravel/framework/src/Illuminate/Session/Middleware/StartSession.php:121
+  

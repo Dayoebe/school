@@ -1,7 +1,2 @@
-import Alpine from 'alpinejs';
-import persist from '@alpinejs/persist';
-
-window.Alpine = Alpine;
-Alpine.plugin(persist)
-
-Alpine.start();
+// Alpine is provided by Livewire in this application.
+// Keep this bundle free of a separate Alpine bootstrap to avoid breaking $wire.
