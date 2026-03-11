@@ -96,6 +96,11 @@ class Assessment extends Model
         return $this->hasMany(AttemptSession::class, 'assessment_id');
     }
 
+    public function studentLocks()
+    {
+        return $this->hasMany(AssessmentStudentLock::class, 'assessment_id');
+    }
+
     public function resultsPublishedBy()
     {
         return $this->belongsTo(User::class, 'results_published_by');
@@ -154,6 +159,10 @@ class Assessment extends Model
     {
         if (!$this->isExamPublished()) {
             return [false, 'This CBT exam has not been published to students yet.'];
+        }
+
+        if ($this->isLockedForStudent($userId)) {
+            return [false, $this->lockedStudentMessage()];
         }
 
         $activeSession = $this->getActiveAttemptSession($userId);
@@ -318,6 +327,26 @@ class Assessment extends Model
     public function isExamPublished(): bool
     {
         return $this->exam_published_at !== null;
+    }
+
+    public function isLockedForStudent(int|string|null $userId): bool
+    {
+        if (!$userId) {
+            return false;
+        }
+
+        if ($this->relationLoaded('studentLocks')) {
+            return $this->studentLocks->contains(fn ($lock) => (int) $lock->user_id === (int) $userId);
+        }
+
+        return $this->studentLocks()
+            ->where('user_id', (int) $userId)
+            ->exists();
+    }
+
+    public function lockedStudentMessage(): string
+    {
+        return 'You are currently restricted from writing this CBT exam. Please contact school administration.';
     }
 
     public function canUserViewResults(?User $user): bool

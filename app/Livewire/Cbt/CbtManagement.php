@@ -3,11 +3,13 @@
 namespace App\Livewire\Cbt;
 
 use App\Models\Assessment\Assessment;
+use App\Models\Assessment\AssessmentStudentLock;
 use App\Models\Assessment\Question;
 use App\Models\Assessment\StudentAnswer;
 use App\Models\User;
 use App\Traits\RestrictsTeacherCbtManagement;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -628,19 +630,8 @@ class CbtManagement extends Component
     {
         $schoolId = $this->currentSchoolId();
 
-        $this->selectedAssessment = $this->assessmentsForCurrentSchool()->with([
-            'course',
-            'lesson',
-            'studentAnswers' => function ($query) {
-                $query->whereNotNull('submitted_at')
-                    ->whereHas('user', function ($userQuery) {
-                        $userQuery->where('school_id', $this->currentSchoolId());
-                    })
-                    ->with('user', 'question')
-                    ->orderBy('user_id')
-                    ->orderBy('attempt_number', 'desc');
-            }
-        ])->find($assessmentId);
+        $this->selectedAssessment = $this->assessmentParticipantsQuery()
+            ->find($assessmentId);
 
         if (!$this->selectedAssessment || !$schoolId) {
             session()->flash('error', 'Assessment not found.');
@@ -656,11 +647,28 @@ class CbtManagement extends Component
             return collect();
         }
 
-        $participants = $this->selectedAssessment->studentAnswers
+        $answersByUser = $this->selectedAssessment->studentAnswers
             ->filter(fn ($answer) => $answer->user !== null)
-            ->groupBy('user_id')
-            ->map(function ($answers, $userId) {
-                $user = $answers->first()->user;
+            ->groupBy('user_id');
+        $eligibleStudents = $this->eligibleStudentsForAssessment($this->selectedAssessment)->keyBy('id');
+        $eligibleUserIds = $eligibleStudents->keys()
+            ->map(fn ($id) => (int) $id)
+            ->flip();
+        $attemptedStudents = $this->selectedAssessment->studentAnswers
+            ->filter(fn ($answer) => $answer->user !== null)
+            ->pluck('user')
+            ->keyBy('id');
+        $students = $eligibleStudents
+            ->merge($attemptedStudents)
+            ->keyBy('id');
+
+        $lockedUserIds = $this->selectedAssessment->studentLocks
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->flip();
+
+        $participants = $students->map(function ($user) use ($answersByUser, $lockedUserIds, $eligibleUserIds) {
+                $answers = $answersByUser->get($user->id, collect());
                 $attempts = $answers->groupBy('attempt_number')->map(function ($attemptAnswers, $attemptNumber) {
                     $totalPoints = $attemptAnswers->sum('points_earned');
                     $maxPoints = $attemptAnswers->sum(function ($answer) {
@@ -679,19 +687,90 @@ class CbtManagement extends Component
                 })->sortByDesc('attempt_number')->values();
 
                 $bestAttempt = $attempts->sortByDesc('percentage')->first();
+                $isLocked = $lockedUserIds->has((int) $user->id);
 
                 return [
                     'user' => $user,
-                    'user_id' => $userId,
+                    'user_id' => (int) $user->id,
                     'attempts' => $attempts,
                     'best_attempt' => $bestAttempt,
                     'total_attempts' => $attempts->count(),
+                    'is_locked' => $isLocked,
+                    'eligible_for_exam' => $eligibleUserIds->has((int) $user->id),
                 ];
             })
-            ->sortByDesc('best_attempt.percentage')
+            ->sort(function (array $left, array $right) {
+                if ($left['is_locked'] !== $right['is_locked']) {
+                    return $left['is_locked'] ? -1 : 1;
+                }
+
+                if ($left['total_attempts'] !== $right['total_attempts']) {
+                    return $right['total_attempts'] <=> $left['total_attempts'];
+                }
+
+                return strcasecmp($left['user']->name, $right['user']->name);
+            })
             ->values();
 
         return $participants;
+    }
+
+    public function toggleStudentLock($userId): void
+    {
+        if (!$this->currentUserCanLockAssessments()) {
+            session()->flash('error', 'Only super admin can lock students out of a CBT paper.');
+            return;
+        }
+
+        if (!$this->selectedAssessment) {
+            session()->flash('error', 'No assessment selected.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $existingLock = AssessmentStudentLock::query()
+            ->where('assessment_id', $assessment->id)
+            ->where('user_id', (int) $userId)
+            ->first();
+
+        $student = User::students()
+            ->where('school_id', $this->currentSchoolId())
+            ->find((int) $userId);
+
+        if (!$student) {
+            session()->flash('error', 'Student not found.');
+            return;
+        }
+
+        $isEligibleStudent = $this->eligibleStudentsForAssessment($assessment)
+            ->contains(fn ($eligibleStudent) => (int) $eligibleStudent->id === (int) $userId);
+
+        if (!$existingLock && !$isEligibleStudent) {
+            session()->flash('error', 'Student is not currently eligible for this CBT paper.');
+            return;
+        }
+
+        if ($existingLock) {
+            $existingLock->delete();
+            session()->flash('message', "{$student->name} can now access this CBT paper.");
+        } else {
+            AssessmentStudentLock::create([
+                'assessment_id' => $assessment->id,
+                'user_id' => (int) $userId,
+                'school_id' => (int) $this->currentSchoolId(),
+                'locked_by' => auth()->id(),
+            ]);
+
+            session()->flash('message', "{$student->name} has been locked out of this CBT paper.");
+        }
+
+        $this->selectedAssessment = $this->assessmentParticipantsQuery()
+            ->find($assessment->id);
     }
 
     public function clearAttempt($userId, $attemptNumber)
@@ -725,7 +804,8 @@ class CbtManagement extends Component
             ->delete();
 
         if ($deleted > 0) {
-            $this->selectedAssessment = $assessment->fresh('studentAnswers');
+            $this->selectedAssessment = $this->assessmentParticipantsQuery()
+                ->find($assessment->id);
             session()->flash('message', "Attempt #{$attemptNumber} cleared for {$user->name}");
         } else {
             session()->flash('error', 'Failed to clear attempt.');
@@ -762,7 +842,8 @@ class CbtManagement extends Component
             ->delete();
 
         if ($deleted > 0) {
-            $this->selectedAssessment = $assessment->fresh('studentAnswers');
+            $this->selectedAssessment = $this->assessmentParticipantsQuery()
+                ->find($assessment->id);
             session()->flash('message', "All attempts cleared for {$user->name} ({$deleted} answer(s) removed)");
         } else {
             session()->flash('error', 'No attempts found to clear.');
@@ -856,5 +937,62 @@ class CbtManagement extends Component
     protected function currentUserCanEditQuestionBank(Assessment $assessment): bool
     {
         return !$assessment->is_locked;
+    }
+
+    protected function eligibleStudentsForAssessment(Assessment $assessment): Collection
+    {
+        $schoolId = $this->currentSchoolId();
+        $academicYearId = auth()->user()?->school?->academic_year_id;
+
+        if (!$assessment->course_id || !$schoolId || !$academicYearId) {
+            return collect();
+        }
+
+        $studentRecordIds = DB::table('academic_year_student_record')
+            ->where('my_class_id', $assessment->course_id)
+            ->where('academic_year_id', $academicYearId)
+            ->pluck('student_record_id');
+
+        if ($studentRecordIds->isEmpty()) {
+            return collect();
+        }
+
+        return User::students()
+            ->where('school_id', $schoolId)
+            ->whereHas('studentRecord', function ($query) use ($studentRecordIds) {
+                $query->whereIn('student_records.id', $studentRecordIds)
+                    ->where('is_graduated', false);
+            })
+            ->when($assessment->lesson_id, function ($query) use ($assessment) {
+                $query->whereHas('studentRecord', function ($studentRecordQuery) use ($assessment) {
+                    $studentRecordQuery->whereExists(function ($subQuery) use ($assessment) {
+                        $subQuery->select(DB::raw(1))
+                            ->from('student_subject')
+                            ->whereColumn('student_subject.student_record_id', 'student_records.id')
+                            ->where('student_subject.subject_id', $assessment->lesson_id);
+                    });
+                });
+            })
+            ->with('studentRecord')
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function assessmentParticipantsQuery(): Builder
+    {
+        return $this->assessmentsForCurrentSchool()->with([
+            'course',
+            'lesson',
+            'studentLocks',
+            'studentAnswers' => function ($query) {
+                $query->whereNotNull('submitted_at')
+                    ->whereHas('user', function ($userQuery) {
+                        $userQuery->where('school_id', $this->currentSchoolId());
+                    })
+                    ->with('user', 'question')
+                    ->orderBy('user_id')
+                    ->orderBy('attempt_number', 'desc');
+            },
+        ]);
     }
 }

@@ -26,6 +26,7 @@ class CbtExamSelection extends Component
                     'questions',
                     'course',
                     'lesson',
+                    'studentLocks' => fn ($query) => $query->where('user_id', $userId),
                     'studentAnswers' => fn ($query) => $query
                         ->where('user_id', $userId)
                         ->with('question'),
@@ -52,7 +53,7 @@ class CbtExamSelection extends Component
                     $assessment->has_active_attempt = $activeAttempt !== null && !$activeAttempt->isExpired();
                     $assessment->attempts_count = $attemptCount;
 
-                    [$canTake, $message] = $this->determineAttemptAvailability($assessment, $attemptCount, $activeAttempt);
+                    [$canTake, $message] = $this->determineAttemptAvailability($assessment, $attemptCount, $activeAttempt, $userId);
                     $assessment->can_take = $canTake;
                     $assessment->attempt_message = $message;
                     $assessment->remaining_attempts = $this->calculateRemainingAttempts($assessment, $attemptCount);
@@ -170,8 +171,13 @@ class CbtExamSelection extends Component
     protected function determineAttemptAvailability(
         Assessment $assessment,
         int $attemptCount,
-        ?AttemptSession $activeAttempt
+        ?AttemptSession $activeAttempt,
+        int $userId
     ): array {
+        if ($assessment->isLockedForStudent($userId)) {
+            return [false, $assessment->lockedStudentMessage()];
+        }
+
         if ($activeAttempt && !$activeAttempt->isExpired()) {
             return [true, 'You have an in-progress attempt that can be resumed'];
         }

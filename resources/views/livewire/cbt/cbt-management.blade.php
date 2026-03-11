@@ -1071,6 +1071,8 @@
                                         Score</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">Status
                                     </th>
+                                    <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">Access
+                                    </th>
                                     <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">
                                         Details</th>
                                 </tr>
@@ -1097,31 +1099,68 @@
                                             </span>
                                         </td>
                                         <td class="px-4 py-3 text-center">
-                                            <span
-                                                class="font-bold text-lg {{ $participant['best_attempt']['passed'] ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                                                {{ $participant['best_attempt']['percentage'] }}%
-                                            </span>
-                                            <div class="text-xs text-themed-secondary">
-                                                {{ $participant['best_attempt']['total_points'] }}/{{ $participant['best_attempt']['max_points'] }}
-                                                pts
-                                            </div>
-                                        </td>
-                                        <td class="px-4 py-3 text-center">
-                                            <span
-                                                class="px-3 py-1 rounded-full text-sm font-medium
-                                                {{ $participant['best_attempt']['passed'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
-                                                {{ $participant['best_attempt']['passed'] ? 'PASSED' : 'FAILED' }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 text-center">
-                                            <button
-                                                @click="expandedUser = expandedUser === {{ $participant['user_id'] }} ? null : {{ $participant['user_id'] }}"
-                                                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 px-3 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
-                                                <i class="fas"
-                                                    :class="expandedUser === {{ $participant['user_id'] }} ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                            @if($participant['best_attempt'])
                                                 <span
-                                                    x-text="expandedUser === {{ $participant['user_id'] }} ? 'Hide' : 'View All'"></span>
-                                            </button>
+                                                    class="font-bold text-lg {{ $participant['best_attempt']['passed'] ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                                    {{ $participant['best_attempt']['percentage'] }}%
+                                                </span>
+                                                <div class="text-xs text-themed-secondary">
+                                                    {{ $participant['best_attempt']['total_points'] }}/{{ $participant['best_attempt']['max_points'] }}
+                                                    pts
+                                                </div>
+                                            @else
+                                                <span class="text-sm text-themed-secondary">No attempt yet</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            @if($participant['is_locked'])
+                                                <span
+                                                    class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                                    LOCKED
+                                                </span>
+                                            @elseif($participant['best_attempt'])
+                                                <span
+                                                    class="px-3 py-1 rounded-full text-sm font-medium
+                                                    {{ $participant['best_attempt']['passed'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
+                                                    {{ $participant['best_attempt']['passed'] ? 'PASSED' : 'FAILED' }}
+                                                </span>
+                                            @else
+                                                <span
+                                                    class="px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300">
+                                                    NOT STARTED
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            @if($canLockAssessments)
+                                                @if($participant['eligible_for_exam'] || $participant['is_locked'])
+                                                    <button
+                                                        wire:click="toggleStudentLock({{ $participant['user_id'] }})"
+                                                        class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $participant['is_locked'] ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
+                                                        title="{{ $participant['is_locked'] ? 'Unlock student for this paper' : 'Lock student for this paper' }}">
+                                                        <i class="fas {{ $participant['is_locked'] ? 'fa-lock-open' : 'fa-user-lock' }}"></i>
+                                                        <span>{{ $participant['is_locked'] ? 'Unlock' : 'Lock' }}</span>
+                                                    </button>
+                                                @else
+                                                    <span class="text-xs text-themed-secondary">Not eligible</span>
+                                                @endif
+                                            @else
+                                                <span class="text-xs text-themed-secondary">Super admin only</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-center">
+                                            @if($participant['total_attempts'] > 0)
+                                                <button
+                                                    @click="expandedUser = expandedUser === {{ $participant['user_id'] }} ? null : {{ $participant['user_id'] }}"
+                                                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 px-3 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors">
+                                                    <i class="fas"
+                                                        :class="expandedUser === {{ $participant['user_id'] }} ? 'fa-eye-slash' : 'fa-eye'"></i>
+                                                    <span
+                                                        x-text="expandedUser === {{ $participant['user_id'] }} ? 'Hide' : 'View All'"></span>
+                                                </button>
+                                            @else
+                                                <span class="text-xs text-themed-secondary">No attempts</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     <!-- Expandable Attempts Details -->
@@ -1132,7 +1171,7 @@
                                         x-transition:leave="transition ease-in duration-150"
                                         x-transition:leave-start="opacity-100 transform scale-100"
                                         x-transition:leave-end="opacity-0 transform scale-95" class="bg-themed-tertiary">
-                                        <td colspan="7" class="px-4 py-3">
+                                        <td colspan="8" class="px-4 py-3">
                                             <div class="pl-12">
                                                 <div class="flex justify-between items-center mb-3">
                                                     <h4 class="font-semibold text-themed-primary">All Attempts:</h4>
@@ -1191,15 +1230,15 @@
                     @else
                         <div class="text-center py-12">
                             <i class="fas fa-users text-6xl text-themed-tertiary mb-4"></i>
-                            <h5 class="text-xl text-themed-secondary mb-2">No Participants Yet</h5>
-                            <p class="text-themed-tertiary">No students have taken this assessment yet.</p>
+                            <h5 class="text-xl text-themed-secondary mb-2">No Eligible Students Found</h5>
+                            <p class="text-themed-tertiary">No eligible students are currently assigned to this assessment.</p>
                         </div>
                     @endif
                 </div>
 
                 <div class="p-6 border-t border-themed-secondary flex justify-between">
                     <div class="text-themed-secondary text-sm">
-                        Total Participants: <span
+                        Total Students: <span
                             class="font-semibold text-themed-primary">{{ $participants->count() }}</span>
                     </div>
                     <button wire:click="closeModals" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">

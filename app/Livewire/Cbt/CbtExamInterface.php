@@ -51,11 +51,16 @@ class CbtExamInterface extends Component
     public function mount($assessment)
     {
         $this->assessment = $this->assessmentsForCurrentSchool()
-            ->with('questions')
+            ->with(['questions', 'studentLocks'])
             ->find($assessment);
 
         if (!$this->assessment || $this->assessment->questions->count() === 0) {
             session()->flash('error', 'Invalid assessment.');
+            return redirect()->route('cbt.exams');
+        }
+
+        if ($this->isCurrentStudentLocked()) {
+            session()->flash('warning', $this->currentStudentLockMessage());
             return redirect()->route('cbt.exams');
         }
 
@@ -184,6 +189,13 @@ class CbtExamInterface extends Component
 
     public function startExam(): void
     {
+        if ($this->isCurrentStudentLocked(true)) {
+            $message = $this->currentStudentLockMessage();
+            $this->dispatch('exam-start-feedback', state: 'warning', message: $message);
+            session()->flash('warning', $message);
+            return;
+        }
+
         if (!$this->isAssessmentPublished(true)) {
             $message = $this->unpublishedAssessmentMessage();
             $this->dispatch('exam-start-feedback', state: 'warning', message: $message);
@@ -238,6 +250,16 @@ class CbtExamInterface extends Component
             return [
                 'time_remaining' => (int) $this->timeRemaining,
                 'exam_completed' => (bool) $this->examCompleted,
+            ];
+        }
+
+        if ($this->isCurrentStudentLocked(true)) {
+            session()->flash('warning', $this->currentStudentLockMessage());
+
+            return [
+                'time_remaining' => (int) $this->timeRemaining,
+                'exam_completed' => (bool) $this->examCompleted,
+                'redirect' => route('cbt.exams'),
             ];
         }
 
@@ -604,6 +626,10 @@ class CbtExamInterface extends Component
 
     protected function createAttemptSession(): AttemptSession
     {
+        if ($this->isCurrentStudentLocked(true)) {
+            throw new \RuntimeException($this->currentStudentLockMessage());
+        }
+
         if (!$this->isAssessmentPublished(true)) {
             throw new \RuntimeException($this->unpublishedAssessmentMessage());
         }
@@ -791,6 +817,21 @@ class CbtExamInterface extends Component
         }
 
         return (bool) $this->assessment?->isExamPublished();
+    }
+
+    protected function isCurrentStudentLocked(bool $refresh = false): bool
+    {
+        if ($refresh && $this->assessment) {
+            $this->assessment->refresh();
+        }
+
+        return (bool) $this->assessment?->isLockedForStudent(Auth::id());
+    }
+
+    protected function currentStudentLockMessage(): string
+    {
+        return $this->assessment?->lockedStudentMessage()
+            ?? 'You are currently restricted from writing this CBT exam. Please contact school administration.';
     }
 
     protected function unpublishedAssessmentMessage(): string
