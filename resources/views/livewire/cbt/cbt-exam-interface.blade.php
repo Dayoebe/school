@@ -1,6 +1,6 @@
 <div x-data="modernCbtExam()"
      data-cbt-exam-root
-     class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800"
+     class="cbt-interface-solid min-h-screen bg-stone-50 dark:bg-gray-900"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
     @if (session()->has('error') || session()->has('warning') || session()->has('message'))
@@ -1334,3 +1334,90 @@ window.renderMathInElement = function(element) {
     }
 };
 </script>
+
+<style>
+    .cbt-interface-solid {
+        background-color: #f5f5f4;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-r"][class*="from-blue-600"][class*="to-indigo-600"] {
+        background-image: none !important;
+        background-color: #2563eb !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-r"][class*="from-green-600"][class*="to-emerald-600"] {
+        background-image: none !important;
+        background-color: #059669 !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-r"][class*="from-red-600"][class*="to-pink-600"] {
+        background-image: none !important;
+        background-color: #e11d48 !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-r"][class*="from-yellow-500"][class*="to-orange-500"] {
+        background-image: none !important;
+        background-color: #f59e0b !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-r"][class*="from-blue-50"][class*="to-indigo-50"] {
+        background-image: none !important;
+        background-color: #dbeafe !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-blue-50"][class*="to-blue-100"] {
+        background-image: none !important;
+        background-color: #dbeafe !important;
+        border: 1px solid #93c5fd;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-purple-50"][class*="to-purple-100"] {
+        background-image: none !important;
+        background-color: #ede9fe !important;
+        border: 1px solid #c4b5fd;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-green-50"][class*="to-green-100"] {
+        background-image: none !important;
+        background-color: #dcfce7 !important;
+        border: 1px solid #86efac;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-orange-50"][class*="to-orange-100"] {
+        background-image: none !important;
+        background-color: #ffedd5 !important;
+        border: 1px solid #fdba74;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-yellow-400"][class*="to-orange-500"] {
+        background-image: none !important;
+        background-color: #f59e0b !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-blue-500"][class*="to-indigo-600"] {
+        background-image: none !important;
+        background-color: #2563eb !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-green-500"][class*="to-emerald-600"] {
+        background-image: none !important;
+        background-color: #059669 !important;
+    }
+
+    .cbt-interface-solid [class*="bg-gradient-to-br"][class*="from-red-500"][class*="to-pink-600"] {
+        background-image: none !important;
+        background-color: #e11d48 !important;
+    }
+
+    .cbt-interface-solid [class*="hover:from-blue-700"][class*="hover:to-indigo-700"]:hover {
+        background-color: #1d4ed8 !important;
+    }
+
+    .cbt-interface-solid [class*="hover:from-green-700"][class*="hover:to-emerald-700"]:hover {
+        background-color: #047857 !important;
+    }
+
+    .cbt-interface-solid [class*="hover:from-yellow-600"][class*="hover:to-orange-600"]:hover {
+        background-color: #d97706 !important;
+    }
+</style>

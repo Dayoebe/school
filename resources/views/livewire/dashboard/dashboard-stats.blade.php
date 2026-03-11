@@ -1,503 +1,504 @@
-<div class="space-y-6">
+<div class="space-y-8 pb-4">
     @if ($loading)
-        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <p class="text-gray-600 dark:text-gray-300">Loading dashboard data...</p>
+        <div class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <p class="text-slate-600">Loading dashboard data...</p>
         </div>
     @else
-        <section class="rounded-2xl bg-slate-800 p-6 text-white shadow-xl">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                    <p class="text-sm uppercase tracking-wide text-slate-300">Unified Dashboard</p>
-                    <h2 class="mt-1 text-2xl font-bold md:text-3xl">
-                        Welcome, {{ auth()->user()->name }}
-                    </h2>
-                    <p class="mt-2 text-sm text-slate-200 md:text-base">
-                        Signed in as {{ $roleLabel }}. Access is filtered by your role and permissions.
-                    </p>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[480px]">
-                    <div class="rounded-xl border border-white/20 bg-white/10 p-3">
-                        <p class="text-xs uppercase tracking-wide text-slate-200">School</p>
-                        <p class="mt-1 font-semibold">{{ $academicContext['school_name'] ?? config('app.name') }}</p>
-                    </div>
-                    <div class="rounded-xl border border-white/20 bg-white/10 p-3">
-                        <p class="text-xs uppercase tracking-wide text-slate-200">Date</p>
-                        <p class="mt-1 font-semibold">{{ $academicContext['today'] ?? now()->format('D, M j, Y') }}</p>
-                    </div>
-                    <div class="rounded-xl border border-white/20 bg-white/10 p-3">
-                        <p class="text-xs uppercase tracking-wide text-slate-200">Academic Year</p>
-                        <p class="mt-1 font-semibold">{{ $academicContext['academic_year'] ?? 'Not set' }}</p>
-                    </div>
-                    <div class="rounded-xl border border-white/20 bg-white/10 p-3">
-                        <p class="text-xs uppercase tracking-wide text-slate-200">Term</p>
-                        <p class="mt-1 font-semibold">{{ $academicContext['semester'] ?? 'Not set' }}</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-
-           <div class="mb-6">
-        @livewire('dashboard.active-notices')
-    </div>
-
-        @if ($quickActions !== [])
-            @php
-                $quickActionPalette = [
-                    'bg-red-700',
-                    'bg-orange-700',
-                    'bg-amber-700',
-                    'bg-yellow-700',
-                    'bg-lime-700',
-                    'bg-green-700',
-                    'bg-emerald-700',
-                    'bg-teal-700',
-                    'bg-cyan-700',
-                    'bg-sky-700',
-                    'bg-blue-700',
-                    'bg-indigo-700',
-                    'bg-violet-700',
-                    'bg-purple-700',
-                    'bg-fuchsia-700',
-                    'bg-pink-700',
-                    'bg-rose-700',
-                    'bg-slate-700',
-                    'bg-gray-700',
-                    'bg-zinc-700',
-                    'bg-neutral-700',
-                    'bg-stone-700',
-                ];
-            @endphp
-
-            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">Quick Actions</h3>
-                    <p class="text-sm text-gray-500 dark:text-gray-300">{{ count($quickActions) }} available</p>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    @foreach ($quickActions as $action)
-                        @php
-                            $actionTone = $quickActionPalette[$loop->index % count($quickActionPalette)];
-                        @endphp
-
-                        <a href="{{ route($action['route']) }}"
-                            class="group rounded-xl {{ $actionTone }} p-4 text-white shadow-md transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg"
-                            wire:navigate>
-                            <div class="mb-2 flex items-center justify-between">
-                                <i class="{{ $action['icon'] }} text-xl"></i>
-                                <i class="fas fa-arrow-right text-sm opacity-70 transition group-hover:translate-x-0.5"></i>
-                            </div>
-                            <h4 class="text-lg font-semibold">{{ $action['title'] }}</h4>
-                            <p class="mt-1 text-sm text-white/90">{{ $action['description'] }}</p>
-                        </a>
-                    @endforeach
-                </div>
-            </section>
-        @endif
-
         @php
-            $overviewCards = [
+            $user = auth()->user();
+
+            $roleTheme = match (true) {
+                $isSuperAdmin => [
+                    'badge' => 'bg-amber-300 text-slate-950',
+                    'panel' => 'border-amber-200 bg-amber-50',
+                    'soft' => 'bg-amber-100 text-amber-900',
+                ],
+                $isStaff => [
+                    'badge' => 'bg-emerald-300 text-slate-950',
+                    'panel' => 'border-emerald-200 bg-emerald-50',
+                    'soft' => 'bg-emerald-100 text-emerald-900',
+                ],
+                $isStudent => [
+                    'badge' => 'bg-sky-300 text-slate-950',
+                    'panel' => 'border-sky-200 bg-sky-50',
+                    'soft' => 'bg-sky-100 text-sky-900',
+                ],
+                $isParent => [
+                    'badge' => 'bg-rose-300 text-slate-950',
+                    'panel' => 'border-rose-200 bg-rose-50',
+                    'soft' => 'bg-rose-100 text-rose-900',
+                ],
+                default => [
+                    'badge' => 'bg-slate-300 text-slate-950',
+                    'panel' => 'border-slate-200 bg-slate-50',
+                    'soft' => 'bg-slate-100 text-slate-900',
+                ],
+            };
+
+            $roleSummary = match (true) {
+                $isSuperAdmin => 'You are controlling the school-wide setup, operations, and reporting from one place.',
+                $isStaff => 'Your dashboard is focused on the classes, records, and workflows you are allowed to manage.',
+                $isStudent => 'Your dashboard is focused on your current class work, results, and exam access only.',
+                $isParent => 'Your dashboard keeps your linked children, results, and welfare information in one place.',
+                default => 'Your dashboard shows the tools and information available to this account.',
+            };
+
+            $actionGroups = collect($quickActions)
+                ->groupBy(fn ($action) => $action['group'] ?? 'Other');
+
+            $groupMeta = [
+                'Academic' => [
+                    'icon' => 'fas fa-book-open',
+                    'description' => 'Results, subject access, and academic records.',
+                    'card' => 'bg-emerald-600 text-white',
+                    'surface' => 'border-emerald-200 bg-emerald-50',
+                    'chip' => 'border border-emerald-200 bg-emerald-100 text-emerald-800',
+                ],
+                'Assessment' => [
+                    'icon' => 'fas fa-clipboard-check',
+                    'description' => 'Exams, CBT, uploads, and assessment workflows.',
+                    'card' => 'bg-blue-600 text-white',
+                    'surface' => 'border-sky-200 bg-sky-50',
+                    'chip' => 'border border-sky-200 bg-sky-100 text-sky-800',
+                ],
+                'People' => [
+                    'icon' => 'fas fa-users',
+                    'description' => 'Student, teacher, and parent administration.',
+                    'card' => 'bg-orange-500 text-white',
+                    'surface' => 'border-orange-200 bg-orange-50',
+                    'chip' => 'border border-orange-200 bg-orange-100 text-orange-800',
+                ],
+                'Operations' => [
+                    'icon' => 'fas fa-compass',
+                    'description' => 'Settings, notices, finance, timetables, and analytics.',
+                    'card' => 'bg-rose-600 text-white',
+                    'surface' => 'border-rose-200 bg-rose-50',
+                    'chip' => 'border border-rose-200 bg-rose-100 text-rose-800',
+                ],
+                'Account' => [
+                    'icon' => 'fas fa-user-shield',
+                    'description' => 'Your profile, password, and account security.',
+                    'card' => 'bg-slate-700 text-white',
+                    'surface' => 'border-slate-200 bg-slate-50',
+                    'chip' => 'border border-slate-200 bg-slate-100 text-slate-700',
+                ],
+            ];
+
+            $pulseCards = array_values(array_filter([
                 [
                     'label' => 'Active Notices',
                     'value' => $snapshot['active_notices'] ?? 0,
-                    'helper' => 'Announcements currently visible',
+                    'helper' => 'Current school announcements',
                     'icon' => 'fas fa-bullhorn',
+                    'tone' => 'bg-amber-500 text-slate-950',
                 ],
                 [
                     'label' => 'Ongoing Exams',
                     'value' => $snapshot['ongoing_exams'] ?? 0,
-                    'helper' => 'Exam windows active today',
+                    'helper' => 'Exam windows active right now',
                     'icon' => 'fas fa-hourglass-half',
+                    'tone' => 'bg-rose-500 text-white',
                 ],
                 [
                     'label' => 'Upcoming Exams',
                     'value' => $snapshot['upcoming_exams'] ?? 0,
-                    'helper' => 'Scheduled future exams',
+                    'helper' => 'Scheduled next in the exam calendar',
                     'icon' => 'fas fa-calendar-alt',
+                    'tone' => 'bg-cyan-500 text-slate-950',
                 ],
                 [
                     'label' => 'Published Exams',
                     'value' => $snapshot['published_exams'] ?? 0,
-                    'helper' => 'Exams with published results',
+                    'helper' => 'Exams with visible results',
                     'icon' => 'fas fa-check-circle',
+                    'tone' => 'bg-emerald-500 text-white',
                 ],
                 [
                     'label' => 'Term Results',
                     'value' => $snapshot['term_results'] ?? 0,
-                    'helper' => 'Result entries this term',
-                    'icon' => 'fas fa-chart-bar',
+                    'helper' => 'Current-term result entries',
+                    'icon' => 'fas fa-chart-line',
+                    'tone' => 'bg-violet-500 text-white',
                 ],
+            ], fn ($card) => !($isStudent || $isParent) || $card['label'] !== 'Term Results' || ($card['value'] ?? 0) > 0));
+
+            $staffMetrics = collect([
+                [
+                    'label' => 'Schools',
+                    'value' => $stats['schools'] ?? 0,
+                    'route' => 'schools.index',
+                    'visible' => $isSuperAdmin,
+                    'permissions' => ['read school', 'create school', 'manage school settings'],
+                ],
+                [
+                    'label' => 'Students',
+                    'value' => $stats['active_students'] ?? 0,
+                    'route' => 'students.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read student'],
+                ],
+                [
+                    'label' => 'Teachers',
+                    'value' => $stats['teachers'] ?? 0,
+                    'route' => 'teachers.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read teacher'],
+                ],
+                [
+                    'label' => 'Parents',
+                    'value' => $stats['parents'] ?? 0,
+                    'route' => 'parents.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read parent'],
+                ],
+                [
+                    'label' => 'Subjects',
+                    'value' => $stats['subjects'] ?? 0,
+                    'route' => 'subjects.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read subject'],
+                ],
+                [
+                    'label' => 'Exams',
+                    'value' => $stats['total_exams'] ?? 0,
+                    'route' => 'exams.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read exam', 'read exam record'],
+                ],
+                [
+                    'label' => 'Notices',
+                    'value' => $stats['total_notices'] ?? 0,
+                    'route' => 'notices.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read notice', 'create notice', 'update notice'],
+                ],
+                [
+                    'label' => 'Graduated',
+                    'value' => $stats['graduated_students'] ?? 0,
+                    'route' => 'students.graduations',
+                    'visible' => $isStaff,
+                    'permissions' => ['read student'],
+                ],
+            ])->filter(function ($metric) use ($user) {
+                if (($metric['visible'] ?? true) === false) {
+                    return false;
+                }
+
+                if (!empty($metric['permissions'])) {
+                    foreach ($metric['permissions'] as $permission) {
+                        if (is_string($permission) && $user->can($permission)) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+
+                return true;
+            })->values();
+
+            $studentHighlights = [
+                ['label' => 'Admission No.', 'value' => $studentPanel['admission_number'] ?? 'N/A'],
+                ['label' => 'Class', 'value' => $studentPanel['class_name'] ?? 'Not assigned'],
+                ['label' => 'Section', 'value' => $studentPanel['section_name'] ?? 'Not assigned'],
+                ['label' => 'Subjects', 'value' => $studentPanel['subject_count'] ?? 0],
+                ['label' => 'Result Entries', 'value' => $studentPanel['result_count'] ?? 0],
+                ['label' => 'Approved Results', 'value' => $studentPanel['approved_result_count'] ?? 0],
+                ['label' => 'Average Score', 'value' => $studentPanel['average_score'] ?? '0.0'],
             ];
 
-            $overviewPalette = [
-                'bg-red-700',
-                'bg-orange-700',
-                'bg-amber-700',
-                'bg-yellow-800',
-                'bg-lime-800',
+            $staffMetricTones = [
+                'bg-violet-500 text-white',
+                'bg-cyan-500 text-slate-950',
+                'bg-emerald-500 text-white',
+                'bg-amber-500 text-slate-950',
+                'bg-fuchsia-500 text-white',
+                'bg-lime-500 text-slate-950',
+                'bg-blue-500 text-white',
+                'bg-rose-500 text-white',
+            ];
+
+            $studentHighlightTones = [
+                'bg-sky-500 text-white',
+                'bg-cyan-500 text-slate-950',
+                'bg-indigo-500 text-white',
+                'bg-violet-500 text-white',
+                'bg-purple-500 text-white',
+                'bg-emerald-500 text-white',
+                'bg-amber-500 text-slate-950',
+            ];
+
+            $parentChildTones = [
+                'bg-rose-500 text-white',
+                'bg-pink-500 text-white',
+                'bg-orange-500 text-white',
+                'bg-sky-500 text-white',
+                'bg-emerald-500 text-white',
+                'bg-teal-500 text-white',
             ];
         @endphp
 
-        <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-            @foreach ($overviewCards as $card)
-                @php
-                    $overviewTone = $overviewPalette[$loop->index % count($overviewPalette)];
-                @endphp
-
-                <div class="rounded-xl {{ $overviewTone }} p-4 text-white shadow-md">
-                    <div class="flex items-center justify-between">
-                        <p class="text-sm text-white/90">{{ $card['label'] }}</p>
-                        <i class="{{ $card['icon'] }} text-white/90"></i>
+        <section class="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 px-6 py-8 text-white shadow-2xl">
+            <div class="grid gap-8 xl:grid-cols-[1.35fr,0.95fr]">
+                <div class="space-y-5">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <span class="rounded-full px-4 py-1.5 text-xs font-bold uppercase tracking-[0.25em] {{ $roleTheme['badge'] }}">
+                            {{ $roleLabel }} Portal
+                        </span>
+                        <span class="rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.25em] {{ $roleTheme['soft'] }}">
+                            Main Dashboard
+                        </span>
                     </div>
-                    <p class="mt-3 text-3xl font-bold">{{ $card['value'] }}</p>
-                    <p class="mt-1 text-xs text-white/80">{{ $card['helper'] }}</p>
+
+                    <div>
+                        <p class="text-sm uppercase tracking-[0.35em] text-white/55">Welcome Back</p>
+                        <h2 class="mt-3 max-w-3xl text-3xl font-black leading-tight md:text-5xl">
+                            {{ $academicContext['school_name'] ?? config('app.name') }}
+                        </h2>
+                        <p class="mt-4 max-w-2xl text-base leading-7 text-white/80 md:text-lg">
+                            {{ $roleSummary }}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <div class="rounded-2xl bg-red-500 px-4 py-3 text-white">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/70">User</p>
+                            <p class="mt-1 text-sm font-semibold">{{ $user->name }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-orange-500 px-4 py-3 text-white">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-white/70">Academic Year</p>
+                            <p class="mt-1 text-sm font-semibold">{{ $academicContext['academic_year'] ?? 'Not set' }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-amber-500 px-4 py-3 text-slate-950">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800/70">Term</p>
+                            <p class="mt-1 text-sm font-semibold">{{ $academicContext['semester'] ?? 'Not set' }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-yellow-400 px-4 py-3 text-slate-950">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.25em] text-slate-800/70">Today</p>
+                            <p class="mt-1 text-sm font-semibold">{{ $academicContext['today'] ?? now()->format('D, M j, Y') }}</p>
+                        </div>
+                    </div>
                 </div>
-            @endforeach
+
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    @foreach ($pulseCards as $pulseCard)
+                        <div class="rounded-[1.5rem] p-4 shadow-lg {{ $pulseCard['tone'] }}">
+                            <div class="flex items-center justify-between">
+                                <p class="text-xs font-semibold uppercase tracking-[0.24em] opacity-75">{{ $pulseCard['label'] }}</p>
+                                <i class="{{ $pulseCard['icon'] }} opacity-80"></i>
+                            </div>
+                            <p class="mt-4 text-3xl font-black">{{ $pulseCard['value'] }}</p>
+                            <p class="mt-2 text-sm leading-6 opacity-80">{{ $pulseCard['helper'] }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
         </section>
 
-        @if ($isStaff && $stats !== [])
-            @php
-                $user = auth()->user();
-                $staffMetrics = [
-                    [
-                        'label' => 'Schools',
-                        'value' => $stats['schools'] ?? 0,
-                        'icon' => 'fas fa-school',
-                        'route' => 'schools.index',
-                        'visible' => $isSuperAdmin,
-                        'permissions' => ['read school', 'create school', 'manage school settings'],
-                    ],
-                    [
-                        'label' => 'Notices',
-                        'value' => $stats['total_notices'] ?? 0,
-                        'icon' => 'fas fa-bullhorn',
-                        'route' => 'notices.index',
-                        'permissions' => ['read notice', 'create notice', 'update notice'],
-                    ],
-                    [
-                        'label' => 'Class Groups',
-                        'value' => $stats['class_groups'] ?? 0,
-                        'icon' => 'fas fa-layer-group',
-                        'route' => 'class-groups.index',
-                        'permissions' => ['read class group'],
-                    ],
-                    [
-                        'label' => 'Classes',
-                        'value' => $stats['classes'] ?? 0,
-                        'icon' => 'fas fa-chalkboard',
-                        'route' => 'classes.index',
-                        'permissions' => ['read class'],
-                    ],
-                    [
-                        'label' => 'Sections',
-                        'value' => $stats['sections'] ?? 0,
-                        'icon' => 'fas fa-users',
-                        'route' => 'sections.index',
-                        'permissions' => ['read section'],
-                    ],
-                    [
-                        'label' => 'Subjects',
-                        'value' => $stats['subjects'] ?? 0,
-                        'icon' => 'fas fa-book-open',
-                        'route' => 'subjects.index',
-                        'permissions' => ['read subject'],
-                    ],
-                    [
-                        'label' => 'Active Students',
-                        'value' => $stats['active_students'] ?? 0,
-                        'icon' => 'fas fa-user-graduate',
-                        'route' => 'students.index',
-                        'permissions' => ['read student'],
-                    ],
-                    [
-                        'label' => 'Graduated Students',
-                        'value' => $stats['graduated_students'] ?? 0,
-                        'icon' => 'fas fa-graduation-cap',
-                        'route' => 'students.graduations',
-                        'permissions' => ['read student'],
-                    ],
-                    [
-                        'label' => 'Teachers',
-                        'value' => $stats['teachers'] ?? 0,
-                        'icon' => 'fas fa-chalkboard-teacher',
-                        'route' => 'teachers.index',
-                        'permissions' => ['read teacher'],
-                    ],
-                    [
-                        'label' => 'Parents',
-                        'value' => $stats['parents'] ?? 0,
-                        'icon' => 'fas fa-users',
-                        'route' => 'parents.index',
-                        'permissions' => ['read parent'],
-                    ],
-                    [
-                        'label' => 'Exams',
-                        'value' => $stats['total_exams'] ?? 0,
-                        'icon' => 'fas fa-file-signature',
-                        'route' => 'exams.index',
-                        'permissions' => ['read exam', 'read exam record'],
-                    ],
-                ];
-
-                $staffMetricPalette = [
-                    'bg-green-700',
-                    'bg-emerald-700',
-                    'bg-teal-700',
-                    'bg-cyan-700',
-                    'bg-sky-700',
-                    'bg-blue-700',
-                    'bg-indigo-700',
-                    'bg-violet-700',
-                    'bg-purple-700',
-                    'bg-fuchsia-700',
-                    'bg-pink-700',
-                    'bg-rose-700',
-                    'bg-slate-700',
-                    'bg-gray-700',
-                    'bg-zinc-700',
-                    'bg-neutral-700',
-                    'bg-stone-700',
-                    'bg-red-700',
-                    'bg-orange-700',
-                    'bg-amber-700',
-                    'bg-yellow-800',
-                    'bg-lime-800',
-                ];
-            @endphp
-
-            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <h3 class="mb-4 text-xl font-semibold text-gray-800 dark:text-gray-100">School Metrics</h3>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    @foreach ($staffMetrics as $metric)
-                        @if (($metric['visible'] ?? true) === false)
-                            @continue
-                        @endif
-
-                        @php
-                            $hasMetricPermission = true;
-                            if (!empty($metric['permissions']) && is_array($metric['permissions'])) {
-                                $hasMetricPermission = false;
-                                foreach ($metric['permissions'] as $permission) {
-                                    if (is_string($permission) && $user->can($permission)) {
-                                        $hasMetricPermission = true;
-                                        break;
-                                    }
-                                }
-                            }
-
-                            if (!$hasMetricPermission) {
-                                continue;
-                            }
-
-                            $metricTone = $staffMetricPalette[$loop->index % count($staffMetricPalette)];
-                            $isLink = !empty($metric['route']) && \Illuminate\Support\Facades\Route::has($metric['route']);
-                        @endphp
-
-                        @if ($isLink)
-                            <a href="{{ route($metric['route']) }}"
-                                class="rounded-xl {{ $metricTone }} p-4 text-white shadow-md transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-lg"
-                                wire:navigate>
-                        @else
-                            <div class="rounded-xl {{ $metricTone }} p-4 text-white shadow-md">
-                        @endif
-                            <div class="flex items-center justify-between">
-                                <p class="text-sm text-white/90">{{ $metric['label'] }}</p>
-                                <i class="{{ $metric['icon'] }} text-white/90"></i>
-                            </div>
-                            <p class="mt-2 text-2xl font-bold">{{ $metric['value'] }}</p>
-                        @if ($isLink)
-                            </a>
-                        @else
-                            </div>
-                        @endif
-                    @endforeach
-                </div>
-            </section>
-        @endif
-
-        @if ($isStudent && $studentPanel !== [])
-            @php
-                $studentCardPalette = [
-                    'bg-red-700',
-                    'bg-orange-700',
-                    'bg-amber-700',
-                    'bg-yellow-800',
-                    'bg-lime-800',
-                    'bg-green-700',
-                    'bg-emerald-700',
-                ];
-
-                $studentCards = [
-                    ['label' => 'Admission No.', 'value' => $studentPanel['admission_number'], 'icon' => 'fas fa-id-card'],
-                    ['label' => 'Class', 'value' => $studentPanel['class_name'], 'icon' => 'fas fa-school'],
-                    ['label' => 'Section', 'value' => $studentPanel['section_name'], 'icon' => 'fas fa-users'],
-                    ['label' => 'Subjects', 'value' => $studentPanel['subject_count'], 'icon' => 'fas fa-book-open'],
-                    ['label' => 'Result Entries', 'value' => $studentPanel['result_count'], 'icon' => 'fas fa-list-check'],
-                    ['label' => 'Approved Results', 'value' => $studentPanel['approved_result_count'], 'icon' => 'fas fa-circle-check'],
-                    ['label' => 'Average Score', 'value' => $studentPanel['average_score'], 'icon' => 'fas fa-chart-line'],
-                ];
-            @endphp
-
-            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">Student Overview</h3>
-                    <span class="rounded-full bg-indigo-700 px-3 py-1 text-xs font-semibold text-white">
-                        Student
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    @foreach ($studentCards as $studentCard)
-                        @php
-                            $studentTone = $studentCardPalette[$loop->index % count($studentCardPalette)];
-                        @endphp
-
-                        <div class="rounded-xl {{ $studentTone }} p-4 text-white shadow-md">
-                            <div class="flex items-center justify-between">
-                                <p class="text-xs uppercase tracking-wide text-white/90">{{ $studentCard['label'] }}</p>
-                                <i class="{{ $studentCard['icon'] }} text-white/90"></i>
-                            </div>
-                            <p class="mt-2 text-2xl font-bold">{{ $studentCard['value'] }}</p>
-                        </div>
-                    @endforeach
-                </div>
-
-                <div class="mt-5 flex flex-wrap gap-3">
-                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.view.student'))
-                        <a href="{{ route('result.view.student') }}"
-                            class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            My Results
-                        </a>
-                    @endif
-                    @if (\Illuminate\Support\Facades\Route::has('cbt.exams'))
-                        <a href="{{ route('cbt.exams') }}"
-                            class="rounded-lg bg-sky-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            Take CBT Exams
-                        </a>
-                    @endif
-                    @if (\Illuminate\Support\Facades\Route::has('cbt.viewer'))
-                        <a href="{{ route('cbt.viewer') }}"
-                            class="rounded-lg bg-violet-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            View CBT Results
-                        </a>
-                    @endif
-                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.history'))
-                        <a href="{{ route('result.history') }}"
-                            class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            Academic History
-                        </a>
-                    @endif
-                </div>
-
-                @if (auth()->user()->can('view result'))
-                    <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                        <div class="mb-3">
-                            <h4 class="text-sm font-semibold text-gray-800">Result Period</h4>
-                            <p class="text-sm text-gray-600">Choose the academic year and term for the result you want to open.</p>
-                        </div>
-
-                        <livewire:result.academic-period-selector />
+        <div class="grid gap-6 xl:grid-cols-[1.15fr,0.85fr]">
+            <section class="rounded-[1.75rem] border border-stone-200 bg-stone-50 p-6 shadow-[0_24px_80px_-32px_rgba(15,23,42,0.28)]">
+                <div class="flex flex-col gap-3 border-b border-slate-200/80 pb-5 md:flex-row md:items-end md:justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Navigation Hub</p>
+                        <h3 class="mt-2 text-2xl font-bold text-slate-900">Role-based actions</h3>
+                        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                            Only the tools that match this account's role and permissions are shown here.
+                        </p>
                     </div>
-                @endif
-            </section>
-        @endif
-
-        @if ($isParent && $parentPanel !== [])
-            @php
-                $parentChildPalette = [
-                    'bg-cyan-700',
-                    'bg-blue-700',
-                    'bg-indigo-700',
-                    'bg-purple-700',
-                    'bg-fuchsia-700',
-                    'bg-pink-700',
-                    'bg-rose-700',
-                ];
-            @endphp
-
-            <section class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-                <div class="mb-4 flex items-center justify-between">
-                    <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100">Parent Overview</h3>
-                    <span class="rounded-full bg-teal-700 px-3 py-1 text-xs font-semibold text-white">
-                        {{ $parentPanel['total_children'] ?? 0 }} Child(ren)
-                    </span>
+                    <div class="rounded-2xl {{ $roleTheme['panel'] }} px-4 py-3 text-sm font-medium text-slate-700">
+                        {{ count($quickActions) }} action{{ count($quickActions) === 1 ? '' : 's' }} available
+                    </div>
                 </div>
 
-                @if (($parentPanel['total_children'] ?? 0) > 0)
-                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        @foreach ($parentPanel['children'] as $child)
-                            @php
-                                $childTone = $parentChildPalette[$loop->index % count($parentChildPalette)];
-                            @endphp
+                @if ($quickActions !== [])
+                    <div class="mt-6 space-y-8">
+                        @foreach ($groupMeta as $groupKey => $group)
+                            @php($actions = $actionGroups->get($groupKey, collect()))
+                            @if ($actions->isEmpty())
+                                @continue
+                            @endif
 
-                            <div class="rounded-xl {{ $childTone }} p-4 text-white shadow-md">
-                                <p class="text-base font-semibold">{{ $child['name'] }}</p>
-                                <p class="mt-1 text-sm text-white/90">Admission: {{ $child['admission_number'] }}</p>
-                                <p class="mt-1 text-sm text-white/90">Class: {{ $child['class_name'] }}</p>
-                                <p class="text-sm text-white/90">Section: {{ $child['section_name'] }}</p>
+                            <div class="rounded-[1.6rem] border p-5 shadow-sm {{ $group['surface'] }}">
+                                <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                                    <div>
+                                        <div class="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] {{ $group['chip'] }}">
+                                            <i class="{{ $group['icon'] }}"></i>
+                                            <span>{{ $groupKey }}</span>
+                                        </div>
+                                        <p class="mt-3 text-sm leading-6 text-slate-600">{{ $group['description'] }}</p>
+                                    </div>
+                                    <span class="text-sm font-medium text-slate-500">{{ $actions->count() }} available</span>
+                                </div>
+
+                                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                                    @foreach ($actions as $action)
+                                        <a
+                                            href="{{ route($action['route']) }}"
+                                            class="group rounded-[1.4rem] p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl {{ $group['card'] }}"
+                                            wire:navigate
+                                        >
+                                            <div class="flex items-start justify-between gap-4">
+                                                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-white shadow-sm">
+                                                    <i class="{{ $action['icon'] }} text-lg"></i>
+                                                </div>
+                                                <i class="fas fa-arrow-right text-sm text-white/70 transition group-hover:translate-x-0.5 group-hover:text-white"></i>
+                                            </div>
+                                            <h4 class="mt-5 text-lg font-semibold">{{ $action['title'] }}</h4>
+                                            <p class="mt-2 text-sm leading-6 text-white/85">{{ $action['description'] }}</p>
+                                        </a>
+                                    @endforeach
+                                </div>
                             </div>
                         @endforeach
                     </div>
-
-                    @if (($parentPanel['hidden_count'] ?? 0) > 0)
-                        <p class="mt-3 text-sm text-gray-500 dark:text-gray-300">
-                            +{{ $parentPanel['hidden_count'] }} more child(ren) linked to your account.
-                        </p>
-                    @endif
                 @else
-                    <p class="text-sm text-gray-600 dark:text-gray-300">
-                        No student records are currently linked to this parent account.
-                    </p>
-                @endif
-
-                <div class="mt-5 flex flex-wrap gap-3">
-                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.view.student'))
-                        <a href="{{ route('result.view.student') }}"
-                            class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            Children Results
-                        </a>
-                    @endif
-                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.history'))
-                        <a href="{{ route('result.history') }}"
-                            class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            Children History
-                        </a>
-                    @endif
-                    @if (\Illuminate\Support\Facades\Route::has('profile.edit'))
-                        <a href="{{ route('profile.edit') }}"
-                            class="rounded-lg bg-gray-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            Update Profile
-                        </a>
-                    @endif
-                    @if (\Illuminate\Support\Facades\Route::has('password.change'))
-                        <a href="{{ route('password.change') }}"
-                            class="rounded-lg bg-zinc-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
-                            wire:navigate>
-                            Change Password
-                        </a>
-                    @endif
-                </div>
-
-                @if (auth()->user()->can('view result'))
-                    <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
-                        <div class="mb-3">
-                            <h4 class="text-sm font-semibold text-gray-800">Result Period</h4>
-                            <p class="text-sm text-gray-600">Choose the academic year and term before opening a child result.</p>
-                        </div>
-
-                        <livewire:result.academic-period-selector />
+                    <div class="mt-6 rounded-[1.4rem] border border-dashed border-slate-200 bg-slate-50 p-6 text-sm text-slate-600">
+                        No dashboard actions are available for this account yet.
                     </div>
                 @endif
             </section>
-        @endif
+
+            <div class="space-y-6">
+                @if ($isStaff && $staffMetrics->isNotEmpty())
+                    <section class="rounded-[1.75rem] border border-lime-200 bg-lime-50 p-6 shadow-[0_18px_60px_-30px_rgba(101,163,13,0.35)]">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">School Snapshot</p>
+                                <h3 class="mt-2 text-2xl font-bold text-slate-900">Operational totals</h3>
+                            </div>
+                            <span class="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                                Staff
+                            </span>
+                        </div>
+
+                        <div class="mt-5 space-y-3">
+                            @foreach ($staffMetrics as $metric)
+                                @php($metricTone = $staffMetricTones[$loop->index % count($staffMetricTones)])
+                                <a
+                                    href="{{ route($metric['route']) }}"
+                                    class="flex items-center justify-between rounded-2xl px-4 py-4 shadow-md transition hover:-translate-y-0.5 hover:shadow-lg {{ $metricTone }}"
+                                    wire:navigate
+                                >
+                                    <div>
+                                        <p class="text-sm font-semibold">{{ $metric['label'] }}</p>
+                                        <p class="mt-1 text-xs uppercase tracking-[0.22em] opacity-75">Current count</p>
+                                    </div>
+                                    <span class="text-2xl font-black">{{ $metric['value'] }}</span>
+                                </a>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @if ($isStudent && $studentPanel !== [])
+                    <section class="rounded-[1.75rem] border border-sky-200 bg-sky-50 p-6 shadow-[0_18px_60px_-30px_rgba(14,165,233,0.35)]">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Student Overview</p>
+                                <h3 class="mt-2 text-2xl font-bold text-slate-900">Your current standing</h3>
+                            </div>
+                            <span class="rounded-full bg-sky-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                                Student
+                            </span>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            @foreach ($studentHighlights as $highlight)
+                                @php($studentTone = $studentHighlightTones[$loop->index % count($studentHighlightTones)])
+                                <div class="rounded-2xl px-4 py-4 shadow-md {{ $studentTone }}">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] opacity-70">{{ $highlight['label'] }}</p>
+                                    <p class="mt-2 text-xl font-bold">{{ $highlight['value'] }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+
+                        @if ($user->can('view result'))
+                            <div class="mt-5 rounded-2xl border border-sky-200 bg-white p-4">
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-semibold text-slate-900">Result Period</h4>
+                                    <p class="mt-1 text-sm text-slate-600">Pick the academic year and term before opening your result.</p>
+                                </div>
+
+                                <livewire:result.academic-period-selector />
+                            </div>
+                        @endif
+                    </section>
+                @endif
+
+                @if ($isParent && $parentPanel !== [])
+                    <section class="rounded-[1.75rem] border border-rose-200 bg-rose-50 p-6 shadow-[0_18px_60px_-30px_rgba(244,63,94,0.3)]">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Parent Overview</p>
+                                <h3 class="mt-2 text-2xl font-bold text-slate-900">Linked children</h3>
+                            </div>
+                            <span class="rounded-full bg-rose-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                                {{ $parentPanel['total_children'] ?? 0 }} Child(ren)
+                            </span>
+                        </div>
+
+                        @if (($parentPanel['total_children'] ?? 0) > 0)
+                            <div class="mt-5 space-y-3">
+                                @foreach ($parentPanel['children'] as $child)
+                                    @php($childTone = $parentChildTones[$loop->index % count($parentChildTones)])
+                                    <div class="rounded-2xl px-4 py-4 shadow-md {{ $childTone }}">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p class="text-base font-semibold">{{ $child['name'] }}</p>
+                                                <p class="mt-1 text-sm opacity-80">Admission: {{ $child['admission_number'] }}</p>
+                                            </div>
+                                            <span class="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em]">
+                                                {{ $child['class_name'] }}
+                                            </span>
+                                        </div>
+                                        <p class="mt-2 text-sm opacity-80">Section: {{ $child['section_name'] }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            @if (($parentPanel['hidden_count'] ?? 0) > 0)
+                                <p class="mt-3 text-sm text-slate-500">
+                                    +{{ $parentPanel['hidden_count'] }} more child(ren) linked to this account.
+                                </p>
+                            @endif
+                        @else
+                            <div class="mt-5 rounded-2xl border border-dashed border-rose-200 bg-white p-5 text-sm text-slate-600">
+                                No student records are currently linked to this parent account.
+                            </div>
+                        @endif
+
+                        @if ($user->can('view result'))
+                            <div class="mt-5 rounded-2xl border border-rose-200 bg-white p-4">
+                                <div class="mb-3">
+                                    <h4 class="text-sm font-semibold text-slate-900">Result Period</h4>
+                                    <p class="mt-1 text-sm text-slate-600">Choose the academic year and term before opening a child result.</p>
+                                </div>
+
+                                <livewire:result.academic-period-selector />
+                            </div>
+                        @endif
+                    </section>
+                @endif
+
+                <section class="rounded-[1.75rem] border border-zinc-200 bg-zinc-50 p-6 shadow-[0_18px_60px_-30px_rgba(63,63,70,0.28)]">
+                    <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Account</p>
+                    <h3 class="mt-2 text-2xl font-bold text-slate-900">Current context</h3>
+                    <div class="mt-5 grid grid-cols-1 gap-3">
+                        <div class="rounded-2xl bg-purple-500 px-4 py-4 text-white shadow-md">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">School</p>
+                            <p class="mt-2 text-base font-semibold">{{ $academicContext['school_name'] ?? config('app.name') }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-indigo-500 px-4 py-4 text-white shadow-md">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">Active Academic Year</p>
+                            <p class="mt-2 text-base font-semibold">{{ $academicContext['academic_year'] ?? 'Not set' }}</p>
+                        </div>
+                        <div class="rounded-2xl bg-teal-500 px-4 py-4 text-white shadow-md">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">Active Term</p>
+                            <p class="mt-2 text-base font-semibold">{{ $academicContext['semester'] ?? 'Not set' }}</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
     @endif
 </div>

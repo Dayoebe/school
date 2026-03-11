@@ -1,13 +1,37 @@
-<div class="px-4 py-6 bg-themed-primary dark:bg-gray-900 min-h-screen transition-colors duration-300">
-    <!-- Page Header -->
-    <div class="mb-8">
-        <h2 class="text-3xl font-bold text-themed-primary mb-2">CBT Examinations</h2>
-        <p class="text-themed-secondary">Only authorised students in the approved class and subject can begin a computer-based test.</p>
-    </div>
+<div class="min-h-screen bg-stone-50 px-4 py-6">
+    <section class="rounded-[2rem] bg-slate-900 px-6 py-8 text-white shadow-2xl">
+        <div class="grid gap-6 lg:grid-cols-[1.25fr,0.75fr] lg:items-center">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.3em] text-amber-200">CBT Portal</p>
+                <h2 class="mt-3 text-3xl font-black md:text-4xl">CBT Examinations</h2>
+                <p class="mt-3 max-w-2xl text-sm leading-7 text-slate-200 md:text-base">
+                    Only authorised students in the approved class and subject can begin a computer-based test.
+                </p>
+            </div>
 
-    <!-- Flash Messages -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="rounded-2xl bg-red-500 px-4 py-4 text-white shadow-sm">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-red-100">Access</p>
+                    <p class="mt-2 text-lg font-bold">Class Based</p>
+                </div>
+                <div class="rounded-2xl bg-orange-500 px-4 py-4 text-white shadow-sm">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-100">Mode</p>
+                    <p class="mt-2 text-lg font-bold">Timed CBT</p>
+                </div>
+                <div class="rounded-2xl bg-amber-500 px-4 py-4 text-slate-950 shadow-sm">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-900/70">Visibility</p>
+                    <p class="mt-2 text-lg font-bold">Published Papers</p>
+                </div>
+                <div class="rounded-2xl bg-lime-500 px-4 py-4 text-slate-950 shadow-sm">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-lime-900/70">Progress</p>
+                    <p class="mt-2 text-lg font-bold">Auto Saved</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     @if (session()->has('error'))
-        <div class="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 text-red-800 dark:text-red-300 px-4 py-3 rounded-lg">
+        <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 shadow-sm">
             <div class="flex items-center">
                 <i class="fas fa-exclamation-circle mr-2"></i>
                 <span>{{ session('error') }}</span>
@@ -16,7 +40,7 @@
     @endif
 
     @if (session()->has('warning'))
-        <div class="mb-6 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300 px-4 py-3 rounded-lg">
+        <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-900 shadow-sm">
             <div class="flex items-center">
                 <i class="fas fa-exclamation-triangle mr-2"></i>
                 <span>{{ session('warning') }}</span>
@@ -24,142 +48,130 @@
         </div>
     @endif
 
-    <!-- Assessments Grid -->
     @if($availableAssessments->count() > 0)
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
             @foreach($availableAssessments as $assessment)
-                <div class="bg-themed-secondary border border-themed-primary rounded-lg shadow-sm hover:shadow-md transition-all duration-300 border-l-4 
-                    {{ $assessment->user_result && $assessment->user_result['passed'] ? 'border-l-green-500' : ($assessment->can_take ? 'border-l-accent-themed-primary' : 'border-l-red-500') }}">
-                    
-                    <div class="p-6">
-                        <!-- Assessment Header -->
-                        <div class="flex justify-between items-start mb-4">
-                            <h3 class="text-lg font-semibold text-themed-primary leading-tight">{{ $assessment->title }}</h3>
-                            @if($assessment->user_result)
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                    {{ $assessment->user_result['passed'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
-                                    {{ $assessment->user_result['passed'] ? 'PASSED' : 'FAILED' }}
-                                </span>
-                            @elseif($assessment->has_submitted_attempt && !$assessment->results_visible)
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
-                                    RESULT PENDING
-                                </span>
+                <div class="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-lg">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-semibold leading-tight text-slate-900">{{ $assessment->title }}</h3>
+                            @if($assessment->description)
+                                <p class="mt-2 text-sm text-slate-600 line-clamp-2">{{ $assessment->description }}</p>
                             @endif
                         </div>
 
-                        <!-- Assessment Description -->
-                        @if($assessment->description)
-                            <p class="text-themed-secondary text-sm mb-4 line-clamp-2">{{ $assessment->description }}</p>
-                        @endif
-
-                        <!-- Assessment Stats -->
-                        <div class="grid grid-cols-3 gap-3 mb-4">
-                            <div class="text-center">
-                                <div class="text-xs text-themed-tertiary mb-1">Questions</div>
-                                <div class="font-semibold text-themed-primary">{{ $assessment->questions->count() }}</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-xs text-themed-tertiary mb-1">Duration</div>
-                                <div class="font-semibold text-themed-primary">{{ $assessment->formatted_duration }}</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-xs text-themed-tertiary mb-1">Pass %</div>
-                                <div class="font-semibold text-themed-primary">{{ $assessment->pass_percentage }}%</div>
-                            </div>
-                        </div>
-
-                        <div class="bg-themed-tertiary rounded-lg p-3 mb-4 text-sm">
-                            <div class="flex justify-between items-center">
-                                <span class="text-themed-secondary">Class</span>
-                                <span class="font-semibold text-themed-primary">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</span>
-                            </div>
-                            <div class="mt-1 flex justify-between items-center">
-                                <span class="text-themed-secondary">Subject</span>
-                                <span class="font-semibold text-themed-primary">{{ $assessment->lesson?->name ?? 'General CBT' }}</span>
-                            </div>
-                        </div>
-
-                        <!-- Attempts Information -->
-                        <div class="bg-themed-tertiary rounded-lg p-3 mb-4">
-                            <div class="flex justify-between items-center text-sm mb-1">
-                                <span class="text-themed-secondary">Attempts Used:</span>
-                                <span class="font-semibold text-themed-primary">{{ $assessment->attempts_count }}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-sm">
-                                <span class="text-themed-secondary">Remaining:</span>
-                                <span class="font-semibold {{ $assessment->remaining_attempts === 'Unlimited' ? 'text-blue-600 dark:text-blue-400' : ($assessment->remaining_attempts > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400') }}">
-                                    {{ $assessment->remaining_attempts === 'Unlimited' ? 'Unlimited' : $assessment->remaining_attempts }}
-                                </span>
-                            </div>
-                            
-                            @if(!$assessment->can_take)
-                                <div class="mt-2 pt-2 border-t border-themed-secondary text-xs text-red-600 dark:text-red-400 flex items-center">
-                                    <i class="fas fa-exclamation-triangle mr-1"></i>
-                                    <span>{{ $assessment->attempt_message }}</span>
-                                </div>
-                            @elseif($assessment->has_active_attempt)
-                                <div class="mt-2 pt-2 border-t border-themed-secondary text-xs text-blue-700 dark:text-blue-300 flex items-center">
-                                    <i class="fas fa-rotate-left mr-1"></i>
-                                    <span>You already started this exam. Resume to continue from where you stopped.</span>
-                                </div>
-                            @endif
-                        </div>
-
-                        <!-- Previous Results (if any) -->
                         @if($assessment->user_result)
-                            <div class="bg-themed-tertiary rounded-lg p-3 mb-4">
-                                <div class="flex justify-between items-center text-sm">
-                                    <span class="text-themed-secondary">Best Score:</span>
-                                    <span class="font-semibold {{ $assessment->user_result['passed'] ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
-                                        {{ $assessment->user_result['percentage'] }}%
-                                    </span>
-                                </div>
-                            </div>
+                            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold {{ $assessment->user_result['passed'] ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800' }}">
+                                {{ $assessment->user_result['passed'] ? 'PASSED' : 'FAILED' }}
+                            </span>
                         @elseif($assessment->has_submitted_attempt && !$assessment->results_visible)
-                            <div class="bg-themed-tertiary rounded-lg p-3 mb-4 text-xs text-amber-700 dark:text-amber-300">
-                                <i class="fas fa-hourglass-half mr-1"></i>
-                                You have completed attempt(s). Results will appear after school publishes them.
+                            <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                                RESULT PENDING
+                            </span>
+                        @elseif(!$assessment->can_take)
+                            <span class="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800">
+                                LOCKED
+                            </span>
+                        @endif
+                    </div>
+
+                    <div class="mt-5 grid grid-cols-3 gap-3">
+                        <div class="rounded-2xl bg-sky-500 px-3 py-4 text-center text-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-100">Questions</div>
+                            <div class="mt-2 text-xl font-bold">{{ $assessment->questions->count() }}</div>
+                        </div>
+                        <div class="rounded-2xl bg-violet-500 px-3 py-4 text-center text-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-100">Duration</div>
+                            <div class="mt-2 text-xl font-bold">{{ $assessment->formatted_duration }}</div>
+                        </div>
+                        <div class="rounded-2xl bg-emerald-500 px-3 py-4 text-center text-white">
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-100">Pass %</div>
+                            <div class="mt-2 text-xl font-bold">{{ $assessment->pass_percentage }}%</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 rounded-2xl border border-orange-200 bg-orange-50 p-4 text-sm">
+                        <div class="flex justify-between gap-4">
+                            <span class="text-slate-600">Class</span>
+                            <span class="text-right font-semibold text-slate-900">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</span>
+                        </div>
+                        <div class="mt-2 flex justify-between gap-4">
+                            <span class="text-slate-600">Subject</span>
+                            <span class="text-right font-semibold text-slate-900">{{ $assessment->lesson?->name ?? 'General CBT' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <div class="flex items-center justify-between text-sm">
+                            <span class="text-slate-600">Attempts Used</span>
+                            <span class="font-semibold text-slate-900">{{ $assessment->attempts_count }}</span>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-sm">
+                            <span class="text-slate-600">Remaining</span>
+                            <span class="font-semibold {{ $assessment->remaining_attempts === 'Unlimited' ? 'text-blue-700' : ($assessment->remaining_attempts > 0 ? 'text-emerald-700' : 'text-red-700') }}">
+                                {{ $assessment->remaining_attempts === 'Unlimited' ? 'Unlimited' : $assessment->remaining_attempts }}
+                            </span>
+                        </div>
+
+                        @if(!$assessment->can_take)
+                            <div class="mt-3 border-t border-slate-200 pt-3 text-xs text-red-700">
+                                <i class="fas fa-ban mr-1"></i>
+                                <span>{{ $assessment->attempt_message ?: 'This CBT is not available to you right now.' }}</span>
+                            </div>
+                        @elseif($assessment->has_active_attempt)
+                            <div class="mt-3 border-t border-slate-200 pt-3 text-xs text-blue-700">
+                                <i class="fas fa-rotate-left mr-1"></i>
+                                <span>You already started this exam. Resume to continue from where you stopped.</span>
                             </div>
                         @endif
+                    </div>
 
-                        <!-- Action Buttons -->
-                        <div class="space-y-2">
-                            @if($assessment->can_take)
-                                <button wire:click="startExam({{ $assessment->id }})" 
-                                    wire:confirm="Are you ready to start this exam? Once started, the timer will begin immediately."
-                                    class="w-full bg-accent-themed-primary hover:bg-accent-themed-secondary text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center font-medium">
-                                    <i class="fas fa-play mr-2"></i>
-                                    {{ $assessment->has_active_attempt ? 'Resume Exam' : ($assessment->user_result ? 'Retake Exam' : 'Start Exam') }}
-                                </button>
-                            @else
-                                <button disabled
-                                    class="w-full bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center justify-center font-medium opacity-50">
-                                    <i class="fas fa-ban mr-2"></i>
-                                    No Attempts Remaining
-                                </button>
-                            @endif
-
-                            @if($assessment->user_result)
-                                <button wire:click="viewResults({{ $assessment->id }})"
-                                    class="w-full bg-themed-tertiary hover:bg-themed-secondary text-themed-primary border border-themed-secondary px-4 py-2 rounded-lg transition-colors flex items-center justify-center font-medium">
-                                    <i class="fas fa-chart-line mr-2"></i>View Results
-                                </button>
-                            @endif
-                        </div>
-
-                        <!-- Class Info -->
-                        <div class="mt-4 pt-4 border-t border-themed-secondary">
-                            <div class="flex items-center text-sm text-themed-secondary">
-                                <i class="fas fa-user-shield mr-2"></i>
-                                <span>Access is limited to students assigned to this class and subject.</span>
+                    @if($assessment->user_result)
+                        <div class="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                            <div class="flex items-center justify-between">
+                                <span>Best Score</span>
+                                <span class="font-semibold">{{ $assessment->user_result['percentage'] }}%</span>
                             </div>
                         </div>
+                    @elseif($assessment->has_submitted_attempt && !$assessment->results_visible)
+                        <div class="mt-4 rounded-2xl bg-amber-50 px-4 py-3 text-xs text-amber-800">
+                            <i class="fas fa-hourglass-half mr-1"></i>
+                            You have completed attempt(s). Results will appear after school publishes them.
+                        </div>
+                    @endif
+
+                    <div class="mt-5 space-y-2">
+                        @if($assessment->can_take)
+                            <button wire:click="startExam({{ $assessment->id }})"
+                                wire:confirm="Are you ready to start this exam? Once started, the timer will begin immediately."
+                                class="flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 font-medium text-white transition-colors hover:bg-blue-700">
+                                <i class="fas fa-play mr-2"></i>
+                                {{ $assessment->has_active_attempt ? 'Resume Exam' : ($assessment->user_result ? 'Retake Exam' : 'Start Exam') }}
+                            </button>
+                        @else
+                            <button disabled
+                                class="flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 px-4 py-3 font-medium text-white opacity-70">
+                                <i class="fas fa-lock mr-2"></i>
+                                Unavailable
+                            </button>
+                        @endif
+
+                        @if($assessment->user_result)
+                            <button wire:click="viewResults({{ $assessment->id }})"
+                                class="flex w-full items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 font-medium text-indigo-700 transition-colors hover:bg-indigo-100">
+                                <i class="fas fa-chart-line mr-2"></i>View Results
+                            </button>
+                        @endif
+                    </div>
+
+                    <div class="mt-4 border-t border-slate-200 pt-4 text-sm text-slate-500">
+                        <i class="fas fa-user-shield mr-2 text-slate-400"></i>
+                        Access is limited to students assigned to this class and subject.
                     </div>
                 </div>
             @endforeach
         </div>
 
-        <!-- Statistics Summary -->
         @php
             $totalAssessments = $availableAssessments->count();
             $completedAssessments = $availableAssessments->filter(fn($a) => $a->user_result)->count();
@@ -168,82 +180,80 @@
         @endphp
 
         @if($completedAssessments > 0)
-            <div class="mt-8 bg-themed-secondary rounded-lg shadow-sm border border-themed-primary p-6">
-                <h3 class="text-lg font-semibold text-themed-primary mb-4">Your Progress Summary</h3>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-accent-themed-primary">{{ $completedAssessments }}</div>
-                        <div class="text-sm text-themed-secondary">Completed</div>
+            <div class="mt-8 rounded-[1.75rem] border border-lime-200 bg-lime-50 p-6 shadow-sm">
+                <h3 class="text-lg font-semibold text-slate-900">Your Progress Summary</h3>
+                <div class="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div class="rounded-2xl bg-blue-500 p-4 text-center text-white">
+                        <div class="text-2xl font-bold">{{ $completedAssessments }}</div>
+                        <div class="mt-1 text-sm text-blue-100">Completed</div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $passedAssessments }}</div>
-                        <div class="text-sm text-themed-secondary">Passed</div>
+                    <div class="rounded-2xl bg-emerald-500 p-4 text-center text-white">
+                        <div class="text-2xl font-bold">{{ $passedAssessments }}</div>
+                        <div class="mt-1 text-sm text-emerald-100">Passed</div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ $totalAssessments - $completedAssessments }}</div>
-                        <div class="text-sm text-themed-secondary">Remaining</div>
+                    <div class="rounded-2xl bg-amber-500 p-4 text-center text-slate-950">
+                        <div class="text-2xl font-bold">{{ $totalAssessments - $completedAssessments }}</div>
+                        <div class="mt-1 text-sm text-amber-900/70">Remaining</div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $exhaustedAttempts }}</div>
-                        <div class="text-sm text-themed-secondary">Exhausted</div>
+                    <div class="rounded-2xl bg-rose-500 p-4 text-center text-white">
+                        <div class="text-2xl font-bold">{{ $exhaustedAttempts }}</div>
+                        <div class="mt-1 text-sm text-rose-100">Exhausted</div>
                     </div>
                 </div>
             </div>
         @endif
     @else
-        <!-- No Assessments Available -->
-        <div class="text-center py-16">
-            <div class="w-24 h-24 bg-themed-tertiary rounded-full flex items-center justify-center mx-auto mb-6">
-                <i class="fas fa-clipboard-list text-themed-secondary text-4xl"></i>
+        <div class="mt-8 rounded-[1.75rem] border border-slate-200 bg-white p-12 text-center shadow-sm">
+            <div class="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-slate-100">
+                <i class="fas fa-clipboard-list text-4xl text-slate-400"></i>
             </div>
-            <h3 class="text-xl font-semibold text-themed-secondary mb-2">
+            <h3 class="text-xl font-semibold text-slate-800">
                 {{ $isAuthorizedStudent ? 'No CBT Assessments Available' : 'CBT Access Restricted' }}
             </h3>
-            <p class="text-themed-tertiary mb-6">
+            <p class="mx-auto mt-3 max-w-xl text-slate-500">
                 {{ $isAuthorizedStudent
                     ? 'There are currently no computer-based tests available for you to take.'
                     : 'Only authorised students assigned to an approved class can access CBT exams.' }}
             </p>
-            <a href="{{ route('dashboard') }}" 
-                class="inline-flex items-center px-4 py-2 bg-accent-themed-primary text-white rounded-lg hover:bg-accent-themed-secondary transition-colors">
+            <a href="{{ route('dashboard') }}"
+                class="mt-6 inline-flex items-center rounded-xl bg-blue-600 px-5 py-3 text-white transition-colors hover:bg-blue-700">
                 <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
             </a>
         </div>
     @endif
 
-    <!-- Important Notes -->
-    <div class="mt-8 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-6">
-        <h3 class="text-lg font-semibold text-blue-800 dark:text-blue-300 mb-3 flex items-center">
+    <div class="mt-8 rounded-[1.75rem] border border-cyan-200 bg-cyan-50 p-6 shadow-sm">
+        <h3 class="mb-3 flex items-center text-lg font-semibold text-cyan-900">
             <i class="fas fa-info-circle mr-2"></i>Important Notes
         </h3>
-        <ul class="space-y-2 text-blue-800 dark:text-blue-300 text-sm">
+        <ul class="space-y-2 text-sm text-cyan-900">
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Each assessment has a limited number of attempts. Use them wisely!</span>
+                <span>Each assessment has a limited number of attempts. Use them wisely.</span>
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Ensure you have a stable internet connection before starting any exam</span>
+                <span>Ensure you have a stable internet connection before starting any exam.</span>
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Exams are conducted in fullscreen mode for security purposes</span>
+                <span>Exams are conducted in fullscreen mode for security purposes.</span>
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Your progress is automatically saved as you answer questions</span>
+                <span>Your progress is automatically saved as you answer questions.</span>
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Avoid switching tabs or minimizing the window during an exam</span>
+                <span>Avoid switching tabs or minimizing the window during an exam.</span>
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Contact support if you experience any technical difficulties</span>
+                <span>Contact support if you experience any technical difficulties.</span>
             </li>
         </ul>
     </div>
-    
+
     <style>
         .line-clamp-2 {
             display: -webkit-box;

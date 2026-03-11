@@ -26,7 +26,7 @@
     <script id="cbt-mathjax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 @endpush
 
-<div class="py-4 px-2 sm:px-4 bg-themed-primary dark:bg-gray-900 min-h-screen transition-colors duration-300">
+<div class="cbt-solid-page py-4 px-2 sm:px-4 bg-themed-primary dark:bg-gray-900 min-h-screen transition-colors duration-300">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
         <div class="w-full sm:w-auto">
@@ -1465,6 +1465,72 @@
     </script>
 
     <style>
+        .cbt-solid-page {
+            background-color: #f5f5f4;
+            color: #0f172a;
+        }
+
+        .cbt-solid-page .bg-themed-primary {
+            background-color: #f5f5f4 !important;
+        }
+
+        .cbt-solid-page .bg-themed-secondary {
+            background-color: #ffffff !important;
+        }
+
+        .cbt-solid-page .bg-themed-tertiary {
+            background-color: #fff7ed !important;
+        }
+
+        .cbt-solid-page .text-themed-primary {
+            color: #0f172a !important;
+        }
+
+        .cbt-solid-page .text-themed-secondary {
+            color: #475569 !important;
+        }
+
+        .cbt-solid-page .text-themed-tertiary {
+            color: #78716c !important;
+        }
+
+        .cbt-solid-page .border-themed-primary,
+        .cbt-solid-page .border-themed-secondary {
+            border-color: #fed7aa !important;
+        }
+
+        .cbt-solid-page .bg-accent-themed-primary {
+            background-color: #2563eb !important;
+        }
+
+        .cbt-solid-page .bg-accent-themed-secondary {
+            background-color: #1d4ed8 !important;
+        }
+
+        .cbt-solid-page .text-accent-themed-primary {
+            color: #2563eb !important;
+        }
+
+        .cbt-solid-page [class*="hover:bg-themed-secondary"]:hover {
+            background-color: #fef3c7 !important;
+        }
+
+        .cbt-solid-page [class*="hover:bg-themed-tertiary"]:hover {
+            background-color: #fff7ed !important;
+        }
+
+        .cbt-solid-page [class*="hover:bg-accent-themed-secondary"]:hover {
+            background-color: #1d4ed8 !important;
+        }
+
+        .cbt-solid-page [class*="hover:text-themed-primary"]:hover {
+            color: #0f172a !important;
+        }
+
+        .cbt-solid-page [class*="hover:text-white"]:hover {
+            color: #ffffff !important;
+        }
+
         /* Animation keyframes */
         @keyframes fadeInDown {
             from {

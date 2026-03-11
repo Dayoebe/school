@@ -26,7 +26,7 @@
     <script id="cbt-viewer-mathjax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 @endpush
 
-<div class="min-h-screen bg-themed-primary px-3 sm:px-4 lg:px-6 py-4 sm:py-6 transition-colors duration-300" 
+<div class="cbt-viewer-solid min-h-screen bg-themed-primary px-3 sm:px-4 lg:px-6 py-4 sm:py-6 transition-colors duration-300" 
      x-data="{ showDetails: @entangle('viewDetails'), selectedAttempt: @entangle('selectedAttempt') }"
      x-init="
         // Initialize MathJax observer when component mounts
@@ -681,6 +681,99 @@
     @endpush
 
     <style>
+        .cbt-viewer-solid {
+            background-color: #f5f5f4;
+            color: #0f172a;
+        }
+
+        .cbt-viewer-solid .bg-themed-primary {
+            background-color: #f5f5f4 !important;
+        }
+
+        .cbt-viewer-solid .bg-themed-secondary {
+            background-color: #ffffff !important;
+        }
+
+        .cbt-viewer-solid .bg-themed-tertiary {
+            background-color: #fff7ed !important;
+        }
+
+        .cbt-viewer-solid .text-themed-primary {
+            color: #0f172a !important;
+        }
+
+        .cbt-viewer-solid .text-themed-secondary {
+            color: #475569 !important;
+        }
+
+        .cbt-viewer-solid .text-themed-tertiary {
+            color: #78716c !important;
+        }
+
+        .cbt-viewer-solid .border-themed-primary,
+        .cbt-viewer-solid .border-themed-secondary {
+            border-color: #fed7aa !important;
+        }
+
+        .cbt-viewer-solid .bg-accent-themed-primary {
+            background-color: #2563eb !important;
+        }
+
+        .cbt-viewer-solid .bg-accent-themed-secondary {
+            background-color: #1d4ed8 !important;
+        }
+
+        .cbt-viewer-solid .text-accent-themed-primary {
+            color: #2563eb !important;
+        }
+
+        .cbt-viewer-solid [class*="hover:bg-themed-secondary"]:hover {
+            background-color: #fef3c7 !important;
+        }
+
+        .cbt-viewer-solid [class*="hover:bg-themed-tertiary"]:hover {
+            background-color: #fff7ed !important;
+        }
+
+        .cbt-viewer-solid [class*="hover:bg-accent-themed-secondary"]:hover {
+            background-color: #1d4ed8 !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-blue-50"][class*="to-indigo-50"] {
+            background-image: none !important;
+            background-color: #dbeafe !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-green-50"][class*="to-emerald-50"] {
+            background-image: none !important;
+            background-color: #dcfce7 !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-red-50"][class*="to-pink-50"] {
+            background-image: none !important;
+            background-color: #ffe4e6 !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-purple-50"][class*="to-indigo-50"] {
+            background-image: none !important;
+            background-color: #ede9fe !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-blue-500"][class*="to-indigo-600"] {
+            background-image: none !important;
+            background-color: #2563eb !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-green-500"][class*="to-emerald-600"] {
+            background-image: none !important;
+            background-color: #059669 !important;
+        }
+
+        .cbt-viewer-solid [class*="bg-gradient-to-br"][class*="from-red-500"][class*="to-pink-600"] {
+            background-image: none !important;
+            background-color: #e11d48 !important;
+        }
+
         /* Line clamp utilities */
         .line-clamp-2 {
             display: -webkit-box;
@@ -708,12 +801,12 @@
         }
 
         ::-webkit-scrollbar-thumb {
-            background: linear-gradient(to bottom, #3b82f6, #6366f1);
+            background: #2563eb;
             border-radius: 10px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(to bottom, #2563eb, #4f46e5);
+            background: #1d4ed8;
         }
 
         .dark ::-webkit-scrollbar-track {

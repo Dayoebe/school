@@ -167,6 +167,7 @@ class DashboardStats extends Component
     {
         $adminAndStaffRoles = ['super-admin', 'super_admin', 'principal', 'admin', 'teacher'];
         $adminRoles = ['super-admin', 'super_admin', 'principal', 'admin'];
+        $superAdminRoles = ['super-admin', 'super_admin'];
         $viewResultsRoute = $this->currentUserCanAccessClassOnlyResultTools()
             ? 'result.view.class'
             : ($this->currentUserCanAccessSubjectResultTools() ? 'result.view.subject' : 'result');
@@ -176,10 +177,20 @@ class DashboardStats extends Component
 
         $actions = [
             [
+                'title' => 'Schools',
+                'description' => 'Switch schools and manage school settings.',
+                'icon' => 'fas fa-school',
+                'route' => 'schools.index',
+                'group' => 'Operations',
+                'roles' => $superAdminRoles,
+                'permissions' => ['read school', 'create school', 'manage school settings'],
+            ],
+            [
                 'title' => 'Students',
                 'description' => 'Manage students, promotions, and graduations.',
                 'icon' => 'fas fa-user-graduate',
                 'route' => 'students.index',
+                'group' => 'People',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read student', 'create student', 'promote student'],
             ],
@@ -188,6 +199,7 @@ class DashboardStats extends Component
                 'description' => 'Manage teacher profiles and assignments.',
                 'icon' => 'fas fa-chalkboard-teacher',
                 'route' => 'teachers.index',
+                'group' => 'People',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read teacher', 'create teacher'],
             ],
@@ -196,6 +208,7 @@ class DashboardStats extends Component
                 'description' => 'Review curriculum subjects and teacher assignment.',
                 'icon' => 'fas fa-book-open',
                 'route' => 'subjects.index',
+                'group' => 'Academic',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read subject', 'create subject', 'update subject'],
             ],
@@ -204,6 +217,7 @@ class DashboardStats extends Component
                 'description' => 'Configure exams and exam records.',
                 'icon' => 'fas fa-file-signature',
                 'route' => 'exams.index',
+                'group' => 'Assessment',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read exam', 'read exam record'],
             ],
@@ -212,16 +226,36 @@ class DashboardStats extends Component
                 'description' => 'Upload and manage student results.',
                 'icon' => 'fas fa-chart-line',
                 'route' => 'result',
+                'group' => 'Assessment',
                 'roles' => $adminAndStaffRoles,
                 // Route "result" is protected by upload-result permission
                 'permissions' => ['upload result'],
             ],
             [
-                'title' => 'View Results',
+                'title' => 'Review Results',
                 'description' => $viewResultsDescription,
                 'icon' => 'fas fa-eye',
                 'route' => $viewResultsRoute,
+                'group' => 'Assessment',
                 'roles' => $adminAndStaffRoles,
+                'permissions' => ['view result'],
+            ],
+            [
+                'title' => 'My Results',
+                'description' => 'Open your current result sheet for the selected period.',
+                'icon' => 'fas fa-file-lines',
+                'route' => 'result.view.student',
+                'group' => 'Academic',
+                'roles' => ['student'],
+                'permissions' => ['view result'],
+            ],
+            [
+                'title' => 'Academic History',
+                'description' => 'Browse your results across previous terms and years.',
+                'icon' => 'fas fa-clock-rotate-left',
+                'route' => 'result.history',
+                'group' => 'Academic',
+                'roles' => ['student'],
                 'permissions' => ['view result'],
             ],
             [
@@ -229,6 +263,7 @@ class DashboardStats extends Component
                 'description' => 'Start an authorised CBT for your class and subject.',
                 'icon' => 'fas fa-laptop-code',
                 'route' => 'cbt.exams',
+                'group' => 'Assessment',
                 'roles' => ['student'],
                 'permissions' => ['take cbt exam'],
             ],
@@ -237,6 +272,7 @@ class DashboardStats extends Component
                 'description' => 'Open your CBT result history.',
                 'icon' => 'fas fa-list-alt',
                 'route' => 'cbt.viewer',
+                'group' => 'Assessment',
                 'roles' => ['student'],
                 'permissions' => ['view cbt result'],
             ],
@@ -245,14 +281,43 @@ class DashboardStats extends Component
                 'description' => 'Create assessments and manage CBT questions.',
                 'icon' => 'fas fa-cogs',
                 'route' => 'cbt.manage',
+                'group' => 'Assessment',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['manage cbt'],
+            ],
+            [
+                'title' => 'Children Results',
+                'description' => 'Open result sheets for children linked to your account.',
+                'icon' => 'fas fa-children',
+                'route' => 'result.view.student',
+                'group' => 'Academic',
+                'roles' => ['parent'],
+                'permissions' => ['view result'],
+            ],
+            [
+                'title' => 'Children History',
+                'description' => 'Review previous result history for your children.',
+                'icon' => 'fas fa-timeline',
+                'route' => 'result.history',
+                'group' => 'Academic',
+                'roles' => ['parent'],
+                'permissions' => ['view result'],
+            ],
+            [
+                'title' => 'Student Welfare',
+                'description' => 'Check attendance and discipline information for your child.',
+                'icon' => 'fas fa-heart',
+                'route' => 'parent.student-welfare',
+                'group' => 'Academic',
+                'roles' => ['parent'],
+                'permissions' => ['read own child attendance', 'read own child discipline'],
             ],
             [
                 'title' => 'Notices',
                 'description' => 'Create and publish school-wide announcements.',
                 'icon' => 'fas fa-bullhorn',
                 'route' => 'notices.index',
+                'group' => 'Operations',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read notice', 'create notice', 'update notice'],
             ],
@@ -261,6 +326,7 @@ class DashboardStats extends Component
                 'description' => 'Manage fee categories and student invoices.',
                 'icon' => 'fas fa-dollar-sign',
                 'route' => 'fee-invoices.index',
+                'group' => 'Operations',
                 'roles' => $adminRoles,
                 'permissions' => ['read fee', 'read fee invoice', 'read fee category'],
             ],
@@ -269,43 +335,56 @@ class DashboardStats extends Component
                 'description' => 'Maintain class timetables and custom slots.',
                 'icon' => 'fas fa-clock',
                 'route' => 'timetables.index',
+                'group' => 'Operations',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read timetable', 'create timetable'],
+            ],
+            [
+                'title' => 'Analytics',
+                'description' => 'Track admissions, engagement, and finance performance.',
+                'icon' => 'fas fa-chart-pie',
+                'route' => 'analytics.index',
+                'group' => 'Operations',
+                'roles' => $adminRoles,
+                'permissions' => ['read analytics dashboard'],
             ],
             [
                 'title' => 'Profile',
                 'description' => 'Update personal account information.',
                 'icon' => 'fas fa-user',
                 'route' => 'profile.edit',
+                'group' => 'Account',
             ],
             [
                 'title' => 'Change Password',
                 'description' => 'Secure your account credentials.',
                 'icon' => 'fas fa-key',
                 'route' => 'password.change',
+                'group' => 'Account',
             ],
         ];
 
         $this->quickActions = array_values(array_filter(
             $actions,
-            function (array $action) use ($user): bool {
-                if (!Route::has($action['route'])) {
-                    return false;
-                }
-
-                $checks = [];
-
-                if (!empty($action['roles']) && is_array($action['roles'])) {
-                    $checks[] = $user->hasAnyRole($action['roles']);
-                }
-
-                if (!empty($action['permissions']) && is_array($action['permissions'])) {
-                    $checks[] = $this->hasAnyPermission($user, $action['permissions']);
-                }
-
-                return $checks === [] || in_array(true, $checks, true);
-            }
+            fn (array $action): bool => $this->canAccessAction($user, $action)
         ));
+    }
+
+    private function canAccessAction(User $user, array $action): bool
+    {
+        if (empty($action['route']) || !Route::has($action['route'])) {
+            return false;
+        }
+
+        if (!empty($action['roles']) && is_array($action['roles']) && !$user->hasAnyRole($action['roles'])) {
+            return false;
+        }
+
+        if (!empty($action['permissions']) && is_array($action['permissions']) && !$this->hasAnyPermission($user, $action['permissions'])) {
+            return false;
+        }
+
+        return true;
     }
 
     private function hasAnyPermission(User $user, array $permissions): bool
