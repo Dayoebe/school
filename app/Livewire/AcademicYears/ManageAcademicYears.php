@@ -145,7 +145,9 @@ class ManageAcademicYears extends Component
             'semester_id' => $semesterId,
         ]);
 
+        $school->refresh();
         auth()->user()->unsetRelation('school');
+        $this->selectedAcademicYearId = $school->academic_year_id;
         $this->loadAcademicYears();
         session()->flash('success', 'Academic year set for ' . auth()->user()->school->name . ' successfully');
         $this->dispatch('$refresh');

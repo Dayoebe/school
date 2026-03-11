@@ -127,11 +127,15 @@ class ManageSemesters extends Component
             return;
         }
 
-        auth()->user()->school->update([
+        $school = auth()->user()->school;
+
+        $school->update([
             'semester_id' => $semester->id,
         ]);
 
+        $school->refresh();
         auth()->user()->unsetRelation('school');
+        $this->selectedSemesterId = $school->semester_id;
         $this->loadSemesters();
         session()->flash('success', 'Successfully set current term');
         $this->dispatch('$refresh');

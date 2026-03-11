@@ -14,7 +14,15 @@ class School extends Model
     use HasFactory;
 
     protected $fillable = [
-        'name', 'address', 'code', 'initials', 'phone', 'email', 'logo_path',
+        'name',
+        'address',
+        'code',
+        'initials',
+        'phone',
+        'email',
+        'logo_path',
+        'academic_year_id',
+        'semester_id',
     ];
 
     public function getLogoUrlAttribute()
