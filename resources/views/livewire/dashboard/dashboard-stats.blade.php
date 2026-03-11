@@ -37,6 +37,11 @@
             </div>
         </section>
 
+
+           <div class="mb-6">
+        @livewire('dashboard.active-notices')
+    </div>
+
         @if ($quickActions !== [])
             @php
                 $quickActionPalette = [
@@ -165,6 +170,13 @@
                         'permissions' => ['read school', 'create school', 'manage school settings'],
                     ],
                     [
+                        'label' => 'Notices',
+                        'value' => $stats['total_notices'] ?? 0,
+                        'icon' => 'fas fa-bullhorn',
+                        'route' => 'notices.index',
+                        'permissions' => ['read notice', 'create notice', 'update notice'],
+                    ],
+                    [
                         'label' => 'Class Groups',
                         'value' => $stats['class_groups'] ?? 0,
                         'icon' => 'fas fa-layer-group',
@@ -219,13 +231,6 @@
                         'icon' => 'fas fa-users',
                         'route' => 'parents.index',
                         'permissions' => ['read parent'],
-                    ],
-                    [
-                        'label' => 'Notices',
-                        'value' => $stats['total_notices'] ?? 0,
-                        'icon' => 'fas fa-bullhorn',
-                        'route' => 'notices.index',
-                        'permissions' => ['read notice', 'create notice', 'update notice'],
                     ],
                     [
                         'label' => 'Exams',

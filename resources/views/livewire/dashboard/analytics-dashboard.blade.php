@@ -9,6 +9,8 @@
         <p class="mt-1 text-sm text-slate-600">Admissions, inquiries, fee collection, and engagement performance.</p>
     </div>
 
+    @livewire('dashboard.active-notices')
+
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Admissions</p>

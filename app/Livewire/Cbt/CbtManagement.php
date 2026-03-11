@@ -696,12 +696,13 @@ class CbtManagement extends Component
                     'best_attempt' => $bestAttempt,
                     'total_attempts' => $attempts->count(),
                     'is_locked' => $isLocked,
+                    'is_eligible' => !$isLocked,
                     'eligible_for_exam' => $eligibleUserIds->has((int) $user->id),
                 ];
             })
             ->sort(function (array $left, array $right) {
-                if ($left['is_locked'] !== $right['is_locked']) {
-                    return $left['is_locked'] ? -1 : 1;
+                if ($left['is_eligible'] !== $right['is_eligible']) {
+                    return $left['is_eligible'] ? 1 : -1;
                 }
 
                 if ($left['total_attempts'] !== $right['total_attempts']) {
@@ -715,10 +716,10 @@ class CbtManagement extends Component
         return $participants;
     }
 
-    public function toggleStudentLock($userId): void
+    public function toggleStudentEligibility($userId): void
     {
         if (!$this->currentUserCanLockAssessments()) {
-            session()->flash('error', 'Only super admin can lock students out of a CBT paper.');
+            session()->flash('error', 'Only super admin can change CBT participant eligibility.');
             return;
         }
 
@@ -751,13 +752,13 @@ class CbtManagement extends Component
             ->contains(fn ($eligibleStudent) => (int) $eligibleStudent->id === (int) $userId);
 
         if (!$existingLock && !$isEligibleStudent) {
-            session()->flash('error', 'Student is not currently eligible for this CBT paper.');
+            session()->flash('error', 'Only students currently assigned to this class can be marked eligible or ineligible.');
             return;
         }
 
         if ($existingLock) {
             $existingLock->delete();
-            session()->flash('message', "{$student->name} can now access this CBT paper.");
+            session()->flash('message', "{$student->name} has been marked eligible for this CBT paper.");
         } else {
             AssessmentStudentLock::create([
                 'assessment_id' => $assessment->id,
@@ -766,7 +767,7 @@ class CbtManagement extends Component
                 'locked_by' => auth()->id(),
             ]);
 
-            session()->flash('message', "{$student->name} has been locked out of this CBT paper.");
+            session()->flash('message', "{$student->name} has been marked ineligible for this CBT paper.");
         }
 
         $this->selectedAssessment = $this->assessmentParticipantsQuery()
@@ -962,16 +963,6 @@ class CbtManagement extends Component
             ->whereHas('studentRecord', function ($query) use ($studentRecordIds) {
                 $query->whereIn('student_records.id', $studentRecordIds)
                     ->where('is_graduated', false);
-            })
-            ->when($assessment->lesson_id, function ($query) use ($assessment) {
-                $query->whereHas('studentRecord', function ($studentRecordQuery) use ($assessment) {
-                    $studentRecordQuery->whereExists(function ($subQuery) use ($assessment) {
-                        $subQuery->select(DB::raw(1))
-                            ->from('student_subject')
-                            ->whereColumn('student_subject.student_record_id', 'student_records.id')
-                            ->where('student_subject.subject_id', $assessment->lesson_id);
-                    });
-                });
             })
             ->with('studentRecord')
             ->orderBy('name')

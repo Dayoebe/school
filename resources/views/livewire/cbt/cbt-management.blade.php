@@ -1032,6 +1032,12 @@
 
     <!-- Participants Modal -->
     @if($showParticipantsModal && $selectedAssessment)
+        @php
+            $participants = $this->getParticipantsData();
+            $eligibleCount = $participants->where('is_eligible', true)->count();
+            $ineligibleCount = $participants->where('is_eligible', false)->count();
+        @endphp
+
         <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div class="bg-themed-secondary rounded-lg max-w-6xl w-full max-h-screen overflow-hidden"
                 x-data="{ expandedUser: null }">
@@ -1051,11 +1057,27 @@
                 </div>
 
                 <div class="p-6 overflow-y-auto max-h-[70vh]">
-                    @php
-                        $participants = $this->getParticipantsData();
-                    @endphp
-
                     @if($participants->count() > 0)
+                        <div class="mb-5 rounded-xl border border-themed-secondary bg-themed-tertiary p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="font-semibold text-themed-primary">Participant eligibility</p>
+                                    <p class="text-sm text-themed-secondary">
+                                        @if($canLockAssessments)
+                                            Everyone in this class is eligible by default. Uncheck any student you want to block from writing this CBT paper.
+                                        @else
+                                            Everyone in this class is eligible by default. Only super admin can mark a student ineligible for this CBT paper.
+                                        @endif
+                                    </p>
+                                </div>
+                                <div class="flex flex-wrap gap-2 text-xs font-medium">
+                                    <span class="rounded-full bg-themed-secondary px-3 py-1 text-themed-primary">Total: {{ $participants->count() }}</span>
+                                    <span class="rounded-full bg-green-100 px-3 py-1 text-green-800 dark:bg-green-900/30 dark:text-green-300">Eligible: {{ $eligibleCount }}</span>
+                                    <span class="rounded-full bg-red-100 px-3 py-1 text-red-800 dark:bg-red-900/30 dark:text-red-300">Ineligible: {{ $ineligibleCount }}</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <table class="w-full border-collapse">
                             <thead class="bg-themed-tertiary sticky top-0">
                                 <tr>
@@ -1071,7 +1093,7 @@
                                         Score</th>
                                     <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">Status
                                     </th>
-                                    <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">Access
+                                    <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">Eligibility
                                     </th>
                                     <th class="px-4 py-3 text-center text-xs font-medium uppercase text-themed-secondary">
                                         Details</th>
@@ -1113,12 +1135,7 @@
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-center">
-                                            @if($participant['is_locked'])
-                                                <span
-                                                    class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
-                                                    LOCKED
-                                                </span>
-                                            @elseif($participant['best_attempt'])
+                                            @if($participant['best_attempt'])
                                                 <span
                                                     class="px-3 py-1 rounded-full text-sm font-medium
                                                     {{ $participant['best_attempt']['passed'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
@@ -1132,17 +1149,24 @@
                                             @endif
                                         </td>
                                         <td class="px-4 py-3 text-center">
+                                            <div class="mb-2">
+                                                <span class="px-3 py-1 rounded-full text-sm font-medium {{ $participant['is_eligible'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
+                                                    {{ $participant['is_eligible'] ? 'ELIGIBLE' : 'INELIGIBLE' }}
+                                                </span>
+                                            </div>
                                             @if($canLockAssessments)
                                                 @if($participant['eligible_for_exam'] || $participant['is_locked'])
-                                                    <button
-                                                        wire:click="toggleStudentLock({{ $participant['user_id'] }})"
-                                                        class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $participant['is_locked'] ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
-                                                        title="{{ $participant['is_locked'] ? 'Unlock student for this paper' : 'Lock student for this paper' }}">
-                                                        <i class="fas {{ $participant['is_locked'] ? 'fa-lock-open' : 'fa-user-lock' }}"></i>
-                                                        <span>{{ $participant['is_locked'] ? 'Unlock' : 'Lock' }}</span>
-                                                    </button>
+                                                    <label class="inline-flex items-center gap-2 text-sm text-themed-primary">
+                                                        <input
+                                                            type="checkbox"
+                                                            class="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                                            wire:click="toggleStudentEligibility({{ $participant['user_id'] }})"
+                                                            @checked($participant['is_eligible'])
+                                                            title="Checked students can write this CBT paper">
+                                                        <span>{{ $participant['is_eligible'] ? 'Can write exam' : 'Blocked from exam' }}</span>
+                                                    </label>
                                                 @else
-                                                    <span class="text-xs text-themed-secondary">Not eligible</span>
+                                                    <span class="text-xs text-themed-secondary">Not in class</span>
                                                 @endif
                                             @else
                                                 <span class="text-xs text-themed-secondary">Super admin only</span>
@@ -1230,8 +1254,8 @@
                     @else
                         <div class="text-center py-12">
                             <i class="fas fa-users text-6xl text-themed-tertiary mb-4"></i>
-                            <h5 class="text-xl text-themed-secondary mb-2">No Eligible Students Found</h5>
-                            <p class="text-themed-tertiary">No eligible students are currently assigned to this assessment.</p>
+                            <h5 class="text-xl text-themed-secondary mb-2">No Students Found</h5>
+                            <p class="text-themed-tertiary">No students are currently assigned to this class for the active academic year.</p>
                         </div>
                     @endif
                 </div>
@@ -1239,7 +1263,7 @@
                 <div class="p-6 border-t border-themed-secondary flex justify-between">
                     <div class="text-themed-secondary text-sm">
                         Total Students: <span
-                            class="font-semibold text-themed-primary">{{ $participants->count() }}</span>
+                            class="font-semibold text-themed-primary">{{ ($participants ?? collect())->count() }}</span>
                     </div>
                     <button wire:click="closeModals" class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
                         Close

@@ -14,9 +14,12 @@
         </div>
     @endif
 
+    
     <div class="mb-6">
         @livewire('dashboard.dashboard-stats')
     </div>
+  
+ 
 
     @php
         $user = auth()->user();

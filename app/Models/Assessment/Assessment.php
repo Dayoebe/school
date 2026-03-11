@@ -346,7 +346,7 @@ class Assessment extends Model
 
     public function lockedStudentMessage(): string
     {
-        return 'You are currently restricted from writing this CBT exam. Please contact school administration.';
+        return 'You are currently marked ineligible for this CBT exam. Please contact school administration.';
     }
 
     public function canUserViewResults(?User $user): bool
