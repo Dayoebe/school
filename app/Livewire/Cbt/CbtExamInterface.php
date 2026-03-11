@@ -59,8 +59,8 @@ class CbtExamInterface extends Component
             return redirect()->route('cbt.exams');
         }
 
-        if ($this->isAssessmentLocked()) {
-            session()->flash('warning', $this->lockedAssessmentMessage());
+        if (!$this->isAssessmentPublished()) {
+            session()->flash('warning', $this->unpublishedAssessmentMessage());
             return redirect()->route('cbt.exams');
         }
 
@@ -184,8 +184,8 @@ class CbtExamInterface extends Component
 
     public function startExam(): void
     {
-        if ($this->isAssessmentLocked(true)) {
-            $message = $this->lockedAssessmentMessage();
+        if (!$this->isAssessmentPublished(true)) {
+            $message = $this->unpublishedAssessmentMessage();
             $this->dispatch('exam-start-feedback', state: 'warning', message: $message);
             session()->flash('warning', $message);
             return;
@@ -241,8 +241,8 @@ class CbtExamInterface extends Component
             ];
         }
 
-        if ($this->isAssessmentLocked(true)) {
-            session()->flash('warning', $this->lockedAssessmentMessage());
+        if (!$this->isAssessmentPublished(true)) {
+            session()->flash('warning', $this->unpublishedAssessmentMessage());
 
             return [
                 'time_remaining' => (int) $this->timeRemaining,
@@ -604,8 +604,8 @@ class CbtExamInterface extends Component
 
     protected function createAttemptSession(): AttemptSession
     {
-        if ($this->isAssessmentLocked(true)) {
-            throw new \RuntimeException($this->lockedAssessmentMessage());
+        if (!$this->isAssessmentPublished(true)) {
+            throw new \RuntimeException($this->unpublishedAssessmentMessage());
         }
 
         $active = $this->getActiveAttemptSession();
@@ -784,18 +784,18 @@ class CbtExamInterface extends Component
             ->visibleToUser(auth()->user());
     }
 
-    protected function isAssessmentLocked(bool $refresh = false): bool
+    protected function isAssessmentPublished(bool $refresh = false): bool
     {
         if ($refresh && $this->assessment) {
             $this->assessment->refresh();
         }
 
-        return (bool) $this->assessment?->is_locked;
+        return (bool) $this->assessment?->isExamPublished();
     }
 
-    protected function lockedAssessmentMessage(): string
+    protected function unpublishedAssessmentMessage(): string
     {
-        return 'This CBT exam is locked. You can view it, but you cannot take it now.';
+        return 'This CBT exam has not been published to students yet.';
     }
 
     protected function resolveStartExamErrorMessage(\Throwable $exception): string

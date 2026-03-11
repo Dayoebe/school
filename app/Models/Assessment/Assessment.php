@@ -46,6 +46,8 @@ class Assessment extends Model
         'results_published_at',
         'results_published_by',
         'is_locked',
+        'exam_published_at',
+        'exam_published_by',
     ];
 
     protected $casts = [
@@ -61,6 +63,7 @@ class Assessment extends Model
         'shuffle_options' => 'boolean',
         'results_published_at' => 'datetime',
         'is_locked' => 'boolean',
+        'exam_published_at' => 'datetime',
     ];
 
     public function course()
@@ -96,6 +99,11 @@ class Assessment extends Model
     public function resultsPublishedBy()
     {
         return $this->belongsTo(User::class, 'results_published_by');
+    }
+
+    public function examPublishedBy()
+    {
+        return $this->belongsTo(User::class, 'exam_published_by');
     }
 
     protected static function boot()
@@ -144,8 +152,8 @@ class Assessment extends Model
      */
     public function canUserTakeAssessment($userId)
     {
-        if ($this->is_locked) {
-            return [false, 'This CBT exam is locked. You can view it, but you cannot take it now.'];
+        if (!$this->isExamPublished()) {
+            return [false, 'This CBT exam has not been published to students yet.'];
         }
 
         $activeSession = $this->getActiveAttemptSession($userId);
@@ -307,6 +315,11 @@ class Assessment extends Model
         return $this->results_published_at !== null;
     }
 
+    public function isExamPublished(): bool
+    {
+        return $this->exam_published_at !== null;
+    }
+
     public function canUserViewResults(?User $user): bool
     {
         if (!$user) {
@@ -440,6 +453,13 @@ class Assessment extends Model
                         });
                     });
             });
+    }
+
+    public function scopeAvailableForStudentExamAccess(Builder $query, ?User $user): Builder
+    {
+        return $query
+            ->visibleToUser($user)
+            ->whereNotNull('exam_published_at');
     }
 
     public static function resolveAssignedClassIdForUser(?User $user): ?int

@@ -21,7 +21,7 @@ class CbtExamSelection extends Component
         $availableAssessments = collect();
 
         if ($isAuthorizedStudent) {
-            $availableAssessments = $this->assessmentsForCurrentSchool()
+            $availableAssessments = $this->publishedAssessmentsForCurrentSchool()
                 ->with([
                     'questions',
                     'course',
@@ -114,6 +114,13 @@ class CbtExamSelection extends Component
             ->visibleToUser(auth()->user());
     }
 
+    protected function publishedAssessmentsForCurrentSchool(): Builder
+    {
+        return Assessment::query()
+            ->standaloneCBT()
+            ->availableForStudentExamAccess(auth()->user());
+    }
+
     protected function canViewUnpublishedResults(): bool
     {
         return (bool) auth()->user()?->can('manage cbt');
@@ -165,10 +172,6 @@ class CbtExamSelection extends Component
         int $attemptCount,
         ?AttemptSession $activeAttempt
     ): array {
-        if ($assessment->is_locked) {
-            return [false, 'This CBT exam is locked. You can view it, but you cannot take it now.'];
-        }
-
         if ($activeAttempt && !$activeAttempt->isExpired()) {
             return [true, 'You have an in-progress attempt that can be resumed'];
         }

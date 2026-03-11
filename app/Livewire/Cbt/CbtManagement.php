@@ -295,7 +295,74 @@ class CbtManagement extends Component
     public function toggleAssessmentLock($assessmentId): void
     {
         if (!$this->currentUserCanLockAssessments()) {
-            session()->flash('error', 'Only super admin can lock or unlock CBT exams.');
+            session()->flash('error', 'Only super admin can lock, unlock, or publish CBT papers.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $locking = !$assessment->is_locked;
+        $wasPublishedToStudents = $assessment->exam_published_at !== null;
+        $attributes = [
+            'is_locked' => $locking,
+        ];
+
+        if (!$locking && $wasPublishedToStudents) {
+            $attributes['exam_published_at'] = null;
+            $attributes['exam_published_by'] = null;
+        }
+
+        $assessment->update($attributes);
+
+        session()->flash(
+            'message',
+            $locking
+                ? 'CBT paper locked. Only super admin can open the question bank. Publish it when students should write.'
+                : ($wasPublishedToStudents
+                    ? 'CBT paper unlocked and withdrawn from students. You can edit the questions again.'
+                    : 'CBT paper unlocked. You can edit the questions again.')
+        );
+    }
+
+    public function publishExam($assessmentId): void
+    {
+        if (!$this->currentUserCanLockAssessments()) {
+            session()->flash('error', 'Only super admin can lock, unlock, or publish CBT papers.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        if (!$assessment->is_locked) {
+            session()->flash('error', 'Lock and vet this CBT paper before publishing it to students.');
+            return;
+        }
+
+        if (!$assessment->questions()->exists()) {
+            session()->flash('error', 'Add at least one question before publishing this CBT paper.');
+            return;
+        }
+
+        $assessment->update([
+            'exam_published_at' => now(),
+            'exam_published_by' => auth()->id(),
+        ]);
+
+        session()->flash('message', 'CBT paper published. It is now available to students.');
+    }
+
+    public function unpublishExam($assessmentId): void
+    {
+        if (!$this->currentUserCanLockAssessments()) {
+            session()->flash('error', 'Only super admin can lock, unlock, or publish CBT papers.');
             return;
         }
 
@@ -306,15 +373,11 @@ class CbtManagement extends Component
         }
 
         $assessment->update([
-            'is_locked' => !$assessment->is_locked,
+            'exam_published_at' => null,
+            'exam_published_by' => null,
         ]);
 
-        session()->flash(
-            'message',
-            $assessment->is_locked
-                ? 'CBT exam locked. Students can view it, but they cannot take it.'
-                : 'CBT exam unlocked. Students can now take it.'
-        );
+        session()->flash('message', 'CBT paper withdrawn from students.');
     }
 
     public function manageQuestions($assessmentId)
@@ -327,6 +390,13 @@ class CbtManagement extends Component
             session()->flash('error', 'Assessment not found.');
             return;
         }
+
+        if (!$this->currentUserCanAccessQuestionBank($this->selectedAssessment)) {
+            $this->selectedAssessment = null;
+            session()->flash('error', 'This CBT paper has been locked after vetting. Only super admin can view the questions.');
+            return;
+        }
+
         $this->showQuestionModal = true;
         $this->resetQuestionForm();
     }
@@ -341,6 +411,11 @@ class CbtManagement extends Component
         $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
         if (!$assessment) {
             session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        if (!$this->currentUserCanEditQuestionBank($assessment)) {
+            session()->flash('error', 'This CBT paper is locked. Unlock it before editing the questions.');
             return;
         }
 
@@ -394,6 +469,11 @@ class CbtManagement extends Component
             return;
         }
 
+        if (!$this->currentUserCanEditQuestionBank($assessment)) {
+            session()->flash('error', 'This CBT paper is locked. Unlock it before editing the questions.');
+            return;
+        }
+
         $this->selectedAssessment = $assessment;
         $this->editingQuestion = Question::query()
             ->where('assessment_id', $assessment->id)
@@ -429,6 +509,11 @@ class CbtManagement extends Component
         $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
         if (!$assessment) {
             session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        if (!$this->currentUserCanEditQuestionBank($assessment)) {
+            session()->flash('error', 'This CBT paper is locked. Unlock it before editing the questions.');
             return;
         }
 
@@ -486,6 +571,11 @@ class CbtManagement extends Component
             return;
         }
 
+        if (!$this->currentUserCanEditQuestionBank($assessment)) {
+            session()->flash('error', 'This CBT paper is locked. Unlock it before editing the questions.');
+            return;
+        }
+
         $validQuestionIds = Question::query()
             ->where('assessment_id', $assessment->id)
             ->pluck('id')
@@ -515,6 +605,11 @@ class CbtManagement extends Component
         $assessment = $this->getAssessmentForCurrentSchool($this->selectedAssessment->id);
         if (!$assessment) {
             session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        if (!$this->currentUserCanEditQuestionBank($assessment)) {
+            session()->flash('error', 'This CBT paper is locked. Unlock it before editing the questions.');
             return;
         }
 
@@ -751,5 +846,15 @@ class CbtManagement extends Component
     protected function currentUserCanLockAssessments(): bool
     {
         return auth()->user()?->hasAnyRole(['super-admin', 'super_admin']) === true;
+    }
+
+    protected function currentUserCanAccessQuestionBank(Assessment $assessment): bool
+    {
+        return !$assessment->is_locked || $this->currentUserCanLockAssessments();
+    }
+
+    protected function currentUserCanEditQuestionBank(Assessment $assessment): bool
+    {
+        return !$assessment->is_locked;
     }
 }

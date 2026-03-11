@@ -111,9 +111,15 @@
                                     </p>
                                 </div>
                                 <div>
-                                    <span class="text-themed-tertiary">Access:</span>
+                                    <span class="text-themed-tertiary">Paper:</span>
                                     <p class="{{ $assessment->is_locked ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
-                                        {{ $assessment->is_locked ? 'Locked' : 'Open' }}
+                                        {{ $assessment->is_locked ? 'Sealed' : 'Draft' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span class="text-themed-tertiary">Student Access:</span>
+                                    <p class="{{ $assessment->exam_published_at ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400' }}">
+                                        {{ $assessment->exam_published_at ? 'Published' : 'Hidden' }}
                                     </p>
                                 </div>
                                 @if($assessment->shuffle_questions)
@@ -132,19 +138,37 @@
                                     <i class="fas fa-users"></i>
                                     <span>Participants</span>
                                 </button>
-                                <button wire:click="manageQuestions({{ $assessment->id }})"
-                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                                    title="Manage Questions">
-                                    <i class="fas fa-question-circle"></i>
-                                    <span>Add Questions</span>
-                                </button>
+                                @if(!$assessment->is_locked || $canLockAssessments)
+                                    <button wire:click="manageQuestions({{ $assessment->id }})"
+                                        class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                                        title="{{ $assessment->is_locked ? 'View Questions' : 'Manage Questions' }}">
+                                        <i class="fas fa-question-circle"></i>
+                                        <span>{{ $assessment->is_locked ? 'View Questions' : 'Add Questions' }}</span>
+                                    </button>
+                                @endif
                                 @if($canLockAssessments)
                                     <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
                                         class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
-                                        title="{{ $assessment->is_locked ? 'Unlock Exam' : 'Lock Exam' }}">
+                                        title="{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}">
                                         <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
-                                        <span>{{ $assessment->is_locked ? 'Unlock' : 'Lock' }}</span>
+                                        <span>{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}</span>
                                     </button>
+                                    @if($assessment->exam_published_at)
+                                        <button wire:click="unpublishExam({{ $assessment->id }})"
+                                            class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                                            title="Withdraw Paper">
+                                            <i class="fas fa-eye-slash"></i>
+                                            <span>Withdraw Paper</span>
+                                        </button>
+                                    @else
+                                        <button wire:click="publishExam({{ $assessment->id }})"
+                                            @if(!$assessment->is_locked || $assessment->questions->count() === 0) disabled @endif
+                                            class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors dark:border-indigo-800 dark:text-indigo-300 {{ !$assessment->is_locked || $assessment->questions->count() === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30' }}"
+                                            title="{{ $assessment->is_locked && $assessment->questions->count() > 0 ? 'Publish Paper' : 'Lock the paper and add questions before publishing' }}">
+                                            <i class="fas fa-paper-plane"></i>
+                                            <span>Publish Paper</span>
+                                        </button>
+                                    @endif
                                 @endif
                                 @if($assessment->results_published_at)
                                     <button wire:click="unpublishResults({{ $assessment->id }})"
@@ -230,7 +254,11 @@
                                             </span>
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->is_locked ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' }}">
                                                 <i class="fas {{ $assessment->is_locked ? 'fa-lock' : 'fa-lock-open' }} mr-1"></i>
-                                                {{ $assessment->is_locked ? 'Locked' : 'Open' }}
+                                                {{ $assessment->is_locked ? 'Paper Sealed' : 'Paper Draft' }}
+                                            </span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->exam_published_at ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' }}">
+                                                <i class="fas {{ $assessment->exam_published_at ? 'fa-paper-plane' : 'fa-eye-slash' }} mr-1"></i>
+                                                {{ $assessment->exam_published_at ? 'Student Access Published' : 'Student Access Hidden' }}
                                             </span>
                                         </div>
                                     </td>
@@ -242,19 +270,37 @@
                                                 <i class="fas fa-users"></i>
                                                 <span>Participants</span>
                                             </button>
-                                            <button wire:click="manageQuestions({{ $assessment->id }})"
-                                                class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                                                title="Manage Questions">
-                                                <i class="fas fa-question-circle"></i>
-                                                <span>Add Questions</span>
-                                            </button>
+                                            @if(!$assessment->is_locked || $canLockAssessments)
+                                                <button wire:click="manageQuestions({{ $assessment->id }})"
+                                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                                                    title="{{ $assessment->is_locked ? 'View Questions' : 'Manage Questions' }}">
+                                                    <i class="fas fa-question-circle"></i>
+                                                    <span>{{ $assessment->is_locked ? 'View Questions' : 'Add Questions' }}</span>
+                                                </button>
+                                            @endif
                                             @if($canLockAssessments)
                                                 <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
                                                     class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
-                                                    title="{{ $assessment->is_locked ? 'Unlock Exam' : 'Lock Exam' }}">
+                                                    title="{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}">
                                                     <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
-                                                    <span>{{ $assessment->is_locked ? 'Unlock' : 'Lock' }}</span>
+                                                    <span>{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}</span>
                                                 </button>
+                                                @if($assessment->exam_published_at)
+                                                    <button wire:click="unpublishExam({{ $assessment->id }})"
+                                                        class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                                                        title="Withdraw Paper">
+                                                        <i class="fas fa-eye-slash"></i>
+                                                        <span>Withdraw Paper</span>
+                                                    </button>
+                                                @else
+                                                    <button wire:click="publishExam({{ $assessment->id }})"
+                                                        @if(!$assessment->is_locked || $assessment->questions->count() === 0) disabled @endif
+                                                        class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors dark:border-indigo-800 dark:text-indigo-300 {{ !$assessment->is_locked || $assessment->questions->count() === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30' }}"
+                                                        title="{{ $assessment->is_locked && $assessment->questions->count() > 0 ? 'Publish Paper' : 'Lock the paper and add questions before publishing' }}">
+                                                        <i class="fas fa-paper-plane"></i>
+                                                        <span>Publish Paper</span>
+                                                    </button>
+                                                @endif
                                             @endif
                                             @if($assessment->results_published_at)
                                                 <button wire:click="unpublishResults({{ $assessment->id }})"
@@ -580,6 +626,7 @@
 
     <!-- Questions Management Modal -->
     @if($selectedAssessment && $showQuestionModal)
+        @php($questionsLocked = $selectedAssessment->is_locked)
         <div
             class="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
             <div
@@ -595,16 +642,23 @@
                     </button>
                 </div>
 
+                @if($questionsLocked)
+                    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                        This paper is locked after vetting. Questions are read-only until the paper is unlocked. Students will only see it after you publish the paper.
+                    </div>
+                @endif
+
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Add Question Form -->
                     <div>
-                        <h6 class="text-lg font-semibold text-themed-primary mb-4">Add New Question</h6>
-                        <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
-                            <p class="font-semibold">Math Upload Guide</p>
-                            <p class="mt-1">Inline math: <code>$x^2 + y^2 = 25$</code>. Block math: <code>$$\frac{-b \pm \sqrt{b^2-4ac}}{2a}$$</code>.</p>
-                            <p class="mt-1">Use normal text outside the math markers. The preview updates as you type.</p>
-                        </div>
-                        <form wire:submit="addQuestion">
+                        @if(!$questionsLocked)
+                            <h6 class="text-lg font-semibold text-themed-primary mb-4">Add New Question</h6>
+                            <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+                                <p class="font-semibold">Math Upload Guide</p>
+                                <p class="mt-1">Inline math: <code>$x^2 + y^2 = 25$</code>. Block math: <code>$$\frac{-b \pm \sqrt{b^2-4ac}}{2a}$$</code>.</p>
+                                <p class="mt-1">Use normal text outside the math markers. The preview updates as you type.</p>
+                            </div>
+                            <form wire:submit="addQuestion">
                             <div class="mb-4">
                                 <label for="question_text" class="block text-sm font-medium text-themed-primary mb-2">
                                     Question Text
@@ -743,11 +797,19 @@
                                 </div>
                             </div>
 
-                            <button type="submit"
-                                class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center">
-                                <i class="fas fa-plus mr-2"></i>Add Question
-                            </button>
-                        </form>
+                                <button type="submit"
+                                    class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center">
+                                    <i class="fas fa-plus mr-2"></i>Add Question
+                                </button>
+                            </form>
+                        @else
+                            <h6 class="text-lg font-semibold text-themed-primary mb-4">Question Bank Sealed</h6>
+                            <div class="rounded-lg border border-themed-secondary bg-themed-tertiary p-5 text-sm text-themed-secondary">
+                                <p class="font-semibold text-themed-primary">This paper is in a sealed stage.</p>
+                                <p class="mt-2">Unlock the paper first if you need to add, edit, delete, or reorder questions.</p>
+                                <p class="mt-2">When the exam should start, publish the paper from the CBT management list so only students can see it.</p>
+                            </div>
+                        @endif
                     </div>
 
                     <!-- Questions List with Edit and Reorder -->
@@ -755,15 +817,15 @@
                         <h6 class="text-lg font-semibold text-themed-primary mb-4">Questions
                             ({{ $selectedAssessment->questions->count() }})</h6>
                         @if($selectedAssessment->questions->count() > 0)
-                            <div id="questions-sortable" class="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                            <div @if(!$questionsLocked) id="questions-sortable" @endif class="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                                 @foreach($selectedAssessment->questions->sortBy('order') as $question)
                                     <div class="question-item bg-themed-tertiary border border-themed-secondary rounded-lg p-4 hover:shadow-md transition-shadow"
                                         data-id="{{ $question->id }}">
                                         <div class="flex items-start">
                                             <!-- Drag Handle -->
                                             <div
-                                                class="drag-handle cursor-move mr-3 text-themed-tertiary hover:text-themed-primary pt-1">
-                                                <i class="fas fa-grip-vertical text-lg"></i>
+                                                class="{{ $questionsLocked ? 'mr-3 pt-1 text-themed-tertiary opacity-40' : 'drag-handle cursor-move mr-3 text-themed-tertiary hover:text-themed-primary pt-1' }}">
+                                                <i class="fas {{ $questionsLocked ? 'fa-lock' : 'fa-grip-vertical' }} text-lg"></i>
                                             </div>
 
                                             <!-- Question Content -->
@@ -804,22 +866,24 @@
                                                 </div>
                                             </div>
 
-                                            <!-- Action Buttons -->
-                                            <div class="ml-3 flex flex-col gap-2">
-                                                <button wire:click="editQuestion({{ $question->id }})"
-                                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                                                    title="Edit Question">
-                                                    <i class="fas fa-edit"></i>
-                                                    <span>Edit</span>
-                                                </button>
-                                                <button wire:click="deleteQuestion({{ $question->id }})"
-                                                    wire:confirm="Are you sure you want to delete this question?"
-                                                    class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
-                                                    title="Delete">
-                                                    <i class="fas fa-trash"></i>
-                                                    <span>Delete</span>
-                                                </button>
-                                            </div>
+                                            @if(!$questionsLocked)
+                                                <!-- Action Buttons -->
+                                                <div class="ml-3 flex flex-col gap-2">
+                                                    <button wire:click="editQuestion({{ $question->id }})"
+                                                        class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
+                                                        title="Edit Question">
+                                                        <i class="fas fa-edit"></i>
+                                                        <span>Edit</span>
+                                                    </button>
+                                                    <button wire:click="deleteQuestion({{ $question->id }})"
+                                                        wire:confirm="Are you sure you want to delete this question?"
+                                                        class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
+                                                        title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                        <span>Delete</span>
+                                                    </button>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
