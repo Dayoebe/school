@@ -384,6 +384,9 @@ class CbtManagement extends Component
 
     public function manageQuestions($assessmentId)
     {
+        $this->showParticipantsModal = false;
+        $this->showEditQuestionModal = false;
+
         $this->selectedAssessment = $this->assessmentsForCurrentSchool()
             ->with('questions')
             ->find($assessmentId);
@@ -628,6 +631,9 @@ class CbtManagement extends Component
 
     public function viewParticipants($assessmentId)
     {
+        $this->showQuestionModal = false;
+        $this->showEditQuestionModal = false;
+
         $schoolId = $this->currentSchoolId();
 
         $this->selectedAssessment = $this->assessmentParticipantsQuery()

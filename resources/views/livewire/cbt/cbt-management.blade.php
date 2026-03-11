@@ -82,7 +82,7 @@
                 <!-- Mobile Card View -->
                 <div class="block lg:hidden space-y-4">
                     @foreach($assessments as $assessment)
-                        <div class="bg-themed-tertiary rounded-lg p-4 border border-themed-secondary">
+                        <div wire:key="cbt-assessment-mobile-{{ $assessment->id }}" class="bg-themed-tertiary rounded-lg p-4 border border-themed-secondary">
                             <div class="flex justify-between items-start mb-2">
                                 <h3 class="font-semibold text-themed-primary text-base">{{ $assessment->title }}</h3>
                                 <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-themed-secondary text-accent-themed-primary whitespace-nowrap ml-2">
@@ -132,14 +132,14 @@
                             </div>
 
                             <div class="flex flex-wrap justify-end gap-2 pt-3 border-t border-themed-secondary">
-                                <button wire:click="viewParticipants({{ $assessment->id }})"
+                                <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
                                     class="inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/30"
                                     title="View Participants">
                                     <i class="fas fa-users"></i>
                                     <span>Participants</span>
                                 </button>
                                 @if(!$assessment->is_locked || $canLockAssessments)
-                                    <button wire:click="manageQuestions({{ $assessment->id }})"
+                                    <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
                                         class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                         title="{{ $assessment->is_locked ? 'View Questions' : 'Manage Questions' }}">
                                         <i class="fas fa-question-circle"></i>
@@ -220,7 +220,7 @@
                         </thead>
                         <tbody class="bg-themed-secondary divide-y divide-themed-primary">
                             @foreach($assessments as $assessment)
-                                <tr class="hover:bg-themed-tertiary transition-colors">
+                                <tr wire:key="cbt-assessment-desktop-{{ $assessment->id }}" class="hover:bg-themed-tertiary transition-colors">
                                     <td class="px-4 xl:px-6 py-4">
                                         <div class="font-semibold text-themed-primary">{{ $assessment->title }}</div>
                                         <div class="text-sm text-themed-secondary">{{ Str::limit($assessment->description, 50) }}</div>
@@ -264,14 +264,14 @@
                                     </td>
                                     <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-wrap gap-2">
-                                            <button wire:click="viewParticipants({{ $assessment->id }})"
+                                            <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
                                                 class="inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/30"
                                                 title="View Participants">
                                                 <i class="fas fa-users"></i>
                                                 <span>Participants</span>
                                             </button>
                                             @if(!$assessment->is_locked || $canLockAssessments)
-                                                <button wire:click="manageQuestions({{ $assessment->id }})"
+                                                <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
                                                     class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                                     title="{{ $assessment->is_locked ? 'View Questions' : 'Manage Questions' }}">
                                                     <i class="fas fa-question-circle"></i>
@@ -1032,11 +1032,11 @@
 
     <!-- Participants Modal -->
     @if($showParticipantsModal && $selectedAssessment)
-        @php
+        <?php
             $participants = $this->getParticipantsData();
             $eligibleCount = $participants->where('is_eligible', true)->count();
             $ineligibleCount = $participants->where('is_eligible', false)->count();
-        @endphp
+        ?>
 
         <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
             <div class="bg-themed-secondary rounded-lg max-w-6xl w-full max-h-screen overflow-hidden"
