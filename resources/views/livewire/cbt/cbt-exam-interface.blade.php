@@ -1259,6 +1259,11 @@ function registerCbtExamAlpineComponents() {
                     return;
                 }
 
+                if (payload?.redirect) {
+                    window.location.href = payload.redirect;
+                    return;
+                }
+
                 if (payload?.exam_completed || payload?.auto_submitted) {
                     this.examCompleted = true;
                     this.stopTimer();

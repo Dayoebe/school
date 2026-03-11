@@ -110,6 +110,12 @@
                                         {{ $assessment->results_published_at ? 'Published' : 'Hidden' }}
                                     </p>
                                 </div>
+                                <div>
+                                    <span class="text-themed-tertiary">Access:</span>
+                                    <p class="{{ $assessment->is_locked ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
+                                        {{ $assessment->is_locked ? 'Locked' : 'Open' }}
+                                    </p>
+                                </div>
                                 @if($assessment->shuffle_questions)
                                 <div class="col-span-2">
                                     <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
@@ -130,8 +136,16 @@
                                     class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                     title="Manage Questions">
                                     <i class="fas fa-question-circle"></i>
-                                    <span>Questions</span>
+                                    <span>Add Questions</span>
                                 </button>
+                                @if($canLockAssessments)
+                                    <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
+                                        class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
+                                        title="{{ $assessment->is_locked ? 'Unlock Exam' : 'Lock Exam' }}">
+                                        <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
+                                        <span>{{ $assessment->is_locked ? 'Unlock' : 'Lock' }}</span>
+                                    </button>
+                                @endif
                                 @if($assessment->results_published_at)
                                     <button wire:click="unpublishResults({{ $assessment->id }})"
                                         class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
@@ -214,6 +228,10 @@
                                                 <i class="fas {{ $assessment->results_published_at ? 'fa-bullhorn' : 'fa-eye-slash' }} mr-1"></i>
                                                 {{ $assessment->results_published_at ? 'Results Published' : 'Results Hidden' }}
                                             </span>
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->is_locked ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' }}">
+                                                <i class="fas {{ $assessment->is_locked ? 'fa-lock' : 'fa-lock-open' }} mr-1"></i>
+                                                {{ $assessment->is_locked ? 'Locked' : 'Open' }}
+                                            </span>
                                         </div>
                                     </td>
                                     <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
@@ -228,8 +246,16 @@
                                                 class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
                                                 title="Manage Questions">
                                                 <i class="fas fa-question-circle"></i>
-                                                <span>Questions</span>
+                                                <span>Add Questions</span>
                                             </button>
+                                            @if($canLockAssessments)
+                                                <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
+                                                    class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
+                                                    title="{{ $assessment->is_locked ? 'Unlock Exam' : 'Lock Exam' }}">
+                                                    <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
+                                                    <span>{{ $assessment->is_locked ? 'Unlock' : 'Lock' }}</span>
+                                                </button>
+                                            @endif
                                             @if($assessment->results_published_at)
                                                 <button wire:click="unpublishResults({{ $assessment->id }})"
                                                     class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"

@@ -118,12 +118,14 @@ class CbtManagement extends Component
 
         $subjects = $this->availableSubjectsForSelectedClass();
         $isRestrictedTeacherManager = $this->isRestrictedTeacherCbtManager();
+        $canLockAssessments = $this->currentUserCanLockAssessments();
 
         return view('livewire.cbt.cbt-management', compact(
             'assessments',
             'classes',
             'subjects',
             'isRestrictedTeacherManager',
+            'canLockAssessments',
         ));
     }
 
@@ -288,6 +290,31 @@ class CbtManagement extends Component
         ]);
 
         session()->flash('message', 'CBT results unpublished.');
+    }
+
+    public function toggleAssessmentLock($assessmentId): void
+    {
+        if (!$this->currentUserCanLockAssessments()) {
+            session()->flash('error', 'Only super admin can lock or unlock CBT exams.');
+            return;
+        }
+
+        $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
+        if (!$assessment) {
+            session()->flash('error', 'Assessment not found.');
+            return;
+        }
+
+        $assessment->update([
+            'is_locked' => !$assessment->is_locked,
+        ]);
+
+        session()->flash(
+            'message',
+            $assessment->is_locked
+                ? 'CBT exam locked. Students can view it, but they cannot take it.'
+                : 'CBT exam unlocked. Students can now take it.'
+        );
     }
 
     public function manageQuestions($assessmentId)
@@ -719,5 +746,10 @@ class CbtManagement extends Component
 
         return $this->accessibleCbtSubjectsQuery($classId)
             ->get(['subjects.id', 'subjects.name', 'subjects.short_name']);
+    }
+
+    protected function currentUserCanLockAssessments(): bool
+    {
+        return auth()->user()?->hasAnyRole(['super-admin', 'super_admin']) === true;
     }
 }

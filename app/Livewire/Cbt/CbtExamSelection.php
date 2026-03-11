@@ -165,6 +165,10 @@ class CbtExamSelection extends Component
         int $attemptCount,
         ?AttemptSession $activeAttempt
     ): array {
+        if ($assessment->is_locked) {
+            return [false, 'This CBT exam is locked. You can view it, but you cannot take it now.'];
+        }
+
         if ($activeAttempt && !$activeAttempt->isExpired()) {
             return [true, 'You have an in-progress attempt that can be resumed'];
         }

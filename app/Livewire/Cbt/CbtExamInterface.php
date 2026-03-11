@@ -59,6 +59,11 @@ class CbtExamInterface extends Component
             return redirect()->route('cbt.exams');
         }
 
+        if ($this->isAssessmentLocked()) {
+            session()->flash('warning', $this->lockedAssessmentMessage());
+            return redirect()->route('cbt.exams');
+        }
+
         $activeSession = $this->getActiveAttemptSession();
         if ($activeSession) {
             if ($activeSession->isExpired()) {
@@ -179,6 +184,13 @@ class CbtExamInterface extends Component
 
     public function startExam(): void
     {
+        if ($this->isAssessmentLocked(true)) {
+            $message = $this->lockedAssessmentMessage();
+            $this->dispatch('exam-start-feedback', state: 'warning', message: $message);
+            session()->flash('warning', $message);
+            return;
+        }
+
         if ($this->examCompleted) {
             $this->dispatch('exam-start-feedback', state: 'warning', message: 'This attempt is already completed.');
             return;
@@ -226,6 +238,16 @@ class CbtExamInterface extends Component
             return [
                 'time_remaining' => (int) $this->timeRemaining,
                 'exam_completed' => (bool) $this->examCompleted,
+            ];
+        }
+
+        if ($this->isAssessmentLocked(true)) {
+            session()->flash('warning', $this->lockedAssessmentMessage());
+
+            return [
+                'time_remaining' => (int) $this->timeRemaining,
+                'exam_completed' => (bool) $this->examCompleted,
+                'redirect' => route('cbt.exams'),
             ];
         }
 
@@ -582,6 +604,10 @@ class CbtExamInterface extends Component
 
     protected function createAttemptSession(): AttemptSession
     {
+        if ($this->isAssessmentLocked(true)) {
+            throw new \RuntimeException($this->lockedAssessmentMessage());
+        }
+
         $active = $this->getActiveAttemptSession();
         if ($active && !$active->isExpired()) {
             return $active;
@@ -758,8 +784,26 @@ class CbtExamInterface extends Component
             ->visibleToUser(auth()->user());
     }
 
+    protected function isAssessmentLocked(bool $refresh = false): bool
+    {
+        if ($refresh && $this->assessment) {
+            $this->assessment->refresh();
+        }
+
+        return (bool) $this->assessment?->is_locked;
+    }
+
+    protected function lockedAssessmentMessage(): string
+    {
+        return 'This CBT exam is locked. You can view it, but you cannot take it now.';
+    }
+
     protected function resolveStartExamErrorMessage(\Throwable $exception): string
     {
+        if ($exception instanceof \RuntimeException) {
+            return $exception->getMessage();
+        }
+
         if ($exception instanceof QueryException) {
             $message = $exception->getMessage();
 

@@ -45,6 +45,7 @@ class Assessment extends Model
         'shuffle_options',
         'results_published_at',
         'results_published_by',
+        'is_locked',
     ];
 
     protected $casts = [
@@ -59,6 +60,7 @@ class Assessment extends Model
         'shuffle_questions' => 'boolean',
         'shuffle_options' => 'boolean',
         'results_published_at' => 'datetime',
+        'is_locked' => 'boolean',
     ];
 
     public function course()
@@ -142,6 +144,10 @@ class Assessment extends Model
      */
     public function canUserTakeAssessment($userId)
     {
+        if ($this->is_locked) {
+            return [false, 'This CBT exam is locked. You can view it, but you cannot take it now.'];
+        }
+
         $activeSession = $this->getActiveAttemptSession($userId);
         if ($activeSession && !$activeSession->isExpired()) {
             return [true, 'You have an in-progress attempt that can be resumed'];

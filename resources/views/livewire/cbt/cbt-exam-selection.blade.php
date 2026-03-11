@@ -35,7 +35,11 @@
                         <!-- Assessment Header -->
                         <div class="flex justify-between items-start mb-4">
                             <h3 class="text-lg font-semibold text-themed-primary leading-tight">{{ $assessment->title }}</h3>
-                            @if($assessment->user_result)
+                            @if($assessment->is_locked)
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+                                    LOCKED
+                                </span>
+                            @elseif($assessment->user_result)
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                     {{ $assessment->user_result['passed'] ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }}">
                                     {{ $assessment->user_result['passed'] ? 'PASSED' : 'FAILED' }}
@@ -91,6 +95,12 @@
                                     {{ $assessment->remaining_attempts === 'Unlimited' ? 'Unlimited' : $assessment->remaining_attempts }}
                                 </span>
                             </div>
+                            <div class="mt-1 flex justify-between items-center text-sm">
+                                <span class="text-themed-secondary">Access:</span>
+                                <span class="font-semibold {{ $assessment->is_locked ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
+                                    {{ $assessment->is_locked ? 'Locked' : 'Open' }}
+                                </span>
+                            </div>
                             
                             @if(!$assessment->can_take)
                                 <div class="mt-2 pt-2 border-t border-themed-secondary text-xs text-red-600 dark:text-red-400 flex items-center">
@@ -134,8 +144,8 @@
                             @else
                                 <button disabled
                                     class="w-full bg-gray-400 dark:bg-gray-600 cursor-not-allowed text-white px-4 py-2 rounded-lg flex items-center justify-center font-medium opacity-50">
-                                    <i class="fas fa-ban mr-2"></i>
-                                    No Attempts Remaining
+                                    <i class="fas {{ $assessment->is_locked ? 'fa-lock' : 'fa-ban' }} mr-2"></i>
+                                    {{ $assessment->is_locked ? 'Exam Locked' : 'No Attempts Remaining' }}
                                 </button>
                             @endif
 
@@ -164,7 +174,7 @@
             $totalAssessments = $availableAssessments->count();
             $completedAssessments = $availableAssessments->filter(fn($a) => $a->user_result)->count();
             $passedAssessments = $availableAssessments->filter(fn($a) => $a->user_result && $a->user_result['passed'])->count();
-            $exhaustedAttempts = $availableAssessments->filter(fn($a) => !$a->can_take)->count();
+            $exhaustedAttempts = $availableAssessments->filter(fn($a) => !$a->can_take && !$a->is_locked)->count();
         @endphp
 
         @if($completedAssessments > 0)
