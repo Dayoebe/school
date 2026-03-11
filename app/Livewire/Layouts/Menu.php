@@ -451,7 +451,7 @@ class Menu extends Component
                 'text' => 'Exams',
                 'icon' => 'fas fa-file-signature',
                 'permissions' => ['read exam', 'read exam record'],
-                'submenu' => [
+                'submenu' => array_values(array_filter([
                     [
                         'type' => 'menu-item',
                         'text' => 'Exam Setup',
@@ -482,19 +482,19 @@ class Menu extends Component
                         'route' => 'exams.semester-result-tabulation',
                         'permissions' => ['read exam'],
                     ],
-                    [
+                    $canAccessClassOnlyResultTools ? [
                         'type' => 'menu-item',
                         'text' => 'Annual Class Results',
                         'route' => 'result.annual',
                         'permissions' => ['view result'],
-                    ],
+                    ] : null,
                     [
                         'type' => 'menu-item',
                         'text' => 'Grade Systems',
                         'route' => 'grade-systems.index',
                         'permissions' => ['read grade system', 'create grade system'],
                     ],
-                ],
+                ])),
             ],
             [
                 'type' => 'menu-item',

@@ -1,4 +1,17 @@
 <div class="space-y-6">
+    <div class="bg-white rounded-2xl shadow-xl p-6">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-gray-800">Academic Period</h3>
+                <p class="text-sm text-gray-600">
+                    Select the academic year and term to view the relevant result.
+                </p>
+            </div>
+
+            <livewire:result.academic-period-selector />
+        </div>
+    </div>
+
     @if(!$viewingStudent)
         @if($canBrowseAllStudents)
             <!-- Student List View -->

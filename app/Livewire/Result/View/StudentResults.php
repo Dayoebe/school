@@ -48,6 +48,10 @@ class StudentResults extends Component
     #[On('academic-period-changed')]
     public function handlePeriodChange($data)
     {
+        $activeStudentId = $this->viewingStudent && $this->studentRecord
+            ? $this->studentRecord->id
+            : null;
+
         $this->academicYearId = $data['academicYearId'];
         $this->semesterId = $data['semesterId'];
 
@@ -61,6 +65,11 @@ class StudentResults extends Component
             'studentPosition',
             'totalStudents',
         ]);
+
+        if ($activeStudentId) {
+            $this->viewStudent($activeStudentId);
+            return;
+        }
 
         if ($this->isStudentResultViewer() && auth()->user()?->studentRecord) {
             $this->viewStudent(auth()->user()->studentRecord->id);

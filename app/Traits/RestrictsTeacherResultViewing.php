@@ -10,6 +10,14 @@ use Illuminate\Support\Facades\DB;
 
 trait RestrictsTeacherResultViewing
 {
+    protected function currentUserIsResultStaff(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null
+            && $user->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin', 'teacher']);
+    }
+
     protected function isRestrictedTeacherResultViewer(): bool
     {
         $user = auth()->user();
@@ -26,6 +34,10 @@ trait RestrictsTeacherResultViewing
                 $query->where('school_id', auth()->user()->school_id);
             });
 
+        if (!$this->currentUserIsResultStaff()) {
+            return $query->whereRaw('1 = 0');
+        }
+
         if (!$this->isRestrictedTeacherResultViewer()) {
             return $query;
         }
@@ -41,6 +53,10 @@ trait RestrictsTeacherResultViewing
 
     protected function accessibleClassTeacherClassIds(): Collection
     {
+        if (!$this->currentUserIsResultStaff()) {
+            return collect();
+        }
+
         if (!$this->isRestrictedTeacherResultViewer()) {
             return collect();
         }
@@ -65,6 +81,10 @@ trait RestrictsTeacherResultViewing
                 $query->where('school_id', auth()->user()->school_id);
             });
 
+        if (!$this->currentUserIsResultStaff()) {
+            return $query->whereRaw('1 = 0');
+        }
+
         if (!$this->isRestrictedTeacherResultViewer()) {
             return $query;
         }
@@ -80,6 +100,10 @@ trait RestrictsTeacherResultViewing
 
     protected function accessibleSubjectTeacherClassIds(): Collection
     {
+        if (!$this->currentUserIsResultStaff()) {
+            return collect();
+        }
+
         if (!$this->isRestrictedTeacherResultViewer()) {
             return collect();
         }
@@ -147,8 +171,12 @@ trait RestrictsTeacherResultViewing
                         $subQuery->from('student_subject')
                             ->where('my_class_id', $classId)
                             ->select('subject_id');
-                    });
+                });
             });
+        }
+
+        if (!$this->currentUserIsResultStaff()) {
+            return $query->whereRaw('1 = 0')->orderBy('subjects.name')->distinct();
         }
 
         if (!$this->isRestrictedTeacherResultViewer()) {
@@ -176,12 +204,20 @@ trait RestrictsTeacherResultViewing
 
     protected function currentUserCanAccessClassOnlyResultTools(): bool
     {
+        if (!$this->currentUserIsResultStaff()) {
+            return false;
+        }
+
         return !$this->isRestrictedTeacherResultViewer()
             || $this->accessibleClassTeacherClassIds()->isNotEmpty();
     }
 
     protected function currentUserCanAccessSubjectResultTools(): bool
     {
+        if (!$this->currentUserIsResultStaff()) {
+            return false;
+        }
+
         return !$this->isRestrictedTeacherResultViewer()
             || (
                 $this->accessibleSubjectTeacherClassIds()->isNotEmpty()
@@ -191,12 +227,12 @@ trait RestrictsTeacherResultViewing
 
     protected function currentUserCanManageTermResultSettings(): bool
     {
-        return !$this->isRestrictedTeacherResultViewer();
+        return $this->currentUserIsResultStaff() && !$this->isRestrictedTeacherResultViewer();
     }
 
     protected function currentUserCanViewClassTeacherClass(int|string|null $classId): bool
     {
-        if (!$classId) {
+        if (!$classId || !$this->currentUserIsResultStaff()) {
             return false;
         }
 
@@ -209,7 +245,7 @@ trait RestrictsTeacherResultViewing
 
     protected function currentUserCanViewSubjectTeacherClass(int|string|null $classId): bool
     {
-        if (!$classId) {
+        if (!$classId || !$this->currentUserIsResultStaff()) {
             return false;
         }
 
@@ -224,7 +260,7 @@ trait RestrictsTeacherResultViewing
         int|string|null $subjectId,
         int|string|null $classId = null
     ): bool {
-        if (!$subjectId) {
+        if (!$subjectId || !$this->currentUserIsResultStaff()) {
             return false;
         }
 

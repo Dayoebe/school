@@ -360,6 +360,13 @@
                 </div>
 
                 <div class="mt-5 flex flex-wrap gap-3">
+                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.view.student'))
+                        <a href="{{ route('result.view.student') }}"
+                            class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
+                            wire:navigate>
+                            My Results
+                        </a>
+                    @endif
                     @if (\Illuminate\Support\Facades\Route::has('cbt.exams'))
                         <a href="{{ route('cbt.exams') }}"
                             class="rounded-lg bg-sky-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
@@ -382,6 +389,17 @@
                         </a>
                     @endif
                 </div>
+
+                @if (auth()->user()->can('view result'))
+                    <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                        <div class="mb-3">
+                            <h4 class="text-sm font-semibold text-gray-800">Result Period</h4>
+                            <p class="text-sm text-gray-600">Choose the academic year and term for the result you want to open.</p>
+                        </div>
+
+                        <livewire:result.academic-period-selector />
+                    </div>
+                @endif
             </section>
         @endif
 
@@ -434,6 +452,20 @@
                 @endif
 
                 <div class="mt-5 flex flex-wrap gap-3">
+                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.view.student'))
+                        <a href="{{ route('result.view.student') }}"
+                            class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
+                            wire:navigate>
+                            Children Results
+                        </a>
+                    @endif
+                    @if (auth()->user()->can('view result') && \Illuminate\Support\Facades\Route::has('result.history'))
+                        <a href="{{ route('result.history') }}"
+                            class="rounded-lg bg-rose-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
+                            wire:navigate>
+                            Children History
+                        </a>
+                    @endif
                     @if (\Illuminate\Support\Facades\Route::has('profile.edit'))
                         <a href="{{ route('profile.edit') }}"
                             class="rounded-lg bg-gray-700 px-4 py-2 text-sm font-medium text-white transition hover:brightness-110"
@@ -449,6 +481,17 @@
                         </a>
                     @endif
                 </div>
+
+                @if (auth()->user()->can('view result'))
+                    <div class="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                        <div class="mb-3">
+                            <h4 class="text-sm font-semibold text-gray-800">Result Period</h4>
+                            <p class="text-sm text-gray-600">Choose the academic year and term before opening a child result.</p>
+                        </div>
+
+                        <livewire:result.academic-period-selector />
+                    </div>
+                @endif
             </section>
         @endif
     @endif

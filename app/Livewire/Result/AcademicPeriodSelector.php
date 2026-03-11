@@ -16,6 +16,7 @@ class AcademicPeriodSelector extends Component
     public function mount()
     {
         $this->academicYears = AcademicYear::query()
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('start_year', 'desc')
             ->get();
         

@@ -1,0 +1,1 @@
+[2026-03-11 10:48:22] local.INFO: Results cleanup completed {"total_deleted":2577,"details":["Deleted 231 results where students not enrolled in subjects","Deleted 2346 results with wrong class-subject assignments"],"user_id":1} 
