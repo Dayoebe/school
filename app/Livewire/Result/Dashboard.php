@@ -56,14 +56,26 @@ class Dashboard extends Component
         $recentlyUploaded = Result::where('academic_year_id', $this->academicYearId)
             ->where('semester_id', $this->semesterId)
             ->whereIn('student_record_id', $studentRecordIds)
-            // Fix: Properly eager load the student with user relationship
             ->with([
-                'studentRecord.user', // Use studentRecord instead of student, and load user
+                'studentRecord.user',
                 'subject'
             ])
             ->latest()
             ->take(5)
-            ->get();
+            ->get()
+            ->map(function (Result $result): array {
+                $studentRecord = $result->studentRecord;
+                $studentUser = $studentRecord?->user;
+
+                return [
+                    'student_name' => $studentUser?->name ?? 'Unknown Student',
+                    'student_photo_url' => $studentUser?->profile_photo_url ?? asset('images/default-avatar.png'),
+                    'subject_name' => $result->subject?->name ?? 'Unknown Subject',
+                    'total_score' => (int) ($result->total_score ?? 0),
+                    'uploaded_at_human' => $result->created_at?->diffForHumans() ?? '',
+                ];
+            })
+            ->all();
     
         $this->stats = [
             'total_students' => $totalStudents,

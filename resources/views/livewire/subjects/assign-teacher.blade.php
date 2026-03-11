@@ -110,8 +110,8 @@
                                                 <i class="fas fa-check-circle text-blue-600"></i>
                                             @endif
                                         </div>
-                                        @if($class->classGroup)
-                                            <span class="text-xs text-gray-600">{{ $class->classGroup->name }}</span>
+                                        @if($class->class_group_name)
+                                            <span class="text-xs text-gray-600">{{ $class->class_group_name }}</span>
                                         @endif
                                     </button>
                                 @endforeach
@@ -262,22 +262,19 @@
                         </button>
                         </div>
                         
-                        @if(!$isGeneralAssignment && $selectedSubject)
-                            @php
-                                $selectedSubjectModel = $subjects->firstWhere('id', $selectedSubject);
-                            @endphp
-                            @if($selectedSubjectModel)
-                                @php
-                                    $subjectClassIds = $selectedSubjectModel->classes->pluck('id')->map(fn($id) => (int) $id)->all();
-                                    if ($selectedSubjectModel->my_class_id && !in_array((int) $selectedSubjectModel->my_class_id, $subjectClassIds, true)) {
-                                        $subjectClassIds[] = (int) $selectedSubjectModel->my_class_id;
-                                    }
-                                    $subjectClasses = $classes->whereIn('id', $subjectClassIds);
-                                @endphp
-                                <div class="mt-4">
-                                    <label class="block text-sm font-semibold text-gray-700 mb-2">Select Classes *</label>
+                        @if(!$isGeneralAssignment)
+                            <div class="mt-4">
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">Select Classes *</label>
+
+                                @if(!$selectedSubject)
+                                    <p class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                                        Select a subject to limit this list to the classes where that subject is offered.
+                                    </p>
+                                @endif
+
+                                @if($this->availableSelectedSubjectClasses->isNotEmpty())
                                     <div class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto rounded-lg border bg-white p-3">
-                                        @foreach($subjectClasses as $class)
+                                        @foreach($this->availableSelectedSubjectClasses as $class)
                                             <button type="button"
                                                     wire:click="toggleSelectedClass({{ $class->id }})"
                                                     class="w-full rounded-lg border-2 px-3 py-3 text-left transition {{ in_array($class->id, $selectedClasses) ? 'border-blue-500 bg-blue-100 text-blue-800' : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300' }}">
@@ -287,22 +284,27 @@
                                                         <i class="fas fa-check-circle text-blue-600"></i>
                                                     @endif
                                                 </div>
-                                                @if($class->classGroup)
-                                                    <span class="text-xs text-gray-600">{{ $class->classGroup->name }}</span>
+                                                @if($class->class_group_name)
+                                                    <span class="text-xs text-gray-600">{{ $class->class_group_name }}</span>
                                                 @endif
                                             </button>
                                         @endforeach
                                     </div>
-                                    @error('selectedClasses')
-                                        <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span>
-                                    @enderror
-                                    @if(count($selectedClasses) > 0)
-                                        <p class="mt-2 text-sm text-blue-600">
-                                            <i class="fas fa-check mr-1"></i>{{ count($selectedClasses) }} class{{ count($selectedClasses) !== 1 ? 'es' : '' }} selected
-                                        </p>
-                                    @endif
-                                </div>
-                            @endif
+                                @else
+                                    <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-600">
+                                        No classes are currently available for the selected subject.
+                                    </div>
+                                @endif
+
+                                @error('selectedClasses')
+                                    <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span>
+                                @enderror
+                                @if(count($selectedClasses) > 0)
+                                    <p class="mt-2 text-sm text-blue-600">
+                                        <i class="fas fa-check mr-1"></i>{{ count($selectedClasses) }} class{{ count($selectedClasses) !== 1 ? 'es' : '' }} selected
+                                    </p>
+                                @endif
+                            </div>
                         @endif
                     </div>
 

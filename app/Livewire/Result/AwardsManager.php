@@ -228,7 +228,11 @@ class AwardsManager extends Component
         }
 
         // Top 3 by Average (from eligible students only)
-        $top3 = $eligibleStudents->sortByDesc('average')->take(3)->values();
+        $top3 = $eligibleStudents->sortByDesc('average')
+            ->take(3)
+            ->map(fn (array $student): array => $this->formatStudentAward($student))
+            ->values()
+            ->all();
 
         // Highest Total Score (from eligible students)
         $highestTotal = $eligibleStudents->sortByDesc('total')->first();
@@ -265,25 +269,51 @@ class AwardsManager extends Component
             }
             
             $bestInSubjects[] = [
-                'subject' => $best->subject,
-                'student' => $best->studentRecord,
-                'score' => $best->total_score,
+                'subject' => [
+                    'name' => $best->subject?->name ?? 'Unknown Subject',
+                ],
+                'student' => $this->formatStudentSummary($best->studentRecord),
+                'score' => (int) $best->total_score,
             ];
         }
 
         $this->topPerformers = [
             'top_3' => $top3,
-            'highest_total' => $highestTotal,
-            'most_as' => $mostAs,
-            'most_consistent' => $mostConsistent,
+            'highest_total' => $highestTotal ? $this->formatStudentAward($highestTotal) : null,
+            'most_as' => $mostAs ? $this->formatStudentAward($mostAs) : null,
+            'most_consistent' => $mostConsistent ? $this->formatStudentAward($mostConsistent) : null,
             'best_in_subjects' => $bestInSubjects,
+        ];
+    }
+
+    protected function formatStudentAward(array $studentData): array
+    {
+        return [
+            'student' => $this->formatStudentSummary($studentData['student'] ?? null),
+            'total' => (int) ($studentData['total'] ?? 0),
+            'average' => (float) ($studentData['average'] ?? 0),
+            'a_grades' => (int) ($studentData['a_grades'] ?? 0),
+            'consistency' => (float) ($studentData['consistency'] ?? 0),
+            'subject_count' => (int) ($studentData['subject_count'] ?? 0),
+            'expected_subjects' => (int) ($studentData['expected_subjects'] ?? 0),
+            'completion_ratio' => (float) ($studentData['completion_ratio'] ?? 0),
+        ];
+    }
+
+    protected function formatStudentSummary(?StudentRecord $studentRecord): array
+    {
+        return [
+            'id' => $studentRecord?->id,
+            'name' => $studentRecord?->user?->name ?? 'Unknown Student',
+            'class_name' => $studentRecord?->myClass?->name ?? 'No Class',
+            'profile_photo_url' => $studentRecord?->user?->profile_photo_url ?? asset('images/default-avatar.png'),
         ];
     }
 
    /**
  * Get total number of subjects expected per class
  */
-protected function getTotalSubjectsPerClass()
+protected function getTotalSubjectsPerClass(): array
 {
     $classes = $this->accessibleClassTeacherClassesQuery()
         ->withCount('subjects')

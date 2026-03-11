@@ -58,7 +58,7 @@
         </div>
     @else
         <!-- Top 3 Overall -->
-        @if(!empty($topPerformers['top_3']) && $topPerformers['top_3']->isNotEmpty())
+        @if(!empty($topPerformers['top_3']))
             <div class="bg-white rounded-2xl shadow-lg p-6">
                 <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-crown text-yellow-500 mr-2"></i>
@@ -70,10 +70,10 @@
                             <div class="text-5xl mb-3">
                                 {{ $index === 0 ? '🥇' : ($index === 1 ? '🥈' : '🥉') }}
                             </div>
-                            <img src="{{ $performer['student']->user->profile_photo_url }}"
+                            <img src="{{ $performer['student']['profile_photo_url'] }}"
                                 class="w-20 h-20 rounded-full mx-auto mb-3 object-cover border-4 {{ $index === 0 ? 'border-yellow-400' : ($index === 1 ? 'border-gray-400' : 'border-orange-400') }}">
-                            <h4 class="font-bold text-lg text-gray-900">{{ $performer['student']->user->name }}</h4>
-                            <p class="text-sm text-gray-600 mb-2">{{ $performer['student']->myClass->name }}</p>
+                            <h4 class="font-bold text-lg text-gray-900">{{ $performer['student']['name'] }}</h4>
+                            <p class="text-sm text-gray-600 mb-2">{{ $performer['student']['class_name'] }}</p>
                             <div class="bg-white rounded-lg p-3 mt-3">
                                 <div class="text-3xl font-bold text-blue-600">{{ $performer['average'] }}%</div>
                                 <div class="text-xs text-gray-500 mt-1">Average Score</div>
@@ -94,11 +94,11 @@
                         Highest Total Score
                     </h4>
                     <div class="flex items-center">
-                        <img src="{{ $topPerformers['highest_total']['student']->user->profile_photo_url }}"
+                        <img src="{{ $topPerformers['highest_total']['student']['profile_photo_url'] }}"
                             class="w-16 h-16 rounded-full object-cover border-4 border-white mr-4">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ $topPerformers['highest_total']['student']->user->name }}</div>
-                            <div class="text-sm text-gray-600">{{ $topPerformers['highest_total']['student']->myClass->name }}</div>
+                            <div class="font-bold text-gray-900">{{ $topPerformers['highest_total']['student']['name'] }}</div>
+                            <div class="text-sm text-gray-600">{{ $topPerformers['highest_total']['student']['class_name'] }}</div>
                             <div class="text-2xl font-bold text-blue-600 mt-2">{{ $topPerformers['highest_total']['total'] }} points</div>
                         </div>
                     </div>
@@ -113,11 +113,11 @@
                         Most A Grades (75%+)
                     </h4>
                     <div class="flex items-center">
-                        <img src="{{ $topPerformers['most_as']['student']->user->profile_photo_url }}"
+                        <img src="{{ $topPerformers['most_as']['student']['profile_photo_url'] }}"
                             class="w-16 h-16 rounded-full object-cover border-4 border-white mr-4">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ $topPerformers['most_as']['student']->user->name }}</div>
-                            <div class="text-sm text-gray-600">{{ $topPerformers['most_as']['student']->myClass->name }}</div>
+                            <div class="font-bold text-gray-900">{{ $topPerformers['most_as']['student']['name'] }}</div>
+                            <div class="text-sm text-gray-600">{{ $topPerformers['most_as']['student']['class_name'] }}</div>
                             <div class="text-2xl font-bold text-green-600 mt-2">{{ $topPerformers['most_as']['a_grades'] }} A's</div>
                         </div>
                     </div>
@@ -132,11 +132,11 @@
                         Most Consistent Performance
                     </h4>
                     <div class="flex items-center">
-                        <img src="{{ $topPerformers['most_consistent']['student']->user->profile_photo_url }}"
+                        <img src="{{ $topPerformers['most_consistent']['student']['profile_photo_url'] }}"
                             class="w-16 h-16 rounded-full object-cover border-4 border-white mr-4">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ $topPerformers['most_consistent']['student']->user->name }}</div>
-                            <div class="text-sm text-gray-600">{{ $topPerformers['most_consistent']['student']->myClass->name }}</div>
+                            <div class="font-bold text-gray-900">{{ $topPerformers['most_consistent']['student']['name'] }}</div>
+                            <div class="text-sm text-gray-600">{{ $topPerformers['most_consistent']['student']['class_name'] }}</div>
                             <div class="text-2xl font-bold text-purple-600 mt-2">{{ $topPerformers['most_consistent']['average'] }}% avg</div>
                         </div>
                     </div>
@@ -154,13 +154,13 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     @foreach($topPerformers['best_in_subjects'] as $best)
                         <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                            <div class="font-bold text-indigo-600 mb-2">{{ $best['subject']->name }}</div>
+                            <div class="font-bold text-indigo-600 mb-2">{{ $best['subject']['name'] }}</div>
                             <div class="flex items-center">
-                                <img src="{{ $best['student']->user->profile_photo_url }}"
+                                <img src="{{ $best['student']['profile_photo_url'] }}"
                                     class="w-10 h-10 rounded-full object-cover mr-3">
                                 <div class="flex-1">
-                                    <div class="font-semibold text-sm text-gray-900">{{ $best['student']->user->name }}</div>
-                                    <div class="text-xs text-gray-500">{{ $best['student']->myClass->name }}</div>
+                                    <div class="font-semibold text-sm text-gray-900">{{ $best['student']['name'] }}</div>
+                                    <div class="text-xs text-gray-500">{{ $best['student']['class_name'] }}</div>
                                 </div>
                                 <div class="text-lg font-bold text-indigo-600">{{ $best['score'] }}</div>
                             </div>

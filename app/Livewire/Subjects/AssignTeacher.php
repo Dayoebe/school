@@ -7,6 +7,7 @@ use App\Models\MyClass;
 use App\Models\User;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class AssignTeacher extends Component
 {
@@ -14,10 +15,6 @@ class AssignTeacher extends Component
     public $selectedTeacher = null;
     public $selectedClasses = [];
     public $isGeneralAssignment = true;
-    
-    public $subjects = [];
-    public $teachers = [];
-    public $classes = [];
     
     public $searchSubject = '';
     public $searchTeacher = '';
@@ -33,40 +30,6 @@ class AssignTeacher extends Component
         if (!auth()->user()->can('update subject')) {
             abort(403, 'Unauthorized action.');
         }
-        
-        $this->loadData();
-    }
-    
-    public function loadData()
-    {
-        // FIX: Eager load classes and teachers to prevent N+1
-        $this->subjects = Subject::query()
-            ->active()
-            ->when($this->searchSubject, function($query) {
-                $query->where(function($q) {
-                    $q->where('name', 'like', '%' . $this->searchSubject . '%')
-                      ->orWhere('short_name', 'like', '%' . $this->searchSubject . '%');
-                });
-            })
-            ->with(['classes.classGroup', 'teachers', 'myClass.classGroup'])
-            ->orderBy('name')
-            ->get();
-            
-        $this->teachers = User::role('teacher')
-            ->where('school_id', auth()->user()->school_id)
-            ->when($this->searchTeacher, function($query) {
-                $query->where('name', 'like', '%' . $this->searchTeacher . '%');
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
-        
-        // FIX: Eager load classGroup
-        $this->classes = MyClass::whereHas('classGroup', function ($query) {
-                $query->where('school_id', auth()->user()->school_id);
-            })
-            ->with('classGroup')
-            ->orderBy('name')
-            ->get();
     }
     
     public function assign()
@@ -146,7 +109,6 @@ class AssignTeacher extends Component
         
         $this->reset(['selectedSubject', 'selectedTeacher', 'selectedClasses', 'isGeneralAssignment']);
         $this->isGeneralAssignment = true;
-        $this->loadData();
     }
     
     public function bulkAssignTeacher()
@@ -232,7 +194,6 @@ class AssignTeacher extends Component
 
         $this->reset(['bulkMode', 'bulkSubjects', 'bulkTeacher', 'bulkClasses', 'bulkIsGeneral']);
         $this->bulkIsGeneral = true;
-        $this->loadData();
     }
     
     public function removeTeacher($subjectId, $teacherId, $classId = null)
@@ -273,7 +234,6 @@ class AssignTeacher extends Component
         });
         
         session()->flash('success', 'Teacher removed successfully!');
-        $this->loadData();
     }
     
     public function toggleBulkMode()
@@ -320,19 +280,80 @@ class AssignTeacher extends Component
         }
     }
     
-    public function updatedSearchSubject()
-    {
-        $this->loadData();
-    }
-    
-    public function updatedSearchTeacher()
-    {
-        $this->loadData();
-    }
-    
     public function updatedSelectedSubject()
     {
         $this->selectedClasses = [];
+    }
+
+    public function getAvailableSelectedSubjectClassesProperty(): Collection
+    {
+        $classes = $this->classOptionsQuery()->get();
+
+        if (!$this->selectedSubject) {
+            return $classes;
+        }
+
+        $subject = Subject::query()
+            ->active()
+            ->with('classes')
+            ->find((int) $this->selectedSubject);
+
+        if (!$subject) {
+            return collect();
+        }
+
+        $subjectClassIds = collect($subject->classes ?? [])
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($subject->my_class_id && !in_array((int) $subject->my_class_id, $subjectClassIds, true)) {
+            $subjectClassIds[] = (int) $subject->my_class_id;
+        }
+
+        return $classes->whereIn('id', $subjectClassIds)->values();
+    }
+
+    protected function subjectsQuery()
+    {
+        return Subject::query()
+            ->active()
+            ->when($this->searchSubject, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('name', 'like', '%' . $this->searchSubject . '%')
+                        ->orWhere('short_name', 'like', '%' . $this->searchSubject . '%');
+                });
+            })
+            ->with(['classes', 'teachers'])
+            ->orderBy('name');
+    }
+
+    protected function teachersQuery()
+    {
+        return User::role('teacher')
+            ->where('school_id', auth()->user()->school_id)
+            ->when($this->searchTeacher, function ($query) {
+                $query->where('name', 'like', '%' . $this->searchTeacher . '%');
+            })
+            ->orderBy('name');
+    }
+
+    protected function classesQuery()
+    {
+        return MyClass::whereHas('classGroup', function ($query) {
+            $query->where('school_id', auth()->user()->school_id);
+        })
+            ->with('classGroup')
+            ->orderBy('name');
+    }
+
+    protected function classOptionsQuery()
+    {
+        return MyClass::query()
+            ->select('my_classes.*', 'class_groups.name as class_group_name')
+            ->join('class_groups', 'class_groups.id', '=', 'my_classes.class_group_id')
+            ->where('class_groups.school_id', auth()->user()->school_id)
+            ->orderBy('my_classes.name');
     }
 
     protected function classBelongsToCurrentSchool($classId): bool
@@ -406,7 +427,11 @@ class AssignTeacher extends Component
 
     public function render()
     {
-        return view('livewire.subjects.assign-teacher')
+        return view('livewire.subjects.assign-teacher', [
+            'subjects' => $this->subjectsQuery()->get(),
+            'teachers' => $this->teachersQuery()->get(['id', 'name', 'email']),
+            'classes' => $this->classOptionsQuery()->get(),
+        ])
             ->layout('layouts.dashboard', [
                 'breadcrumbs' => [
                     ['href' => route('dashboard'), 'text' => 'Dashboard'],

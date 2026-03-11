@@ -84,26 +84,24 @@
         Recently Uploaded Results
     </h3>
     
-    @if($stats['recently_uploaded']->isEmpty())
+    @if(empty($stats['recently_uploaded']))
         <p class="text-gray-500 text-center py-4">No results uploaded yet</p>
     @else
         <div class="space-y-3">
             @foreach($stats['recently_uploaded'] as $result)
                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                     <div class="flex items-center space-x-4">
-                        <!-- Fix: Use studentRecord.user instead of student.user -->
-                        <img src="{{ $result->studentRecord?->user?->profile_photo_url ?? asset('images/default-avatar.png') }}" 
-                             alt="{{ $result->studentRecord?->user?->name ?? 'Unknown Student' }}"
+                        <img src="{{ $result['student_photo_url'] }}" 
+                             alt="{{ $result['student_name'] }}"
                              class="w-10 h-10 rounded-full object-cover">
                         <div>
-                            <!-- Fix: Use studentRecord.user instead of student.user -->
-                            <p class="font-medium text-gray-900">{{ $result->studentRecord?->user?->name ?? 'Unknown Student' }}</p>
-                            <p class="text-sm text-gray-600">{{ $result->subject?->name ?? 'Unknown Subject' }}</p>
+                            <p class="font-medium text-gray-900">{{ $result['student_name'] }}</p>
+                            <p class="text-sm text-gray-600">{{ $result['subject_name'] }}</p>
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="font-bold text-indigo-600">{{ $result->total_score }}</p>
-                        <p class="text-xs text-gray-500">{{ $result->created_at->diffForHumans() }}</p>
+                        <p class="font-bold text-indigo-600">{{ $result['total_score'] }}</p>
+                        <p class="text-xs text-gray-500">{{ $result['uploaded_at_human'] }}</p>
                     </div>
                 </div>
             @endforeach
