@@ -2,6 +2,7 @@
 module.exports = {
   darkMode: 'class',
   content: [
+    "./app/**/*.php",
     "./resources/**/*.blade.php",
     "./resources/**/*.js",
     "./resources/**/*.vue",
