@@ -1,4 +1,9 @@
-<div class="min-h-screen bg-stone-50 px-4 py-6">
+<div
+    class="min-h-screen bg-stone-50 px-4 py-6"
+    id="cbt-offline-prep-root"
+    data-package-base="{{ url('/cbt/offline/packages') }}"
+    data-offline-launch-base="{{ url('/offline-cbt.html') }}"
+>
     <section class="rounded-[2rem] bg-slate-900 px-6 py-8 text-white shadow-2xl">
         <div class="grid gap-6 lg:grid-cols-[1.25fr,0.75fr] lg:items-center">
             <div>
@@ -29,6 +34,20 @@
             </div>
         </div>
     </section>
+
+    <div class="mt-6 rounded-[1.75rem] border border-cyan-200 bg-cyan-50 p-5 shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h3 class="text-lg font-semibold text-cyan-950">Offline CBT Ready</h3>
+                <p class="mt-2 max-w-3xl text-sm leading-7 text-cyan-900">
+                    While you still have internet, prepare any published paper on this device. If the network drops later, open the offline paper and continue writing, then sync it back when internet returns.
+                </p>
+            </div>
+            <div class="rounded-2xl border border-cyan-300 bg-white px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-cyan-900">
+                Prepare First, Write Offline Later
+            </div>
+        </div>
+    </div>
 
     @if (session()->has('error'))
         <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 shadow-sm">
@@ -140,6 +159,10 @@
                         </div>
                     @endif
 
+                    <div class="mt-4 rounded-2xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-xs text-cyan-950">
+                        <div data-offline-status="{{ $assessment->id }}">Checking offline status on this device...</div>
+                    </div>
+
                     <div class="mt-5 space-y-2">
                         @if($assessment->can_take)
                             <button wire:click="startExam({{ $assessment->id }})"
@@ -148,6 +171,24 @@
                                 <i class="fas fa-play mr-2"></i>
                                 {{ $assessment->has_active_attempt ? 'Resume Exam' : ($assessment->user_result ? 'Retake Exam' : 'Start Exam') }}
                             </button>
+
+                            <button
+                                type="button"
+                                data-offline-prepare="{{ $assessment->id }}"
+                                class="flex w-full items-center justify-center rounded-xl bg-amber-500 px-4 py-3 font-medium text-slate-950 transition-colors hover:bg-amber-600"
+                            >
+                                <i class="fas fa-download mr-2"></i>
+                                Prepare Offline
+                            </button>
+
+                            <a
+                                href="{{ url('/offline-cbt.html?assessment=' . $assessment->id) }}"
+                                data-offline-open="{{ $assessment->id }}"
+                                class="hidden flex w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
+                            >
+                                <i class="fas fa-wifi-slash mr-2"></i>
+                                Open Offline Paper
+                            </a>
                         @else
                             <button disabled
                                 class="flex w-full cursor-not-allowed items-center justify-center rounded-xl bg-slate-300 px-4 py-3 font-medium text-white opacity-70">
@@ -233,7 +274,7 @@
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
-                <span>Ensure you have a stable internet connection before starting any exam.</span>
+                <span>Prepare any paper you may need offline before the exam period starts on this device.</span>
             </li>
             <li class="flex items-start">
                 <span class="mr-2">•</span>
@@ -266,4 +307,157 @@
             transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
         }
     </style>
+
+    @push('scripts')
+        <script>
+            (() => {
+                if (window.__cbtOfflinePrepBooted) {
+                    return;
+                }
+
+                window.__cbtOfflinePrepBooted = true;
+
+                const PACKAGE_PREFIX = 'elites:cbt:offline-package:v1';
+                const STATE_PREFIX = 'elites:cbt:offline-state:v1';
+
+                const getRoot = () => document.getElementById('cbt-offline-prep-root');
+
+                const packageKey = (assessmentId) => `${PACKAGE_PREFIX}:${assessmentId}`;
+                const stateKey = (packageData) => `${STATE_PREFIX}:${packageData.assessment.id}:${packageData.attempt.attempt_number}`;
+
+                const readJson = (key) => {
+                    try {
+                        const raw = window.localStorage.getItem(key);
+                        return raw ? JSON.parse(raw) : null;
+                    } catch (error) {
+                        return null;
+                    }
+                };
+
+                const formatDate = (value) => {
+                    if (!value) {
+                        return '';
+                    }
+
+                    try {
+                        return new Date(value).toLocaleString();
+                    } catch (error) {
+                        return '';
+                    }
+                };
+
+                const renderOfflineStatus = () => {
+                    const root = getRoot();
+
+                    if (!root) {
+                        return;
+                    }
+
+                    root.querySelectorAll('[data-offline-status]').forEach((statusNode) => {
+                        const assessmentId = statusNode.dataset.offlineStatus;
+                        const packageData = readJson(packageKey(assessmentId));
+                        const openButton = root.querySelector(`[data-offline-open="${assessmentId}"]`);
+
+                        if (!packageData) {
+                            statusNode.innerHTML = '<span class="font-semibold">Not prepared offline yet.</span> Download the paper on this device first.';
+                            if (openButton) {
+                                openButton.classList.add('hidden');
+                            }
+                            return;
+                        }
+
+                        const savedState = readJson(stateKey(packageData));
+                        const downloadedAt = formatDate(packageData.offline?.downloaded_at);
+
+                        let message = `Offline paper ready on this device. Attempt #${packageData.attempt?.attempt_number ?? 1}`;
+
+                        if (downloadedAt) {
+                            message += `, prepared ${downloadedAt}.`;
+                        } else {
+                            message += '.';
+                        }
+
+                        if (savedState?.completed_at && savedState?.pending_sync) {
+                            message += ' Completed offline and waiting to sync.';
+                        } else if (savedState?.completed_at && !savedState?.pending_sync) {
+                            message += ' Completed offline and already synced.';
+                        } else if (savedState?.started_at && !savedState?.completed_at) {
+                            message += ' In-progress offline attempt saved locally.';
+                        }
+
+                        statusNode.innerHTML = `<span class="font-semibold">${message}</span>`;
+
+                        if (openButton) {
+                            openButton.classList.remove('hidden');
+                        }
+                    });
+                };
+
+                const prepareOfflinePaper = async (assessmentId, button) => {
+                    const root = getRoot();
+
+                    if (!root) {
+                        return;
+                    }
+
+                    const statusNode = root.querySelector(`[data-offline-status="${assessmentId}"]`);
+                    const endpoint = `${root.dataset.packageBase}/${assessmentId}`;
+
+                    if (button) {
+                        button.disabled = true;
+                        button.dataset.originalLabel = button.dataset.originalLabel || button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Preparing...';
+                    }
+
+                    try {
+                        const response = await fetch(endpoint, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                            credentials: 'same-origin',
+                        });
+
+                        const payload = await response.json().catch(() => ({}));
+
+                        if (!response.ok) {
+                            throw new Error(payload.message || 'Could not prepare this paper for offline use.');
+                        }
+
+                        window.localStorage.setItem(packageKey(assessmentId), JSON.stringify(payload));
+
+                        if (statusNode) {
+                            statusNode.innerHTML = '<span class="font-semibold">Offline paper updated successfully on this device.</span>';
+                        }
+                    } catch (error) {
+                        if (statusNode) {
+                            statusNode.innerHTML = `<span class="font-semibold text-red-700">${error.message || 'Offline preparation failed.'}</span>`;
+                        }
+                    } finally {
+                        if (button) {
+                            button.disabled = false;
+                            button.innerHTML = button.dataset.originalLabel || 'Prepare Offline';
+                        }
+
+                        renderOfflineStatus();
+                    }
+                };
+
+                document.addEventListener('click', (event) => {
+                    const prepareButton = event.target.closest('[data-offline-prepare]');
+
+                    if (!prepareButton) {
+                        return;
+                    }
+
+                    prepareOfflinePaper(prepareButton.dataset.offlinePrepare, prepareButton);
+                }, true);
+
+                document.addEventListener('DOMContentLoaded', renderOfflineStatus);
+                document.addEventListener('livewire:navigated', renderOfflineStatus);
+                window.addEventListener('storage', renderOfflineStatus);
+                window.addEventListener('online', renderOfflineStatus);
+            })();
+        </script>
+    @endpush
 </div>

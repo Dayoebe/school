@@ -1,5 +1,7 @@
 <div x-data="modernCbtExam()"
      data-cbt-exam-root
+     data-offline-package-url="{{ route('cbt.offline.package', ['assessment' => $assessment->id]) }}"
+     data-offline-launch-url="{{ url('/offline-cbt.html?assessment=' . $assessment->id) }}"
      class="cbt-interface-solid min-h-screen bg-stone-50 dark:bg-gray-900"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
@@ -24,6 +26,41 @@
             @endif
         </div>
     @endif
+
+    <div
+        x-show="offlineBannerVisible()"
+        x-cloak
+        class="mx-auto w-full max-w-5xl px-4 pt-4"
+    >
+        <div class="rounded-2xl border px-4 py-4 text-sm shadow-sm"
+             :class="offlineBannerClasses()">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="font-semibold" x-text="offlineBannerTitle()"></div>
+                    <div class="mt-1" x-text="offlineBannerMessage()"></div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        x-show="isOnline"
+                        x-on:click="prepareOfflineBackup()"
+                        :disabled="offlineBackupRefreshing"
+                        class="rounded-full bg-white/80 px-4 py-2 font-semibold text-slate-900"
+                    >
+                        <span x-show="!offlineBackupRefreshing">Refresh Offline Backup</span>
+                        <span x-show="offlineBackupRefreshing" x-cloak>Refreshing...</span>
+                    </button>
+                    <a
+                        x-show="offlineBackupReady"
+                        :href="offlineLaunchUrl"
+                        class="rounded-full bg-slate-900 px-4 py-2 font-semibold text-white"
+                    >
+                        Open Offline Player
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{-- Pre-Exam Welcome Screen --}}
     @if(!$examStarted)
@@ -903,6 +940,8 @@ function registerCbtExamAlpineComponents() {
         timeRemaining: @js($timeRemaining ?? 0),
         timerInterval: null,
         heartbeatInterval: null,
+        offlineRefreshInterval: null,
+        offlineBackupDebounce: null,
         heartbeatInFlight: false,
         livewireListenersRegistered: false,
         startExamFeedbackTimeout: null,
@@ -912,14 +951,29 @@ function registerCbtExamAlpineComponents() {
         sidebarOpen: false,
         examStarted: @js($examStarted ?? false),
         examCompleted: @js($examCompleted ?? false),
+        isOnline: navigator.onLine,
+        offlineBackupReady: false,
+        offlineBackupRefreshing: false,
+        offlineBackupMessage: '',
+        offlinePackageUrl: '',
+        offlineLaunchUrl: '',
         mathJaxReady: false,
         mathJaxQueue: [],
         mathJaxTimeout: null,
 
         init() {
+            const root = document.querySelector('[data-cbt-exam-root]');
+
+            this.offlinePackageUrl = root?.dataset?.offlinePackageUrl || '';
+            this.offlineLaunchUrl = root?.dataset?.offlineLaunchUrl || '';
+            this.loadOfflineBackupState();
             this.initializeMathJax();
             this.setupEventListeners();
             this.setupSecurityListeners();
+
+            if (this.isOnline) {
+                this.prepareOfflineBackup(true);
+            }
 
             if (this.isExamActive()) {
                 this.startTimer();
@@ -986,6 +1040,7 @@ function registerCbtExamAlpineComponents() {
                     this.updateStartExamFeedback('success', 'Exam started successfully. Timer is now running.');
                     this.examStarted = true;
                     this.examCompleted = false;
+                    this.prepareOfflineBackup(true);
                     this.startTimer();
                     this.syncWithServer(true);
                 });
@@ -996,6 +1051,7 @@ function registerCbtExamAlpineComponents() {
                 });
 
                 Livewire.on('questionChanged', () => {
+                    this.scheduleOfflineBackupRefresh();
                     clearTimeout(this.mathJaxTimeout);
                     this.mathJaxTimeout = setTimeout(() => {
                         this.renderMath();
@@ -1003,6 +1059,7 @@ function registerCbtExamAlpineComponents() {
                 });
 
                 Livewire.hook('morph.updated', () => {
+                    this.scheduleOfflineBackupRefresh();
                     clearTimeout(this.mathJaxTimeout);
                     this.mathJaxTimeout = setTimeout(() => {
                         this.renderMath();
@@ -1193,6 +1250,15 @@ function registerCbtExamAlpineComponents() {
                     this.$wire.call('handleSecurityViolation', 'refresh_attempt', 'keyboard_shortcut');
                 }
             });
+
+            window.addEventListener('online', () => {
+                this.isOnline = true;
+                this.prepareOfflineBackup(true);
+            });
+
+            window.addEventListener('offline', () => {
+                this.isOnline = false;
+            });
         },
 
         isExamActive() {
@@ -1221,6 +1287,10 @@ function registerCbtExamAlpineComponents() {
             this.heartbeatInterval = setInterval(() => {
                 this.syncWithServer();
             }, 15000);
+
+            this.offlineRefreshInterval = setInterval(() => {
+                this.prepareOfflineBackup(true);
+            }, 20000);
         },
 
         stopTimer() {
@@ -1232,6 +1302,11 @@ function registerCbtExamAlpineComponents() {
             if (this.heartbeatInterval) {
                 clearInterval(this.heartbeatInterval);
                 this.heartbeatInterval = null;
+            }
+
+            if (this.offlineRefreshInterval) {
+                clearInterval(this.offlineRefreshInterval);
+                this.offlineRefreshInterval = null;
             }
 
             window.dispatchEvent(new CustomEvent('cbt-timer-stop'));
@@ -1296,6 +1371,134 @@ function registerCbtExamAlpineComponents() {
 
         toggleSidebar() {
             this.sidebarOpen = !this.sidebarOpen;
+        },
+
+        offlinePackageKey(assessmentId) {
+            return `elites:cbt:offline-package:v1:${assessmentId}`;
+        },
+
+        loadOfflineBackupState() {
+            const root = document.querySelector('[data-cbt-exam-root]');
+            const packageUrl = root?.dataset?.offlinePackageUrl || '';
+            const assessmentId = packageUrl.split('/').pop();
+
+            if (!assessmentId) {
+                return;
+            }
+
+            try {
+                this.offlineBackupReady = window.localStorage.getItem(this.offlinePackageKey(assessmentId)) !== null;
+            } catch (error) {
+                this.offlineBackupReady = false;
+            }
+        },
+
+        scheduleOfflineBackupRefresh() {
+            if (!this.isOnline) {
+                return;
+            }
+
+            clearTimeout(this.offlineBackupDebounce);
+            this.offlineBackupDebounce = setTimeout(() => {
+                this.prepareOfflineBackup(true);
+            }, 700);
+        },
+
+        async prepareOfflineBackup(silent = false) {
+            if (!this.isOnline || !this.offlinePackageUrl || this.offlineBackupRefreshing) {
+                return;
+            }
+
+            this.offlineBackupRefreshing = true;
+
+            try {
+                const response = await fetch(this.offlinePackageUrl, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(payload.message || 'Could not refresh the offline backup.');
+                }
+
+                window.localStorage.setItem(this.offlinePackageKey(payload.assessment.id), JSON.stringify(payload));
+                this.offlineBackupReady = true;
+
+                if (!silent) {
+                    this.offlineBackupMessage = 'Offline backup refreshed on this device.';
+                }
+            } catch (error) {
+                if (!silent) {
+                    this.offlineBackupMessage = error.message || 'Could not refresh the offline backup.';
+                }
+            } finally {
+                this.offlineBackupRefreshing = false;
+            }
+        },
+
+        offlineBannerVisible() {
+            return this.offlineBackupReady || this.offlineBackupRefreshing || this.offlineBackupMessage !== '' || !this.isOnline;
+        },
+
+        offlineBannerTitle() {
+            if (!this.isOnline && this.offlineBackupReady) {
+                return 'Offline backup ready';
+            }
+
+            if (!this.isOnline) {
+                return 'Internet disconnected';
+            }
+
+            if (this.offlineBackupRefreshing) {
+                return 'Refreshing offline backup';
+            }
+
+            if (this.offlineBackupReady) {
+                return 'Offline backup available';
+            }
+
+            return 'Offline backup status';
+        },
+
+        offlineBannerMessage() {
+            if (this.offlineBackupMessage !== '') {
+                return this.offlineBackupMessage;
+            }
+
+            if (!this.isOnline && this.offlineBackupReady) {
+                return 'This paper has a local backup on this device. If Livewire actions stop responding, open the offline player and continue there.';
+            }
+
+            if (!this.isOnline) {
+                return 'This page needs the server for normal exam actions. Reconnect or use a prepared offline paper on this device.';
+            }
+
+            if (this.offlineBackupReady) {
+                return 'This exam is being mirrored locally so the student can switch into the offline player if internet fails.';
+            }
+
+            return 'Preparing a local backup for this exam.';
+        },
+
+        offlineBannerClasses() {
+            if (!this.isOnline && this.offlineBackupReady) {
+                return 'border-amber-200 bg-amber-50 text-amber-950';
+            }
+
+            if (!this.isOnline) {
+                return 'border-red-200 bg-red-50 text-red-900';
+            }
+
+            if (this.offlineBackupReady) {
+                return 'border-emerald-200 bg-emerald-50 text-emerald-900';
+            }
+
+            return 'border-blue-200 bg-blue-50 text-blue-900';
         },
 
         renderMath() {
