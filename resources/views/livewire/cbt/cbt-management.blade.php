@@ -26,28 +26,73 @@
     <script id="cbt-mathjax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 @endpush
 
-<div class="cbt-solid-page py-4 px-2 sm:px-4 bg-themed-primary dark:bg-gray-900 min-h-screen transition-colors duration-300">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 sm:mb-6">
-        <div class="w-full sm:w-auto">
-            <h1 class="text-2xl sm:text-3xl font-bold text-themed-primary flex items-center">
-                <i class="fas fa-cog mr-2"></i>CBT Management
-            </h1>
-            <p class="text-sm sm:text-base text-themed-secondary">Create and manage CBT assessments and questions</p>
-        </div>
-        <button wire:click="$set('showCreateModal', true)"
-            class="w-full sm:w-auto bg-accent-themed-primary hover:bg-accent-themed-secondary text-white px-3 sm:px-4 py-2 rounded-lg flex items-center justify-center transition-colors text-sm sm:text-base">
-            <i class="fas fa-plus mr-2"></i>Create CBT Assessment
-        </button>
-    </div>
+<div class="cbt-solid-page min-h-screen bg-themed-primary px-3 py-4 transition-colors duration-300 sm:px-4 lg:px-6">
+    @php
+        $assessmentItems = collect($assessments->items());
+        $pageAssessmentCount = $assessmentItems->count();
+        $sealedCount = $assessmentItems->filter(fn ($assessment) => (bool) $assessment->is_locked)->count();
+        $studentVisibleCount = $assessmentItems->filter(fn ($assessment) => $assessment->exam_published_at !== null)->count();
+        $resultVisibleCount = $assessmentItems->filter(fn ($assessment) => $assessment->results_published_at !== null)->count();
+    @endphp
 
-    <!-- Flash Messages -->
+    <section class="overflow-hidden rounded-[2rem] bg-slate-900 px-5 py-6 text-white shadow-2xl sm:px-6 sm:py-7 lg:px-8">
+        <div class="grid gap-6 xl:grid-cols-[1.2fr,0.8fr] xl:items-end">
+            <div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="rounded-full bg-amber-300 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.24em] text-slate-950">
+                        CBT Management
+                    </span>
+                    <span class="rounded-full bg-blue-100 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.24em] text-blue-900">
+                        Mobile First
+                    </span>
+                </div>
+
+                <h1 class="mt-4 text-3xl font-black leading-tight sm:text-4xl">
+                    Manage sealed papers, student access, and results from one screen.
+                </h1>
+                <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-200 sm:text-base">
+                    Create assessments, vet question banks, control publication to students, and open participant eligibility without switching layouts across devices.
+                </p>
+
+                <div class="mt-5 flex flex-wrap gap-3">
+                    <div class="rounded-2xl bg-red-500 px-4 py-3 text-white">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-red-100">Access Rule</p>
+                        <p class="mt-1 text-sm font-semibold">{{ $canLockAssessments ? 'Super Admin Controls Sealing' : 'Teacher Limited Access' }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-orange-500 px-4 py-3 text-white">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-orange-100">Current Page</p>
+                        <p class="mt-1 text-sm font-semibold">{{ $pageAssessmentCount }} Assessment{{ $pageAssessmentCount === 1 ? '' : 's' }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-amber-500 px-4 py-3 text-slate-950">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-900/70">Question Flow</p>
+                        <p class="mt-1 text-sm font-semibold">Draft, seal, publish</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-[1.5rem] bg-white p-4 text-slate-900 shadow-lg">
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Quick Create</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Open the assessment form and configure class, subject, timing, and anti-cheating settings.</p>
+                    <button wire:click="$set('showCreateModal', true)"
+                        class="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>Create CBT Assessment
+                    </button>
+                </div>
+                <div class="rounded-[1.5rem] bg-lime-500 p-4 text-slate-950 shadow-lg">
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-lime-900/70">Workflow Reminder</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-900">Seal the paper after vetting. Publish to students only on exam day. Publish results when ready.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     @if (session()->has('message'))
-        <div class="bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 text-green-700 dark:text-green-300 px-4 py-3 rounded mb-6 animate-pulse" role="alert">
-            <div class="flex items-center">
-                <i class="fas fa-check-circle mr-2"></i>
+        <div class="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 shadow-sm" role="alert">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-check-circle"></i>
                 <span>{{ session('message') }}</span>
-                <button type="button" class="ml-auto text-green-700 dark:text-green-300 hover:text-green-900 dark:hover:text-green-100" onclick="this.parentElement.parentElement.remove()">
+                <button type="button" class="ml-auto text-emerald-700 hover:text-emerald-900" onclick="this.parentElement.parentElement.remove()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -55,11 +100,11 @@
     @endif
 
     @if (session()->has('error'))
-        <div class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-300 px-4 py-3 rounded mb-6" role="alert">
-            <div class="flex items-center">
-                <i class="fas fa-exclamation-circle mr-2"></i>
+        <div class="mt-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800 shadow-sm" role="alert">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-exclamation-circle"></i>
                 <span>{{ session('error') }}</span>
-                <button type="button" class="ml-auto text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100" onclick="this.parentElement.parentElement.remove()">
+                <button type="button" class="ml-auto text-red-700 hover:text-red-900" onclick="this.parentElement.parentElement.remove()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -67,288 +112,212 @@
     @endif
 
     @if($isRestrictedTeacherManager)
-        <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+        <div class="mt-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900 shadow-sm">
             CBT access is limited to the classes and subjects assigned to you. You can manage questions, view performance, and print results only for those assessments.
         </div>
     @endif
 
-    <!-- Assessments List -->
-    <div class="bg-themed-secondary rounded-lg shadow-lg border border-themed-primary overflow-hidden">
-        <div class="bg-themed-secondary py-3 sm:py-4 px-4 sm:px-6 border-b border-themed-secondary">
-            <h6 class="text-base sm:text-lg font-semibold text-accent-themed-primary">CBT Assessments</h6>
+    <section class="mt-6 rounded-[1.75rem] border border-stone-200 bg-stone-50 p-4 shadow-sm sm:p-5 lg:p-6">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div class="rounded-2xl bg-blue-500 p-4 text-white">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-100">On This Page</p>
+                <p class="mt-2 text-2xl font-black">{{ $pageAssessmentCount }}</p>
+            </div>
+            <div class="rounded-2xl bg-rose-500 p-4 text-white">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-rose-100">Sealed Papers</p>
+                <p class="mt-2 text-2xl font-black">{{ $sealedCount }}</p>
+            </div>
+            <div class="rounded-2xl bg-emerald-500 p-4 text-white">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-100">Student Access Live</p>
+                <p class="mt-2 text-2xl font-black">{{ $studentVisibleCount }}</p>
+            </div>
+            <div class="rounded-2xl bg-violet-500 p-4 text-white">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-100">Results Visible</p>
+                <p class="mt-2 text-2xl font-black">{{ $resultVisibleCount }}</p>
+            </div>
         </div>
-        <div class="p-3 sm:p-6">
-            @if($assessments->count() > 0)
-                <!-- Mobile Card View -->
-                <div class="block lg:hidden space-y-4">
-                    @foreach($assessments as $assessment)
-                        <div wire:key="cbt-assessment-mobile-{{ $assessment->id }}" class="bg-themed-tertiary rounded-lg p-4 border border-themed-secondary">
-                            <div class="flex justify-between items-start mb-2">
-                                <h3 class="font-semibold text-themed-primary text-base">{{ $assessment->title }}</h3>
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-themed-secondary text-accent-themed-primary whitespace-nowrap ml-2">
-                                    {{ $assessment->questions->count() }} Q
-                                </span>
-                            </div>
-                            <p class="text-sm text-themed-secondary mb-3">{{ Str::limit($assessment->description, 50) }}</p>
-                            
-                            <div class="grid grid-cols-2 gap-2 mb-3 text-xs">
-                                <div>
-                                    <span class="text-themed-tertiary">Class:</span>
-                                    <p class="text-themed-primary truncate">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-themed-tertiary">Subject:</span>
-                                    <p class="text-themed-primary truncate">{{ $assessment->lesson?->name ?? 'Not assigned' }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-themed-tertiary">Max Attempts:</span>
-                                    <p class="text-themed-primary">{{ $assessment->formatted_max_attempts }}</p>
-                                </div>
-                                <div>
-                                    <span class="text-themed-tertiary">Results:</span>
-                                    <p class="{{ $assessment->results_published_at ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400' }}">
-                                        {{ $assessment->results_published_at ? 'Published' : 'Hidden' }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span class="text-themed-tertiary">Paper:</span>
-                                    <p class="{{ $assessment->is_locked ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}">
-                                        {{ $assessment->is_locked ? 'Sealed' : 'Draft' }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span class="text-themed-tertiary">Student Access:</span>
-                                    <p class="{{ $assessment->exam_published_at ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400' }}">
-                                        {{ $assessment->exam_published_at ? 'Published' : 'Hidden' }}
-                                    </p>
-                                </div>
-                                @if($assessment->shuffle_questions)
-                                <div class="col-span-2">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
-                                        <i class="fas fa-random mr-1"></i>Questions Shuffled
-                                    </span>
-                                </div>
-                                @endif
-                            </div>
+    </section>
 
-                            <div class="flex flex-wrap justify-end gap-2 pt-3 border-t border-themed-secondary">
-                                <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
-                                    class="inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/30"
-                                    title="View Participants">
-                                    <i class="fas fa-users"></i>
-                                    <span>Participants</span>
-                                </button>
-                                @if(!$assessment->is_locked || $canLockAssessments)
-                                    <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
-                                        class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                                        title="{{ $assessment->is_locked ? 'View Questions' : 'Manage Questions' }}">
-                                        <i class="fas fa-question-circle"></i>
-                                        <span>{{ $assessment->is_locked ? 'View Questions' : 'Add Questions' }}</span>
-                                    </button>
-                                @endif
-                                @if($canLockAssessments)
-                                    <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
-                                        class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
-                                        title="{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}">
-                                        <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
-                                        <span>{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}</span>
-                                    </button>
-                                    @if($assessment->exam_published_at)
-                                        <button wire:click="unpublishExam({{ $assessment->id }})"
-                                            class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                                            title="Withdraw Paper">
-                                            <i class="fas fa-eye-slash"></i>
-                                            <span>Withdraw Paper</span>
-                                        </button>
-                                    @else
-                                        <button wire:click="publishExam({{ $assessment->id }})"
-                                            @if(!$assessment->is_locked || $assessment->questions->count() === 0) disabled @endif
-                                            class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors dark:border-indigo-800 dark:text-indigo-300 {{ !$assessment->is_locked || $assessment->questions->count() === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30' }}"
-                                            title="{{ $assessment->is_locked && $assessment->questions->count() > 0 ? 'Publish Paper' : 'Lock the paper and add questions before publishing' }}">
-                                            <i class="fas fa-paper-plane"></i>
-                                            <span>Publish Paper</span>
-                                        </button>
+    <section class="mt-6 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-lg sm:p-5 lg:p-6">
+        <div class="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Assessment Library</p>
+                <h2 class="mt-2 text-2xl font-bold text-slate-900">CBT assessments</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                    Every assessment card is designed for touch first. The same layout scales up cleanly on larger screens.
+                </p>
+            </div>
+            <div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700">
+                Page {{ $assessments->currentPage() }} of {{ $assessments->lastPage() }}
+            </div>
+        </div>
+
+        @if($assessments->count() > 0)
+            <div class="mt-6 grid gap-5 xl:grid-cols-2">
+                @foreach($assessments as $assessment)
+                    <article wire:key="cbt-assessment-card-{{ $assessment->id }}" class="rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="inline-flex items-center rounded-full bg-sky-100 px-3 py-1 text-xs font-semibold text-sky-800">
+                                        {{ $assessment->questions->count() }} Questions
+                                    </span>
+                                    @if($assessment->shuffle_questions)
+                                        <span class="inline-flex items-center rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-semibold text-fuchsia-800">
+                                            <i class="fas fa-random mr-1"></i>Shuffled
+                                        </span>
                                     @endif
-                                @endif
-                                @if($assessment->results_published_at)
-                                    <button wire:click="unpublishResults({{ $assessment->id }})"
-                                        class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                                        title="Unpublish Results">
-                                        <i class="fas fa-eye-slash"></i>
-                                        <span>Hide Results</span>
-                                    </button>
-                                @else
-                                    <button wire:click="publishResults({{ $assessment->id }})"
-                                        class="inline-flex items-center gap-2 rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30"
-                                        title="Publish Results">
-                                        <i class="fas fa-bullhorn"></i>
-                                        <span>Publish Results</span>
-                                    </button>
-                                @endif
-                                <button wire:click="editAssessment({{ $assessment->id }})"
-                                    class="inline-flex items-center gap-2 rounded-lg border border-themed-secondary px-3 py-2 text-sm font-medium text-themed-secondary transition-colors hover:bg-themed-secondary hover:text-themed-primary"
-                                    title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                    <span>Edit</span>
-                                </button>
-                                <button wire:click="deleteAssessment({{ $assessment->id }})"
-                                    wire:confirm="Are you sure you want to delete this assessment?"
-                                    class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
-                                    title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                    <span>Delete</span>
-                                </button>
+                                </div>
+                                <h3 class="mt-3 text-lg font-bold text-slate-900 sm:text-xl">{{ $assessment->title }}</h3>
+                                <p class="mt-2 text-sm leading-6 text-slate-600">
+                                    {{ Str::limit($assessment->description ?: 'No description added yet for this assessment.', 120) }}
+                                </p>
+                            </div>
+                            <span class="inline-flex shrink-0 items-center rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                                {{ $assessment->formatted_duration }}
+                            </span>
+                        </div>
+
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <span class="inline-flex items-center rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-800">
+                                <i class="fas fa-school mr-1"></i>{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}
+                            </span>
+                            <span class="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800">
+                                <i class="fas fa-book mr-1"></i>{{ $assessment->lesson?->name ?? 'Not assigned' }}
+                            </span>
+                            <span class="inline-flex items-center rounded-full {{ $assessment->max_attempts === null ? 'bg-blue-100 text-blue-800' : 'bg-lime-100 text-lime-800' }} px-3 py-1 text-xs font-medium">
+                                <i class="fas fa-repeat mr-1"></i>{{ $assessment->formatted_max_attempts }}
+                            </span>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <div class="rounded-2xl bg-blue-50 px-3 py-4 text-center">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-blue-700">Pass %</p>
+                                <p class="mt-2 text-lg font-bold text-blue-800">{{ $assessment->pass_percentage }}%</p>
+                            </div>
+                            <div class="rounded-2xl bg-violet-50 px-3 py-4 text-center">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-violet-700">Type</p>
+                                <p class="mt-2 text-lg font-bold text-violet-800">CBT</p>
+                            </div>
+                            <div class="rounded-2xl bg-emerald-50 px-3 py-4 text-center">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-700">Questions</p>
+                                <p class="mt-2 text-lg font-bold text-emerald-800">{{ $assessment->questions->count() }}</p>
+                            </div>
+                            <div class="rounded-2xl bg-amber-50 px-3 py-4 text-center">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] text-amber-700">Attempts</p>
+                                <p class="mt-2 text-lg font-bold text-amber-800">{{ $assessment->formatted_max_attempts }}</p>
                             </div>
                         </div>
-                    @endforeach
-                </div>
 
-                <!-- Desktop Table View -->
-                <div class="hidden lg:block overflow-x-auto">
-                    <table class="min-w-full table-auto">
-                        <thead class="bg-themed-tertiary">
-                            <tr>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Title</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Class</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Subject</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Questions</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Duration</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Pass %</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Settings</th>
-                                <th class="px-4 xl:px-6 py-3 text-left text-xs font-medium text-themed-secondary uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-themed-secondary divide-y divide-themed-primary">
-                            @foreach($assessments as $assessment)
-                                <tr wire:key="cbt-assessment-desktop-{{ $assessment->id }}" class="hover:bg-themed-tertiary transition-colors">
-                                    <td class="px-4 xl:px-6 py-4">
-                                        <div class="font-semibold text-themed-primary">{{ $assessment->title }}</div>
-                                        <div class="text-sm text-themed-secondary">{{ Str::limit($assessment->description, 50) }}</div>
-                                    </td>
-                                    <td class="px-4 xl:px-6 py-4">
-                                        <div class="text-sm text-themed-primary">{{ $assessment->course?->name ?? $assessment->course?->title ?? 'Not assigned' }}</div>
-                                    </td>
-                                    <td class="px-4 xl:px-6 py-4">
-                                        <div class="text-sm text-themed-primary">{{ $assessment->lesson?->name ?? 'Not assigned' }}</div>
-                                    </td>
-                                    <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-themed-tertiary text-accent-themed-primary">
-                                            {{ $assessment->questions->count() }} Questions
-                                        </span>
-                                    </td>
-                                    <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-themed-primary">{{ $assessment->formatted_duration }}</td>
-                                    <td class="px-4 xl:px-6 py-4 whitespace-nowrap text-sm text-themed-primary">{{ $assessment->pass_percentage }}%</td>
-                                    <td class="px-4 xl:px-6 py-4">
-                                        <div class="flex flex-col gap-1">
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->max_attempts === null ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300' }}">
-                                                {{ $assessment->formatted_max_attempts }}
-                                            </span>
-                                            @if($assessment->shuffle_questions)
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
-                                                <i class="fas fa-random mr-1"></i>Shuffled
-                                            </span>
-                                            @endif
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->results_published_at ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300' }}">
-                                                <i class="fas {{ $assessment->results_published_at ? 'fa-bullhorn' : 'fa-eye-slash' }} mr-1"></i>
-                                                {{ $assessment->results_published_at ? 'Results Published' : 'Results Hidden' }}
-                                            </span>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->is_locked ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' }}">
-                                                <i class="fas {{ $assessment->is_locked ? 'fa-lock' : 'fa-lock-open' }} mr-1"></i>
-                                                {{ $assessment->is_locked ? 'Paper Sealed' : 'Paper Draft' }}
-                                            </span>
-                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assessment->exam_published_at ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' }}">
-                                                <i class="fas {{ $assessment->exam_published_at ? 'fa-paper-plane' : 'fa-eye-slash' }} mr-1"></i>
-                                                {{ $assessment->exam_published_at ? 'Student Access Published' : 'Student Access Hidden' }}
-                                            </span>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 xl:px-6 py-4 whitespace-nowrap">
-                                        <div class="flex flex-wrap gap-2">
-                                            <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
-                                                class="inline-flex items-center gap-2 rounded-lg border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-50 dark:border-purple-800 dark:text-purple-300 dark:hover:bg-purple-900/30"
-                                                title="View Participants">
-                                                <i class="fas fa-users"></i>
-                                                <span>Participants</span>
-                                            </button>
-                                            @if(!$assessment->is_locked || $canLockAssessments)
-                                                <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
-                                                    class="inline-flex items-center gap-2 rounded-lg border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50 dark:border-blue-800 dark:text-blue-300 dark:hover:bg-blue-900/30"
-                                                    title="{{ $assessment->is_locked ? 'View Questions' : 'Manage Questions' }}">
-                                                    <i class="fas fa-question-circle"></i>
-                                                    <span>{{ $assessment->is_locked ? 'View Questions' : 'Add Questions' }}</span>
-                                                </button>
-                                            @endif
-                                            @if($canLockAssessments)
-                                                <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
-                                                    class="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-green-200 text-green-700 hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30' : 'border-red-200 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30' }}"
-                                                    title="{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}">
-                                                    <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }}"></i>
-                                                    <span>{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}</span>
-                                                </button>
-                                                @if($assessment->exam_published_at)
-                                                    <button wire:click="unpublishExam({{ $assessment->id }})"
-                                                        class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                                                        title="Withdraw Paper">
-                                                        <i class="fas fa-eye-slash"></i>
-                                                        <span>Withdraw Paper</span>
-                                                    </button>
-                                                @else
-                                                    <button wire:click="publishExam({{ $assessment->id }})"
-                                                        @if(!$assessment->is_locked || $assessment->questions->count() === 0) disabled @endif
-                                                        class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors dark:border-indigo-800 dark:text-indigo-300 {{ !$assessment->is_locked || $assessment->questions->count() === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-indigo-50 dark:hover:bg-indigo-900/30' }}"
-                                                        title="{{ $assessment->is_locked && $assessment->questions->count() > 0 ? 'Publish Paper' : 'Lock the paper and add questions before publishing' }}">
-                                                        <i class="fas fa-paper-plane"></i>
-                                                        <span>Publish Paper</span>
-                                                    </button>
-                                                @endif
-                                            @endif
-                                            @if($assessment->results_published_at)
-                                                <button wire:click="unpublishResults({{ $assessment->id }})"
-                                                    class="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-900/30"
-                                                    title="Unpublish Results">
-                                                    <i class="fas fa-eye-slash"></i>
-                                                    <span>Hide Results</span>
-                                                </button>
-                                            @else
-                                                <button wire:click="publishResults({{ $assessment->id }})"
-                                                    class="inline-flex items-center gap-2 rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 transition-colors hover:bg-green-50 dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/30"
-                                                    title="Publish Results">
-                                                    <i class="fas fa-bullhorn"></i>
-                                                    <span>Publish Results</span>
-                                                </button>
-                                            @endif
-                                            <button wire:click="editAssessment({{ $assessment->id }})"
-                                                class="inline-flex items-center gap-2 rounded-lg border border-themed-secondary px-3 py-2 text-sm font-medium text-themed-secondary transition-colors hover:bg-themed-secondary hover:text-themed-primary"
-                                                title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                                <span>Edit</span>
-                                            </button>
-                                            <button wire:click="deleteAssessment({{ $assessment->id }})"
-                                                wire:confirm="Are you sure you want to delete this assessment?"
-                                                class="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-900/30"
-                                                title="Delete">
-                                                <i class="fas fa-trash"></i>
-                                                <span>Delete</span>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                        <div class="mt-5 grid gap-3 sm:grid-cols-3">
+                            <div class="rounded-2xl border px-4 py-4 {{ $assessment->is_locked ? 'border-red-200 bg-red-50' : 'border-emerald-200 bg-emerald-50' }}">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] {{ $assessment->is_locked ? 'text-red-700' : 'text-emerald-700' }}">Paper</p>
+                                <p class="mt-2 text-sm font-semibold {{ $assessment->is_locked ? 'text-red-800' : 'text-emerald-800' }}">
+                                    {{ $assessment->is_locked ? 'Sealed after vetting' : 'Draft and editable' }}
+                                </p>
+                            </div>
+                            <div class="rounded-2xl border px-4 py-4 {{ $assessment->exam_published_at ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50' }}">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] {{ $assessment->exam_published_at ? 'text-blue-700' : 'text-slate-600' }}">Student Access</p>
+                                <p class="mt-2 text-sm font-semibold {{ $assessment->exam_published_at ? 'text-blue-800' : 'text-slate-700' }}">
+                                    {{ $assessment->exam_published_at ? 'Published to students' : 'Hidden from students' }}
+                                </p>
+                            </div>
+                            <div class="rounded-2xl border px-4 py-4 {{ $assessment->results_published_at ? 'border-violet-200 bg-violet-50' : 'border-amber-200 bg-amber-50' }}">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.24em] {{ $assessment->results_published_at ? 'text-violet-700' : 'text-amber-700' }}">Results</p>
+                                <p class="mt-2 text-sm font-semibold {{ $assessment->results_published_at ? 'text-violet-800' : 'text-amber-800' }}">
+                                    {{ $assessment->results_published_at ? 'Visible to students' : 'Still hidden' }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                            <div class="flex items-start gap-3">
+                                <i class="fas fa-circle-info mt-0.5 text-slate-400"></i>
+                                <p>
+                                    Use <span class="font-semibold text-slate-800">Participants</span> to control eligibility, <span class="font-semibold text-slate-800">Questions</span> to manage the paper, and publication controls to decide when students can write and when they can see results.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
+                                class="inline-flex items-center justify-center rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100">
+                                <i class="fas fa-users mr-2"></i>Participants
+                            </button>
+
+                            @if(!$assessment->is_locked || $canLockAssessments)
+                                <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
+                                    class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100">
+                                    <i class="fas fa-question-circle mr-2"></i>{{ $assessment->is_locked ? 'View Questions' : 'Add Questions' }}
+                                </button>
+                            @endif
+
+                            @if($canLockAssessments)
+                                <button wire:click="toggleAssessmentLock({{ $assessment->id }})"
+                                    class="inline-flex items-center justify-center rounded-xl border px-4 py-3 text-sm font-medium transition-colors {{ $assessment->is_locked ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100' }}">
+                                    <i class="fas {{ $assessment->is_locked ? 'fa-lock-open' : 'fa-lock' }} mr-2"></i>{{ $assessment->is_locked ? 'Unlock Paper' : 'Lock Paper' }}
+                                </button>
+
+                                @if($assessment->exam_published_at)
+                                    <button wire:click="unpublishExam({{ $assessment->id }})"
+                                        class="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100">
+                                        <i class="fas fa-eye-slash mr-2"></i>Withdraw Paper
+                                    </button>
+                                @else
+                                    <button wire:click="publishExam({{ $assessment->id }})"
+                                        @if(!$assessment->is_locked || $assessment->questions->count() === 0) disabled @endif
+                                        class="inline-flex items-center justify-center rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-medium text-indigo-700 transition-colors {{ !$assessment->is_locked || $assessment->questions->count() === 0 ? 'cursor-not-allowed opacity-50' : 'hover:bg-indigo-100' }}">
+                                        <i class="fas fa-paper-plane mr-2"></i>Publish Paper
+                                    </button>
+                                @endif
+                            @endif
+
+                            @if($assessment->results_published_at)
+                                <button wire:click="unpublishResults({{ $assessment->id }})"
+                                    class="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100">
+                                    <i class="fas fa-eye-slash mr-2"></i>Hide Results
+                                </button>
+                            @else
+                                <button wire:click="publishResults({{ $assessment->id }})"
+                                    class="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100">
+                                    <i class="fas fa-bullhorn mr-2"></i>Publish Results
+                                </button>
+                            @endif
+
+                            <button wire:click="editAssessment({{ $assessment->id }})"
+                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100">
+                                <i class="fas fa-edit mr-2"></i>Edit
+                            </button>
+
+                            <button wire:click="deleteAssessment({{ $assessment->id }})"
+                                wire:confirm="Are you sure you want to delete this assessment?"
+                                class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 sm:col-span-2">
+                                <i class="fas fa-trash mr-2"></i>Delete Assessment
+                            </button>
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+
+            <div class="mt-6">
+                {{ $assessments->links() }}
+            </div>
+        @else
+            <div class="py-12 text-center">
+                <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-100">
+                    <i class="fas fa-clipboard-list text-4xl text-slate-400"></i>
                 </div>
-                <div class="mt-6">
-                    {{ $assessments->links() }}
-                </div>
-            @else
-                <div class="text-center py-8 sm:py-12">
-                    <i class="fas fa-clipboard-list text-5xl sm:text-6xl text-themed-tertiary mb-4"></i>
-                    <h5 class="text-lg sm:text-xl font-semibold text-themed-secondary mb-2">No CBT Assessments Yet</h5>
-                    <p class="text-sm sm:text-base text-themed-tertiary">Create your first CBT assessment to get started.</p>
-                </div>
-            @endif
-        </div>
-    </div>
+                <h5 class="mt-5 text-xl font-semibold text-slate-800">No CBT Assessments Yet</h5>
+                <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
+                    Create your first CBT assessment to start building question banks, locking vetted papers, and controlling student access.
+                </p>
+                <button wire:click="$set('showCreateModal', true)"
+                    class="mt-6 inline-flex items-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+                    <i class="fas fa-plus mr-2"></i>Create CBT Assessment
+                </button>
+            </div>
+        @endif
+    </section>
 
 
     <!-- Create Assessment Modal -->
