@@ -17,6 +17,11 @@
     <link rel="canonical" href="{{ url()->current() }}">
     <link rel="icon" href="{{ asset('logo.png') }}" type="image/png">
     <link rel="shortcut icon" href="{{ asset(config('app.favicon', 'logo.png')) }}" type="image/png">
+    @include('partials.pwa-head', [
+        'pwaThemeColor' => '#dc2626',
+        'pwaTitle' => $title ?? config('app.name', 'School Portal'),
+        'pwaIcon' => asset('logo.png'),
+    ])
 
     <meta property="og:title" content="{{ $title ?? config('app.name', 'Elite International College, Awka') }}">
     <meta property="og:description"
@@ -37,6 +42,7 @@
     @vite('resources/css/app.css')
     <livewire:styles />
     @stack('head')
+    @include('partials.pwa-register', ['pwaThemeColor' => '#dc2626'])
 </head>
 
 <body class="font-sans">

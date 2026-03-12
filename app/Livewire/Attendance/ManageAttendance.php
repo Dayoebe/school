@@ -147,6 +147,7 @@ class ManageAttendance extends Component
         $this->loadAttendanceSheet();
 
         session()->flash('success', 'Attendance saved successfully.');
+        $this->dispatch('attendance-saved');
     }
 
     protected function loadClasses(): void
