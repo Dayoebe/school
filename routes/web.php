@@ -68,6 +68,7 @@ use App\Http\Controllers\{
 $dashboardMiddleware = [
     'auth:sanctum',
     'verified',
+    'restrict.teacher.portal',
     'App\Http\Middleware\PreventLockAccountAccess',
     'App\Http\Middleware\EnsureDefaultPasswordIsChanged',
     'App\Http\Middleware\PreventGraduatedStudent',
@@ -77,6 +78,7 @@ $dashboardMiddleware = [
 $adminMiddleware = [
     'auth:sanctum',
     'verified',
+    'restrict.teacher.portal',
     'App\Http\Middleware\PreventLockAccountAccess',
     'App\Http\Middleware\EnsureDefaultPasswordIsChanged',
     'App\Http\Middleware\PreventGraduatedStudent'
@@ -121,7 +123,7 @@ Route::middleware('guest')->group(function () {
 
 
 // Account Applications (Full Livewire)
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:read applicant'])
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:read applicant'])
     ->group(function () {
         Route::get('account-applications', ManageAccountApplications::class)
             ->name('account-applications.index')
@@ -150,7 +152,7 @@ Route::post('logout', [AuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::middleware(['auth', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::match(['get', 'post'], '/database/download', [DatabaseBackupController::class, 'download'])
         ->middleware('role:super-admin|super_admin')
         ->name('database.download');
@@ -235,7 +237,7 @@ Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->
 
 use App\Livewire\Parents\{ManageParents, ParentDetail, AssignStudentsToParent};
 
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     
     Route::prefix('parents')->group(function () {
         // Main parents page (list/create/edit all in one component)
@@ -261,7 +263,7 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->prefix('fees')->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->prefix('fees')->group(function () {
 
     // Fee Categories
     Route::get('/fee-categories', ManageFeeCategories::class)
@@ -311,7 +313,7 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('teacher')->middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:upload result'])->group(function () {
+Route::prefix('teacher')->middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId', 'permission:upload result'])->group(function () {
     Route::get('results', fn () => redirect()->route('result.upload.individual'))->name('results.index');
 });
 
@@ -321,7 +323,7 @@ Route::prefix('teacher')->middleware(['auth', 'verified', 'App\Http\Middleware\E
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->prefix('cbt')->name('cbt.')->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->prefix('cbt')->name('cbt.')->group(function () {
     Route::get('/exams', CbtExamSelection::class)
         ->middleware('permission:take cbt exam')
         ->name('exams');
@@ -354,7 +356,7 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::get('/students', ManageStudents::class)
         ->middleware('permission:read student')
         ->name('students.index');
@@ -401,7 +403,7 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::get('/sections', ManageSections::class)
         ->middleware('permission:read section')
         ->name('sections.index');
@@ -416,7 +418,7 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('results')->middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::prefix('results')->middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::get('/', \App\Livewire\Result\Index::class)->name('result')->can('upload result');
 
     Route::get('/upload/individual', \App\Livewire\Result\Upload\IndividualUpload::class)
@@ -454,7 +456,7 @@ Route::prefix('results')->middleware(['auth', 'verified', 'App\Http\Middleware\E
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal'])->group(function () {
     
     // Schools list
     Route::get('/schools', \App\Livewire\Schools\ManageSchools::class)
@@ -478,7 +480,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
 
     Route::get('/users/roles', \App\Livewire\Users\ManageUserRoles::class)
         ->middleware('permission:manage user roles')
@@ -540,7 +542,7 @@ Route::middleware($dashboardMiddleware)->prefix('dashboard')->group(function () 
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
+Route::middleware(['auth', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
     Route::get('/timetables', \App\Livewire\Timetable\ManageTimetables::class)
         ->middleware('permission:read timetable')
         ->name('timetables.index');
