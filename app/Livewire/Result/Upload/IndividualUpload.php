@@ -575,6 +575,8 @@ class IndividualUpload extends Component
                 session()->flash('warning', "Partially saved for {$studentName}. {$savedSubjects} subjects saved, but {$errorCount} error(s) occurred.");
                 session()->flash('error_details', array_slice($errors, 0, 5));
             }
+
+            $this->dispatch('result-upload-saved');
             
             return redirect()->route('result');
             

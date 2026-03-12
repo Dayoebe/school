@@ -4,6 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @include('partials.pwa-head', [
+        'pwaThemeColor' => '#dc2626',
+        'pwaTitle' => config('app.name', 'CBT System'),
+        'pwaIcon' => asset('logo.png'),
+    ])
     <title>{{ config('app.name', 'CBT System') }} - Exam Mode</title>
 
     <!-- Meta tags -->
@@ -28,6 +33,7 @@
 
     @vite('resources/css/app.css')
     @livewireStyles
+    @include('partials.pwa-register', ['pwaThemeColor' => '#dc2626'])
 
     <!-- MathJax Configuration -->
     <script>

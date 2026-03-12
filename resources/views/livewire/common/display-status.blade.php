@@ -22,7 +22,7 @@
         @endif
         <x-alert colour="bg-red-500" title="No Internet" :stack-icons="['fa fa-signal', 'fa fa-ban']" show="false">
             <div  @offline.window="showAlert = true" @online.window="showAlert = false">
-                Your Device Has Gone Offline
+                Your device is offline. Recently opened pages can still load, but server actions will wait until the internet returns.
             </div>
         </x-alert>
     </div>

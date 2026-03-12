@@ -45,6 +45,7 @@ use App\Http\Controllers\{
     AuthController,
     DashboardController,
     DatabaseBackupController,
+    CbtOfflineController,
     CbtResultController,
     ProfileController,
     FeeInvoiceController,
@@ -334,6 +335,13 @@ Route::middleware(['auth', 'verified', 'App\Http\Middleware\EnsureSuperAdminHasS
     Route::get('/manage', CbtManagement::class)
         ->middleware('permission:manage cbt')
         ->name('manage');
+
+    Route::get('/offline/packages/{assessment}', [CbtOfflineController::class, 'package'])
+        ->middleware('permission:take cbt exam')
+        ->name('offline.package');
+    Route::post('/offline/sync', [CbtOfflineController::class, 'sync'])
+        ->middleware('permission:take cbt exam')
+        ->name('offline.sync');
 
     Route::get('/results/{assessment}/students/{student}/attempts/{attemptNumber}/print', [CbtResultController::class, 'print'])
         ->middleware('permission:manage cbt')
