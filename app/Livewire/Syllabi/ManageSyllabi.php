@@ -5,6 +5,7 @@ namespace App\Livewire\Syllabi;
 use App\Models\MyClass;
 use App\Models\Subject;
 use App\Models\Syllabus;
+use App\Traits\ResolvesRestrictedTeacherAssignments;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
@@ -16,6 +17,7 @@ class ManageSyllabi extends Component
 {
     use WithFileUploads;
     use WithPagination;
+    use ResolvesRestrictedTeacherAssignments;
 
     public string $mode = 'list';
     public ?int $syllabusId = null;
@@ -105,10 +107,24 @@ class ManageSyllabi extends Component
             return;
         }
 
-        $this->classes = $user->school
+        $classesQuery = $user->school
             ->myClasses()
-            ->orderBy('my_classes.name')
-            ->get(['my_classes.id', 'my_classes.name']);
+            ->orderBy('my_classes.name');
+
+        if ($this->isRestrictedTeacher()) {
+            $classIds = $this->restrictedTeacherAllClassIds();
+
+            if ($classIds->isEmpty()) {
+                $this->classes = collect();
+                $this->class = '';
+                $this->loadSubjectsForClass();
+                return;
+            }
+
+            $classesQuery->whereIn('my_classes.id', $classIds);
+        }
+
+        $this->classes = $classesQuery->get(['my_classes.id', 'my_classes.name']);
 
         if ($this->classes->isNotEmpty() && !$this->classes->contains('id', (int) $this->class)) {
             $this->class = (string) $this->classes->first()->id;
@@ -139,19 +155,27 @@ class ManageSyllabi extends Component
             return;
         }
 
-        $this->subjects = Subject::query()
-            ->where('school_id', auth()->user()->school_id)
-            ->where('is_legacy', false)
-            ->where(function (Builder $query) use ($classId) {
-                $query->where('my_class_id', $classId)
-                    ->orWhereHas('classes', function (Builder $classQuery) use ($classId) {
-                        $classQuery->where('my_classes.id', $classId);
-                    });
-            })
-            ->orderBy('name')
-            ->get()
-            ->unique('id')
-            ->values();
+        if ($this->isRestrictedTeacher()) {
+            $this->subjects = $this->restrictedTeacherSubjectsQuery($classId)
+                ->where('subjects.is_legacy', false)
+                ->get()
+                ->unique('id')
+                ->values();
+        } else {
+            $this->subjects = Subject::query()
+                ->where('school_id', auth()->user()->school_id)
+                ->where('is_legacy', false)
+                ->where(function (Builder $query) use ($classId) {
+                    $query->where('my_class_id', $classId)
+                        ->orWhereHas('classes', function (Builder $classQuery) use ($classId) {
+                            $classQuery->where('my_classes.id', $classId);
+                        });
+                })
+                ->orderBy('name')
+                ->get()
+                ->unique('id')
+                ->values();
+        }
 
         if (!$this->subjects->contains('id', (int) $this->subject)) {
             $this->subject = (string) ($this->subjects->first()?->id ?: '');
@@ -259,7 +283,7 @@ class ManageSyllabi extends Component
 
     protected function getSyllabiQuery(): Builder
     {
-        return Syllabus::query()
+        $query = Syllabus::query()
             ->with('subject')
             ->forSchool(auth()->user()->school_id)
             ->forSemester(auth()->user()->school?->semester_id)
@@ -275,10 +299,27 @@ class ManageSyllabi extends Component
                 });
             })
             ->latest();
+
+        if ($this->isRestrictedTeacher()) {
+            $query->whereHas('subject', function (Builder $subjectQuery) {
+                $subjectQuery->whereIn(
+                    'subjects.id',
+                    $this->restrictedTeacherSubjectsQuery(
+                        $this->class !== '' ? (int) $this->class : null
+                    )->select('subjects.id')
+                );
+            });
+        }
+
+        return $query;
     }
 
     protected function classBelongsToCurrentSchool(int $classId): bool
     {
+        if ($this->isRestrictedTeacher()) {
+            return $this->restrictedTeacherCanAccessSubjectClass($classId);
+        }
+
         return MyClass::query()
             ->whereKey($classId)
             ->whereHas('classGroup', function (Builder $query) {
@@ -289,10 +330,19 @@ class ManageSyllabi extends Component
 
     protected function getSubjectForCurrentSchool(int $subjectId): ?Subject
     {
-        return Subject::query()
+        $query = Subject::query()
             ->where('school_id', auth()->user()->school_id)
-            ->whereKey($subjectId)
-            ->first();
+            ->whereKey($subjectId);
+
+        if ($this->isRestrictedTeacher()) {
+            $query->whereIn(
+                'subjects.id',
+                $this->restrictedTeacherSubjectsQuery($this->class !== '' ? (int) $this->class : null)
+                    ->select('subjects.id')
+            );
+        }
+
+        return $query->first();
     }
 
     protected function subjectMatchesClass(Subject $subject, int $classId): bool
@@ -306,10 +356,18 @@ class ManageSyllabi extends Component
 
     protected function getSyllabusForCurrentSchool(?int $syllabusId): Syllabus
     {
-        return Syllabus::query()
+        $query = Syllabus::query()
             ->with('subject')
             ->forSchool(auth()->user()->school_id)
-            ->findOrFail($syllabusId);
+            ->whereKey($syllabusId);
+
+        if ($this->isRestrictedTeacher()) {
+            $query->whereHas('subject', function (Builder $subjectQuery) {
+                $subjectQuery->whereIn('subjects.id', $this->restrictedTeacherSubjectsQuery()->select('subjects.id'));
+            });
+        }
+
+        return $query->findOrFail($syllabusId);
     }
 
     protected function modeIsAllowed(string $mode): bool
@@ -329,6 +387,7 @@ class ManageSyllabi extends Component
     public function render()
     {
         $syllabi = collect();
+        $isRestrictedTeacherSyllabusManager = $this->isRestrictedTeacher();
 
         if ($this->mode === 'list') {
             $syllabi = $this->getSyllabiQuery()->paginate($this->perPage);
@@ -349,6 +408,7 @@ class ManageSyllabi extends Component
 
         return view('livewire.syllabi.manage-syllabi', [
             'syllabi' => $syllabi,
+            'isRestrictedTeacherSyllabusManager' => $isRestrictedTeacherSyllabusManager,
         ])
             ->layout('layouts.dashboard', ['breadcrumbs' => $breadcrumbs])
             ->title('Syllabi');

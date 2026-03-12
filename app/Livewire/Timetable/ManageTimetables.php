@@ -7,12 +7,15 @@ use App\Models\TimetableTimeSlot;
 use App\Models\CustomTimetableItem;
 use App\Models\MyClass;
 use App\Models\Weekday;
+use App\Traits\ResolvesRestrictedTeacherAssignments;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ManageTimetables extends Component
 {
+    use ResolvesRestrictedTeacherAssignments;
+
     public $mode = 'list';
     
     // Filters
@@ -111,9 +114,22 @@ class ManageTimetables extends Component
                 $this->classes = collect();
             }
         } else {
-            $this->classes = MyClass::whereHas('classGroup', function($q) {
+            $query = MyClass::whereHas('classGroup', function($q) {
                 $q->where('school_id', auth()->user()->school_id);
-            })->orderBy('name')->get();
+            });
+
+            if ($this->isRestrictedTeacher()) {
+                $classIds = $this->restrictedTeacherAllClassIds();
+
+                if ($classIds->isEmpty()) {
+                    $this->classes = collect();
+                    return;
+                }
+
+                $query->whereIn('my_classes.id', $classIds);
+            }
+
+            $this->classes = $query->orderBy('name')->get();
         }
     }
 
@@ -540,9 +556,21 @@ class ManageTimetables extends Component
             return Timetable::query()->whereRaw('1 = 0');
         }
 
-        return Timetable::whereHas('myClass.classGroup', function ($query) {
+        $query = Timetable::whereHas('myClass.classGroup', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
         })->where('semester_id', $this->activeSemesterId);
+
+        if ($this->isRestrictedTeacher()) {
+            $classIds = $this->restrictedTeacherAllClassIds();
+
+            if ($classIds->isEmpty()) {
+                return Timetable::query()->whereRaw('1 = 0');
+            }
+
+            $query->whereIn('my_class_id', $classIds);
+        }
+
+        return $query;
     }
 
     protected function hydrateModeFromRoute(): void
@@ -575,6 +603,16 @@ class ManageTimetables extends Component
         $this->canCreateCustomItems = $this->canAnyPermission(['create custom timetable items', 'create custom timetable item']);
         $this->canUpdateCustomItems = $this->canAnyPermission(['update custom timetable items', 'update custom timetable item']);
         $this->canDeleteCustomItems = $this->canAnyPermission(['delete custom timetable items', 'delete custom timetable item']);
+
+        if ($this->isRestrictedTeacher()) {
+            $this->canCreateTimetable = false;
+            $this->canUpdateTimetable = false;
+            $this->canDeleteTimetable = false;
+            $this->canReadCustomItems = false;
+            $this->canCreateCustomItems = false;
+            $this->canUpdateCustomItems = false;
+            $this->canDeleteCustomItems = false;
+        }
     }
 
     protected function canAnyPermission(array $permissions): bool

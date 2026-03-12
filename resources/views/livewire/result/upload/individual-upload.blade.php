@@ -8,7 +8,7 @@
 
         @if($isRestrictedTeacherResultUploader)
             <p class="mb-4 text-sm text-gray-600">
-                Only classes assigned to you are available, and you can only upload results for subjects you teach in that class.
+                Only your assigned teaching classes are available. Subject scores remain limited to the subjects you teach, while class report fields are reserved for the class teacher.
             </p>
         @endif
 
@@ -260,133 +260,143 @@
                 </table>
             </div>
 
-            <!-- Attendance & Comments -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                <!-- Attendance -->
-                <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-clipboard-check mr-2 text-purple-600"></i> Attendance Record
-                    </h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Days Present</label>
-                            <input type="number" wire:model.live.debounce.500ms="presentDays"
-                                class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                min="0" placeholder="e.g., 90">
+            @if($canManageClassTeacherReport || $canEditPrincipalComment)
+                <!-- Attendance & Comments -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                    @if($canManageClassTeacherReport)
+                        <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                            <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                                <i class="fas fa-clipboard-check mr-2 text-purple-600"></i> Attendance Record
+                            </h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Days Present</label>
+                                    <input type="number" wire:model.live.debounce.500ms="presentDays"
+                                        class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        min="0" placeholder="e.g., 90">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Days Absent</label>
+                                    <input type="number" wire:model.live.debounce.500ms="absentDays"
+                                        class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        min="0" placeholder="e.g., 5">
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Days Absent</label>
-                            <input type="number" wire:model.live.debounce.500ms="absentDays"
-                                class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                min="0" placeholder="e.g., 5">
+                    @endif
+
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-comment-dots mr-2 text-blue-600"></i> Overall Comments
+                        </h3>
+                        <div class="space-y-3">
+                            @if($canManageClassTeacherReport)
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Teacher's Comment</label>
+                                    <textarea wire:model.live.debounce.500ms="overallTeacherComment"
+                                        class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-20 resize-y"
+                                        placeholder="Overall teacher's comment..."></textarea>
+                                </div>
+                            @endif
+
+                            @if($canEditPrincipalComment)
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Principal's Comment</label>
+                                    <textarea wire:model.live.debounce.500ms="principalComment"
+                                        class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-20 resize-y"
+                                        placeholder="Principal's comment..."></textarea>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
 
-                <!-- Overall Comments -->
-                <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                    <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-comment-dots mr-2 text-blue-600"></i> Overall Comments
-                    </h3>
-                    <div class="space-y-3">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Teacher's Comment</label>
-                            <textarea wire:model.live.debounce.500ms="overallTeacherComment"
-                                class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-20 resize-y"
-                                placeholder="Overall teacher's comment..."></textarea>
+                @if($canManageClassTeacherReport)
+                    <!-- Traits & Activities (Condensed) -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
+                        <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
+                            <i class="fas fa-star mr-2 text-yellow-600"></i> Traits & Activities (1-5 Scale)
+                        </h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <h4 class="font-semibold text-blue-800 mb-3">PSYCHOMOTOR</h4>
+                                @foreach($psychomotorScores as $trait => $value)
+                                    @php
+                                        $traitInvalid = $value > 5;
+                                        if($traitInvalid) $hasAnyError = true;
+                                    @endphp
+                                    <div class="mb-3">
+                                        <label class="block text-sm text-gray-700 mb-1">{{ $trait }}</label>
+                                        <div class="relative">
+                                            <input type="number" wire:model.live.debounce.500ms="psychomotorScores.{{ $trait }}"
+                                                class="w-full border-2 @if($traitInvalid) border-red-500 bg-red-50 text-red-700 @else border-black @endif rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                min="1" max="5">
+                                            @if($traitInvalid)
+                                                <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" title="Maximum is 5">!</div>
+                                            @endif
+                                        </div>
+                                        @if($traitInvalid)
+                                            <div class="text-xs text-red-600 mt-1 font-medium">Max: 5</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div>
+                                <h4 class="font-semibold text-blue-800 mb-3">AFFECTIVE</h4>
+                                @foreach($affectiveScores as $trait => $value)
+                                    @php
+                                        $traitInvalid = $value > 5;
+                                        if($traitInvalid) $hasAnyError = true;
+                                    @endphp
+                                    <div class="mb-3">
+                                        <label class="block text-sm text-gray-700 mb-1">{{ $trait }}</label>
+                                        <div class="relative">
+                                            <input type="number" wire:model.live.debounce.500ms="affectiveScores.{{ $trait }}"
+                                                class="w-full border-2 @if($traitInvalid) border-red-500 bg-red-50 text-red-700 @else border-black @endif rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                min="1" max="5">
+                                            @if($traitInvalid)
+                                                <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" title="Maximum is 5">!</div>
+                                            @endif
+                                        </div>
+                                        @if($traitInvalid)
+                                            <div class="text-xs text-red-600 mt-1 font-medium">Max: 5</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
+
+                            <div>
+                                <h4 class="font-semibold text-blue-800 mb-3">CO-CURRICULAR</h4>
+                                @foreach($coCurricularScores as $activity => $value)
+                                    @php
+                                        $activityInvalid = $value > 5;
+                                        if($activityInvalid) $hasAnyError = true;
+                                    @endphp
+                                    <div class="mb-3">
+                                        <label class="block text-sm text-gray-700 mb-1">{{ $activity }}</label>
+                                        <div class="relative">
+                                            <input type="number" wire:model.live.debounce.500ms="coCurricularScores.{{ $activity }}"
+                                                class="w-full border-2 @if($activityInvalid) border-red-500 bg-red-50 text-red-700 @else border-black @endif rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                                                min="1" max="5">
+                                            @if($activityInvalid)
+                                                <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" title="Maximum is 5">!</div>
+                                            @endif
+                                        </div>
+                                        @if($activityInvalid)
+                                            <div class="text-xs text-red-600 mt-1 font-medium">Max: 5</div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Principal's Comment</label>
-                            <textarea wire:model.live.debounce.500ms="principalComment"
-                                class="w-full border-2 border-black rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-20 resize-y"
-                                placeholder="Principal's comment..."></textarea>
-                        </div>
                     </div>
+                @endif
+            @elseif($isRestrictedTeacherResultUploader)
+                <div class="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm text-blue-900">
+                    Class report fields for attendance, overall comment, traits, and principal comment are not available here because you are not the class teacher for this class.
                 </div>
-            </div>
-
-            <!-- Traits & Activities (Condensed) -->
-            <div class="bg-gray-50 p-6 rounded-xl shadow-inner border border-gray-200">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
-                    <i class="fas fa-star mr-2 text-yellow-600"></i> Traits & Activities (1-5 Scale)
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Psychomotor -->
-                    <div>
-                        <h4 class="font-semibold text-blue-800 mb-3">PSYCHOMOTOR</h4>
-                        @foreach($psychomotorScores as $trait => $value)
-                            @php
-                                $traitInvalid = $value > 5;
-                                if($traitInvalid) $hasAnyError = true;
-                            @endphp
-                            <div class="mb-3">
-                                <label class="block text-sm text-gray-700 mb-1">{{ $trait }}</label>
-                                <div class="relative">
-                                    <input type="number" wire:model.live.debounce.500ms="psychomotorScores.{{ $trait }}"
-                                        class="w-full border-2 @if($traitInvalid) border-red-500 bg-red-50 text-red-700 @else border-black @endif rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                        min="1" max="5">
-                                    @if($traitInvalid)
-                                        <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" title="Maximum is 5">!</div>
-                                    @endif
-                                </div>
-                                @if($traitInvalid)
-                                    <div class="text-xs text-red-600 mt-1 font-medium">Max: 5</div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <!-- Affective -->
-                    <div>
-                        <h4 class="font-semibold text-blue-800 mb-3">AFFECTIVE</h4>
-                        @foreach($affectiveScores as $trait => $value)
-                            @php
-                                $traitInvalid = $value > 5;
-                                if($traitInvalid) $hasAnyError = true;
-                            @endphp
-                            <div class="mb-3">
-                                <label class="block text-sm text-gray-700 mb-1">{{ $trait }}</label>
-                                <div class="relative">
-                                    <input type="number" wire:model.live.debounce.500ms="affectiveScores.{{ $trait }}"
-                                        class="w-full border-2 @if($traitInvalid) border-red-500 bg-red-50 text-red-700 @else border-black @endif rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                        min="1" max="5">
-                                    @if($traitInvalid)
-                                        <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" title="Maximum is 5">!</div>
-                                    @endif
-                                </div>
-                                @if($traitInvalid)
-                                    <div class="text-xs text-red-600 mt-1 font-medium">Max: 5</div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <!-- Co-curricular -->
-                    <div>
-                        <h4 class="font-semibold text-blue-800 mb-3">CO-CURRICULAR</h4>
-                        @foreach($coCurricularScores as $activity => $value)
-                            @php
-                                $activityInvalid = $value > 5;
-                                if($activityInvalid) $hasAnyError = true;
-                            @endphp
-                            <div class="mb-3">
-                                <label class="block text-sm text-gray-700 mb-1">{{ $activity }}</label>
-                                <div class="relative">
-                                    <input type="number" wire:model.live.debounce.500ms="coCurricularScores.{{ $activity }}"
-                                        class="w-full border-2 @if($activityInvalid) border-red-500 bg-red-50 text-red-700 @else border-black @endif rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                                        min="1" max="5">
-                                    @if($activityInvalid)
-                                        <div class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center" title="Maximum is 5">!</div>
-                                    @endif
-                                </div>
-                                @if($activityInvalid)
-                                    <div class="text-xs text-red-600 mt-1 font-medium">Max: 5</div>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
+            @endif
 
             <!-- Action Buttons -->
             <div class="flex items-center justify-between pt-6 border-t">

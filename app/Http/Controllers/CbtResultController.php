@@ -16,6 +16,10 @@ class CbtResultController extends Controller
         $viewer = $request->user();
 
         abort_unless($viewer !== null, 403);
+        abort_unless(
+            !$viewer->hasRole('teacher') || $viewer->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']),
+            403
+        );
         abort_unless($this->currentUserCanManageCbtAssessment($assessment->id, $viewer), 403);
         abort_unless($student->school_id === $viewer->school_id && $student->hasRole('student'), 404);
 

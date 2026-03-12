@@ -15,6 +15,12 @@
         <h2 class="text-xl font-bold text-slate-900">Daily Attendance</h2>
         <p class="mt-1 text-sm text-slate-600">Record and update student attendance by date, class, and section.</p>
 
+        @if ($isRestrictedTeacherAttendanceManager)
+            <p class="mt-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                Only classes where you are assigned as class teacher are available here.
+            </p>
+        @endif
+
         <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-4">
             <div>
                 <label class="mb-1 block text-sm font-semibold text-slate-700">Date</label>

@@ -5,10 +5,12 @@ namespace App\Livewire\Result;
 use Livewire\Component;
 use App\Models\AcademicYear;
 use App\Traits\RestrictsTeacherResultViewing;
+use App\Traits\RestrictsTeacherResultUploads;
 
 class Index extends Component
 {
     use RestrictsTeacherResultViewing;
+    use RestrictsTeacherResultUploads;
 
     public $activeTab = 'dashboard';
 
@@ -43,6 +45,10 @@ class Index extends Component
     protected function availableResultTabs(): array
     {
         $tabs = ['dashboard', 'individual', 'bulk'];
+
+        if ($this->isRestrictedTeacherResultUploader()) {
+            return $tabs;
+        }
 
         if ($this->availableViewTabs() !== []) {
             $tabs[] = 'view';

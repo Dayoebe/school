@@ -37,6 +37,7 @@
 
             $roleSummary = match (true) {
                 $isSuperAdmin => 'You are controlling the school-wide setup, operations, and reporting from one place.',
+                $isRestrictedTeacher => 'Your dashboard is limited to your assigned classes, subjects, and core teacher workflows only.',
                 $isStaff => 'Your dashboard is focused on the classes, records, and workflows you are allowed to manage.',
                 $isStudent => 'Your dashboard is focused on your current class work, results, and exam access only.',
                 $isParent => 'Your dashboard keeps your linked children, results, and welfare information in one place.',
@@ -236,6 +237,20 @@
                 'bg-emerald-500 text-white',
                 'bg-teal-500 text-white',
             ];
+
+            $teacherHighlights = [
+                ['label' => 'Class Teacher', 'value' => $teacherPanel['class_teacher_classes'] ?? 0],
+                ['label' => 'Teaching Classes', 'value' => $teacherPanel['teaching_classes'] ?? 0],
+                ['label' => 'Assigned Subjects', 'value' => $teacherPanel['assigned_subjects'] ?? 0],
+                ['label' => 'Teacher Tools', 'value' => $teacherPanel['teacher_tools'] ?? 0],
+            ];
+
+            $teacherHighlightTones = [
+                'bg-emerald-500 text-white',
+                'bg-blue-500 text-white',
+                'bg-amber-500 text-slate-950',
+                'bg-violet-500 text-white',
+            ];
         @endphp
 
         <section class="overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-900 px-6 py-8 text-white shadow-2xl">
@@ -359,7 +374,31 @@
             </section>
 
             <div class="space-y-6">
-                @if ($isStaff && $staffMetrics->isNotEmpty())
+                @if ($isRestrictedTeacher && $teacherPanel !== [])
+                    <section class="rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-6 shadow-[0_18px_60px_-30px_rgba(16,185,129,0.35)]">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Teacher Scope</p>
+                                <h3 class="mt-2 text-2xl font-bold text-slate-900">Your assignment summary</h3>
+                            </div>
+                            <span class="rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white">
+                                Teacher
+                            </span>
+                        </div>
+
+                        <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            @foreach ($teacherHighlights as $highlight)
+                                @php($teacherTone = $teacherHighlightTones[$loop->index % count($teacherHighlightTones)])
+                                <div class="rounded-2xl px-4 py-4 shadow-md {{ $teacherTone }}">
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.24em] opacity-70">{{ $highlight['label'] }}</p>
+                                    <p class="mt-2 text-xl font-bold">{{ $highlight['value'] }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
+                @if ($isStaff && !$isRestrictedTeacher && $staffMetrics->isNotEmpty())
                     <section class="rounded-[1.75rem] border border-lime-200 bg-lime-50 p-6 shadow-[0_18px_60px_-30px_rgba(101,163,13,0.35)]">
                         <div class="flex items-center justify-between">
                             <div>

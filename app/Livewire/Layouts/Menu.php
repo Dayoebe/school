@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Layouts;
 
+use App\Traits\RestrictsTeacherPortalAccess;
 use App\Traits\RestrictsTeacherResultViewing;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -9,6 +10,7 @@ use Livewire\Component;
 
 class Menu extends Component
 {
+    use RestrictsTeacherPortalAccess;
     use RestrictsTeacherResultViewing;
 
     public array $menu = [];
@@ -750,6 +752,16 @@ class Menu extends Component
 
         if (empty($item['coming_soon']) && !empty($item['route']) && !Route::has($item['route'])) {
             return false;
+        }
+
+        if ($this->isRestrictedTeacherPortalUser($user)) {
+            if (!empty($item['coming_soon'])) {
+                return false;
+            }
+
+            if (!empty($item['route']) && !$this->restrictedTeacherCanAccessRoute($item['route'], $user)) {
+                return false;
+            }
         }
 
         if (!empty($item['permissions']) && is_array($item['permissions']) && !$this->hasAnyPermission($item['permissions'])) {

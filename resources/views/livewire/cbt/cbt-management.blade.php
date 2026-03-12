@@ -113,7 +113,7 @@
 
     @if($isRestrictedTeacherManager)
         <div class="mt-6 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-4 text-sm text-blue-900 shadow-sm">
-            CBT access is limited to the classes and subjects assigned to you. You can manage questions, view performance, and print results only for those assessments.
+            CBT access is limited to the classes and subjects assigned to you. Teachers can create and maintain their own question banks only. Participant control, publishing, and result release stay with admin-level staff.
         </div>
     @endif
 
@@ -240,10 +240,12 @@
                         </div>
 
                         <div class="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
-                                class="inline-flex items-center justify-center rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100">
-                                <i class="fas fa-users mr-2"></i>Participants
-                            </button>
+                            @if($canAdministerParticipants)
+                                <button type="button" wire:click.prevent="viewParticipants({{ $assessment->id }})"
+                                    class="inline-flex items-center justify-center rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 text-sm font-medium text-purple-700 transition-colors hover:bg-purple-100">
+                                    <i class="fas fa-users mr-2"></i>Participants
+                                </button>
+                            @endif
 
                             @if(!$assessment->is_locked || $canLockAssessments)
                                 <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
@@ -272,16 +274,18 @@
                                 @endif
                             @endif
 
-                            @if($assessment->results_published_at)
-                                <button wire:click="unpublishResults({{ $assessment->id }})"
-                                    class="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100">
-                                    <i class="fas fa-eye-slash mr-2"></i>Hide Results
-                                </button>
-                            @else
-                                <button wire:click="publishResults({{ $assessment->id }})"
-                                    class="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100">
-                                    <i class="fas fa-bullhorn mr-2"></i>Publish Results
-                                </button>
+                            @if($canPublishCbtResults)
+                                @if($assessment->results_published_at)
+                                    <button wire:click="unpublishResults({{ $assessment->id }})"
+                                        class="inline-flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100">
+                                        <i class="fas fa-eye-slash mr-2"></i>Hide Results
+                                    </button>
+                                @else
+                                    <button wire:click="publishResults({{ $assessment->id }})"
+                                        class="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100">
+                                        <i class="fas fa-bullhorn mr-2"></i>Publish Results
+                                    </button>
+                                @endif
                             @endif
 
                             <button wire:click="editAssessment({{ $assessment->id }})"

@@ -17,6 +17,7 @@ class IndividualUpload extends Component
     public $selectedClass;
     public $selectedSection;
     public $selectedStudent;
+    public $loadedClassId;
     
     // Student data
     public $studentRecord;
@@ -59,7 +60,7 @@ class IndividualUpload extends Component
     {
         $this->academicYearId = $data['academicYearId'];
         $this->semesterId = $data['semesterId'];
-        $this->reset(['selectedClass', 'selectedSection', 'selectedStudent', 'studentRecord']);
+        $this->reset(['selectedClass', 'selectedSection', 'selectedStudent', 'studentRecord', 'loadedClassId']);
     }
 
     public function updatedSelectedClass()
@@ -70,11 +71,13 @@ class IndividualUpload extends Component
         }
 
         $this->reset(['selectedStudent', 'studentRecord', 'selectedSection']);
+        $this->loadedClassId = null;
     }
 
     public function updatedSelectedSection()
     {
         $this->reset(['selectedStudent', 'studentRecord']);
+        $this->loadedClassId = null;
     }
 
     public function loadStudent()
@@ -214,6 +217,8 @@ class IndividualUpload extends Component
                 return;
             }
 
+            $this->loadedClassId = (int) $classId;
+
             // Start with subjects directly assigned to this student.
             $studentSubjectIds = $this->studentRecord->studentSubjects()
                 ->select('subjects.id')
@@ -315,6 +320,7 @@ class IndividualUpload extends Component
             ]);
             $this->dispatch('error', 'Failed to load student: ' . $e->getMessage());
             $this->studentRecord = null;
+            $this->loadedClassId = null;
         }
     }
     public function updatedResults($value, $key)
@@ -359,7 +365,7 @@ class IndividualUpload extends Component
         try {
             DB::beginTransaction();
 
-            $classId = (int) ($this->selectedClass ?: $this->studentRecord->my_class_id);
+            $classId = (int) ($this->loadedClassId ?: $this->selectedClass ?: $this->studentRecord->my_class_id);
             $subjectId = (int) $subjectId;
 
             if (
@@ -446,7 +452,11 @@ class IndividualUpload extends Component
             return;
         }
 
-        $classId = (int) ($this->selectedClass ?: $this->studentRecord->my_class_id);
+        $classId = (int) ($this->loadedClassId ?: $this->selectedClass ?: $this->studentRecord->my_class_id);
+        $canManageClassTeacherReport = $this->currentUserCanManageResultClassTeacherReport(
+            $this->loadedClassId ?: $classId
+        );
+        $canEditPrincipalComment = $this->currentUserCanEditPrincipalResultComment();
 
         if (
             !$this->currentUserCanUploadResultStudent(
@@ -525,23 +535,33 @@ class IndividualUpload extends Component
                 }
             }
     
-            // Save term report
-            TermReport::updateOrCreate(
-                [
-                    'student_record_id' => $this->studentRecord->id,
-                    'academic_year_id' => $this->academicYearId,
-                    'semester_id' => $this->semesterId,
-                ],
-                [
+            $termReportPayload = [];
+
+            if ($canManageClassTeacherReport) {
+                $termReportPayload = array_merge($termReportPayload, [
                     'present_days' => $this->presentDays,
                     'absent_days' => $this->absentDays,
                     'class_teacher_comment' => $this->overallTeacherComment,
-                    'principal_comment' => $this->principalComment,
                     'psychomotor_traits' => json_encode($this->psychomotorScores),
                     'affective_traits' => json_encode($this->affectiveScores),
                     'co_curricular_activities' => json_encode($this->coCurricularScores),
-                ]
-            );
+                ]);
+            }
+
+            if ($canEditPrincipalComment) {
+                $termReportPayload['principal_comment'] = $this->principalComment;
+            }
+
+            if ($termReportPayload !== []) {
+                TermReport::updateOrCreate(
+                    [
+                        'student_record_id' => $this->studentRecord->id,
+                        'academic_year_id' => $this->academicYearId,
+                        'semester_id' => $this->semesterId,
+                    ],
+                    $termReportPayload
+                );
+            }
     
             DB::commit();
             
@@ -619,6 +639,9 @@ class IndividualUpload extends Component
     public function render()
     {
         $isRestrictedTeacherResultUploader = $this->isRestrictedTeacherResultUploader();
+        $activeClassId = (int) ($this->loadedClassId ?: $this->selectedClass ?: $this->studentRecord?->my_class_id ?: 0);
+        $canManageClassTeacherReport = $this->currentUserCanManageResultClassTeacherReport($activeClassId);
+        $canEditPrincipalComment = $this->currentUserCanEditPrincipalResultComment();
         $classes = $this->accessibleResultUploadClassesQuery($this->academicYearId)
             ->orderBy('name')
             ->get();
@@ -678,7 +701,9 @@ class IndividualUpload extends Component
             'classes',
             'sections',
             'students',
-            'isRestrictedTeacherResultUploader'
+            'isRestrictedTeacherResultUploader',
+            'canManageClassTeacherReport',
+            'canEditPrincipalComment',
         ))
             ->layout('layouts.result', [
                 'title' => 'Individual Result Upload',

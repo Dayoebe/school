@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\ClassGroup;
+use App\Traits\RestrictsTeacherPortalAccess;
 use App\Traits\RestrictsTeacherResultViewing;
 use Livewire\Component;
 use Illuminate\Support\Carbon;
@@ -18,11 +19,13 @@ use Illuminate\Support\Facades\Route;
 
 class DashboardStats extends Component
 {
+    use RestrictsTeacherPortalAccess;
     use RestrictsTeacherResultViewing;
 
     public $stats = [];
     public $snapshot = [];
     public $quickActions = [];
+    public $teacherPanel = [];
     public $studentPanel = [];
     public $parentPanel = [];
     public $academicContext = [];
@@ -30,6 +33,8 @@ class DashboardStats extends Component
 
     public $loading = true;
     public $isStaff = false;
+    public $isTeacher = false;
+    public $isRestrictedTeacher = false;
     public $isStudent = false;
     public $isParent = false;
     public $isSuperAdmin = false;
@@ -50,6 +55,8 @@ class DashboardStats extends Component
         ]);
 
         $this->isSuperAdmin = $user->hasAnyRole(['super-admin', 'super_admin']);
+        $this->isTeacher = $user->hasRole('teacher');
+        $this->isRestrictedTeacher = $this->isRestrictedTeacherPortalUser($user);
         $this->isStudent = $user->hasRole('student');
         $this->isParent = $user->hasRole('parent');
         $this->isStaff = $user->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin', 'teacher']);
@@ -59,8 +66,12 @@ class DashboardStats extends Component
         $this->loadSnapshot($user);
         $this->loadQuickActions($user);
 
-        if ($this->isStaff) {
+        if ($this->isStaff && !$this->isRestrictedTeacher) {
             $this->loadStats($user);
+        }
+
+        if ($this->isRestrictedTeacher) {
+            $this->loadTeacherPanel($user);
         }
 
         if ($this->isStudent) {
@@ -278,7 +289,7 @@ class DashboardStats extends Component
             ],
             [
                 'title' => 'Manage CBT',
-                'description' => 'Create assessments and manage CBT questions.',
+                'description' => 'Create CBT papers only for your assigned subjects and classes.',
                 'icon' => 'fas fa-cogs',
                 'route' => 'cbt.manage',
                 'group' => 'Assessment',
@@ -311,6 +322,24 @@ class DashboardStats extends Component
                 'group' => 'Academic',
                 'roles' => ['parent'],
                 'permissions' => ['read own child attendance', 'read own child discipline'],
+            ],
+            [
+                'title' => 'Attendance',
+                'description' => 'Record attendance only for classes where you are the class teacher.',
+                'icon' => 'fas fa-user-check',
+                'route' => 'attendance.index',
+                'group' => 'Academic',
+                'roles' => $adminAndStaffRoles,
+                'permissions' => ['read attendance'],
+            ],
+            [
+                'title' => 'Syllabi',
+                'description' => 'Work only on syllabi for the classes and subjects assigned to you.',
+                'icon' => 'fas fa-list-check',
+                'route' => 'syllabi.index',
+                'group' => 'Academic',
+                'roles' => $adminAndStaffRoles,
+                'permissions' => ['read syllabus', 'create syllabus'],
             ],
             [
                 'title' => 'Notices',
@@ -373,6 +402,10 @@ class DashboardStats extends Component
     private function canAccessAction(User $user, array $action): bool
     {
         if (empty($action['route']) || !Route::has($action['route'])) {
+            return false;
+        }
+
+        if ($this->isRestrictedTeacherPortalUser($user) && !$this->restrictedTeacherCanAccessRoute($action['route'], $user)) {
             return false;
         }
 
@@ -546,6 +579,23 @@ class DashboardStats extends Component
             'total_children' => $children->count(),
             'hidden_count' => max($children->count() - $limit, 0),
             'children' => $displayChildren,
+        ];
+    }
+
+    private function loadTeacherPanel(User $user): void
+    {
+        $classTeacherClasses = $this->restrictedTeacherClassTeacherClassIds($user);
+        $subjectTeacherClasses = $this->restrictedTeacherAllClassIds($user);
+        $assignedSubjects = $this->restrictedTeacherSubjectsQuery(null, $user)->count();
+        $teacherToolCount = collect($this->quickActions)
+            ->reject(fn (array $action) => in_array($action['route'] ?? '', ['profile.edit', 'password.change'], true))
+            ->count();
+
+        $this->teacherPanel = [
+            'class_teacher_classes' => $classTeacherClasses->count(),
+            'teaching_classes' => $subjectTeacherClasses->count(),
+            'assigned_subjects' => $assignedSubjects,
+            'teacher_tools' => $teacherToolCount,
         ];
     }
 

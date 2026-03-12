@@ -121,6 +121,8 @@ class CbtManagement extends Component
         $subjects = $this->availableSubjectsForSelectedClass();
         $isRestrictedTeacherManager = $this->isRestrictedTeacherCbtManager();
         $canLockAssessments = $this->currentUserCanLockAssessments();
+        $canAdministerParticipants = $this->currentUserCanAdministerCbtParticipants();
+        $canPublishCbtResults = $this->currentUserCanPublishCbtResults();
 
         return view('livewire.cbt.cbt-management', compact(
             'assessments',
@@ -128,6 +130,8 @@ class CbtManagement extends Component
             'subjects',
             'isRestrictedTeacherManager',
             'canLockAssessments',
+            'canAdministerParticipants',
+            'canPublishCbtResults',
         ));
     }
 
@@ -264,6 +268,11 @@ class CbtManagement extends Component
 
     public function publishResults($assessmentId): void
     {
+        if (!$this->currentUserCanPublishCbtResults()) {
+            session()->flash('error', 'Only admin-level staff can publish or hide CBT results.');
+            return;
+        }
+
         $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
         if (!$assessment) {
             session()->flash('error', 'Assessment not found.');
@@ -280,6 +289,11 @@ class CbtManagement extends Component
 
     public function unpublishResults($assessmentId): void
     {
+        if (!$this->currentUserCanPublishCbtResults()) {
+            session()->flash('error', 'Only admin-level staff can publish or hide CBT results.');
+            return;
+        }
+
         $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
         if (!$assessment) {
             session()->flash('error', 'Assessment not found.');
@@ -631,6 +645,11 @@ class CbtManagement extends Component
 
     public function viewParticipants($assessmentId)
     {
+        if (!$this->currentUserCanAdministerCbtParticipants()) {
+            session()->flash('error', 'Teacher CBT access is limited to setting questions for assigned classes and subjects.');
+            return;
+        }
+
         $this->showQuestionModal = false;
         $this->showEditQuestionModal = false;
 
@@ -782,6 +801,11 @@ class CbtManagement extends Component
 
     public function clearAttempt($userId, $attemptNumber)
     {
+        if (!$this->currentUserCanAdministerCbtParticipants()) {
+            session()->flash('error', 'Only admin-level staff can clear CBT attempts.');
+            return;
+        }
+
         if (!$this->selectedAssessment) {
             session()->flash('error', 'No assessment selected.');
             return;
@@ -821,6 +845,11 @@ class CbtManagement extends Component
 
     public function clearAllUserAttempts($userId)
     {
+        if (!$this->currentUserCanAdministerCbtParticipants()) {
+            session()->flash('error', 'Only admin-level staff can clear CBT attempts.');
+            return;
+        }
+
         if (!$this->selectedAssessment) {
             session()->flash('error', 'No assessment selected.');
             return;
@@ -934,6 +963,16 @@ class CbtManagement extends Component
     protected function currentUserCanLockAssessments(): bool
     {
         return auth()->user()?->hasAnyRole(['super-admin', 'super_admin']) === true;
+    }
+
+    protected function currentUserCanAdministerCbtParticipants(): bool
+    {
+        return auth()->user()?->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']) === true;
+    }
+
+    protected function currentUserCanPublishCbtResults(): bool
+    {
+        return auth()->user()?->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']) === true;
     }
 
     protected function currentUserCanAccessQuestionBank(Assessment $assessment): bool

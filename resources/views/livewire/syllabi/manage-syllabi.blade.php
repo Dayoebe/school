@@ -11,6 +11,11 @@
                 <div>
                     <h2 class="text-2xl font-bold text-gray-900">Syllabi</h2>
                     <p class="text-sm text-gray-600">Manage syllabi by class and subject.</p>
+                    @if ($isRestrictedTeacherSyllabusManager)
+                        <p class="mt-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+                            Only your assigned teaching classes and subjects are available here.
+                        </p>
+                    @endif
                 </div>
                 @can('create syllabus')
                     <a href="{{ route('syllabi.create') }}"

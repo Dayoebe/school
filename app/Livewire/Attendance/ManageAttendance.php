@@ -6,11 +6,14 @@ use App\Models\AttendanceRecord;
 use App\Models\AttendanceSession;
 use App\Models\MyClass;
 use App\Models\Section;
+use App\Traits\ResolvesRestrictedTeacherAssignments;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 
 class ManageAttendance extends Component
 {
+    use ResolvesRestrictedTeacherAssignments;
+
     public string $attendanceDate = '';
 
     public string $selectedClassId = '';
@@ -48,6 +51,10 @@ class ManageAttendance extends Component
 
     public function updatedSelectedClassId(): void
     {
+        if (!$this->selectedClassId || !$this->currentUserCanManageAttendanceClass($this->selectedClassId)) {
+            $this->selectedClassId = '';
+        }
+
         $this->selectedSectionId = '';
         $this->loadSections();
         $this->loadAttendanceSheet();
@@ -97,6 +104,10 @@ class ManageAttendance extends Component
         $sectionId = $this->selectedSectionId !== '' ? (int) $this->selectedSectionId : null;
         $classId = (int) $this->selectedClassId;
 
+        if (!$this->currentUserCanManageAttendanceClass($classId)) {
+            abort(403);
+        }
+
         DB::transaction(function () use ($existingSession, $academicYearId, $classId, $sectionId): void {
             $session = $existingSession ?: new AttendanceSession();
 
@@ -140,10 +151,24 @@ class ManageAttendance extends Component
 
     protected function loadClasses(): void
     {
-        $this->classes = MyClass::query()
+        $query = MyClass::query()
             ->whereHas('classGroup', function ($query): void {
                 $query->where('school_id', auth()->user()?->school_id);
-            })
+            });
+
+        if ($this->isRestrictedTeacher()) {
+            $classIds = $this->restrictedTeacherClassTeacherClassIds();
+
+            if ($classIds->isEmpty()) {
+                $this->classes = [];
+                $this->selectedClassId = '';
+                return;
+            }
+
+            $query->whereIn('my_classes.id', $classIds);
+        }
+
+        $this->classes = $query
             ->orderBy('name')
             ->get(['id', 'name'])
             ->map(fn (MyClass $class): array => [
@@ -152,6 +177,12 @@ class ManageAttendance extends Component
             ])
             ->all();
 
+        $selectedClassIsVisible = collect($this->classes)->contains('id', (int) $this->selectedClassId);
+
+        if (!$selectedClassIsVisible) {
+            $this->selectedClassId = '';
+        }
+
         if ($this->selectedClassId === '' && $this->classes !== []) {
             $this->selectedClassId = (string) $this->classes[0]['id'];
         }
@@ -159,7 +190,7 @@ class ManageAttendance extends Component
 
     protected function loadSections(): void
     {
-        if ($this->selectedClassId === '') {
+        if ($this->selectedClassId === '' || !$this->currentUserCanManageAttendanceClass($this->selectedClassId)) {
             $this->sections = [];
             return;
         }
@@ -220,7 +251,7 @@ class ManageAttendance extends Component
         $academicYearId = (int) ($school?->academic_year_id ?? 0);
         $classId = (int) $this->selectedClassId;
 
-        if ($schoolId <= 0 || $academicYearId <= 0 || $classId <= 0) {
+        if ($schoolId <= 0 || $academicYearId <= 0 || $classId <= 0 || !$this->currentUserCanManageAttendanceClass($classId)) {
             return [];
         }
 
@@ -297,12 +328,31 @@ class ManageAttendance extends Component
         return $summary;
     }
 
+    protected function currentUserCanManageAttendanceClass(int|string|null $classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        if (!$this->isRestrictedTeacher()) {
+            return MyClass::query()
+                ->whereKey((int) $classId)
+                ->whereHas('classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()?->school_id);
+                })
+                ->exists();
+        }
+
+        return $this->restrictedTeacherCanAccessClassTeacherClass($classId);
+    }
+
     public function render()
     {
         return view('livewire.attendance.manage-attendance', [
             'summary' => $this->attendanceSummary(),
             'canEditAttendance' => auth()->user()?->can('create attendance') || auth()->user()?->can('update attendance'),
             'hasAcademicYear' => (bool) auth()->user()?->school?->academic_year_id,
+            'isRestrictedTeacherAttendanceManager' => $this->isRestrictedTeacher(),
         ])
             ->layout('layouts.dashboard', [
                 'breadcrumbs' => [

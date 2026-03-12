@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 trait RestrictsTeacherCbtManagement
 {
+    use ResolvesRestrictedTeacherAssignments;
+
     protected function resolveCbtAccessUser(?User $user = null): ?User
     {
         return $user ?: auth()->user();
@@ -19,11 +21,7 @@ trait RestrictsTeacherCbtManagement
 
     protected function isRestrictedTeacherCbtManager(?User $user = null): bool
     {
-        $user = $this->resolveCbtAccessUser($user);
-
-        return $user !== null
-            && $user->hasRole('teacher')
-            && !$user->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']);
+        return $this->isRestrictedTeacher($this->resolveCbtAccessUser($user));
     }
 
     protected function accessibleCbtClassesQuery(?User $user = null): Builder
@@ -60,53 +58,7 @@ trait RestrictsTeacherCbtManagement
             return collect();
         }
 
-        $specificClassIds = DB::table('subject_teacher')
-            ->where('user_id', $user->id)
-            ->where('school_id', $user->school_id)
-            ->where('is_general', false)
-            ->whereNotNull('my_class_id')
-            ->pluck('my_class_id');
-
-        $generalSubjectIds = DB::table('subject_teacher')
-            ->where('user_id', $user->id)
-            ->where('school_id', $user->school_id)
-            ->where('is_general', true)
-            ->pluck('subject_id');
-
-        $generalClassIds = collect();
-
-        if ($generalSubjectIds->isNotEmpty()) {
-            $generalClassIds = $generalClassIds
-                ->merge(
-                    DB::table('class_subject')
-                        ->whereIn('subject_id', $generalSubjectIds)
-                        ->pluck('my_class_id')
-                )
-                ->merge(
-                    Subject::query()
-                        ->whereIn('id', $generalSubjectIds)
-                        ->where('school_id', $user->school_id)
-                        ->whereNotNull('my_class_id')
-                        ->pluck('my_class_id')
-                )
-                ->merge(
-                    DB::table('student_subject')
-                        ->whereIn('subject_id', $generalSubjectIds)
-                        ->whereNotNull('my_class_id')
-                        ->pluck('my_class_id')
-                );
-        }
-
-        return MyClass::query()
-            ->whereHas('classGroup', function (Builder $classGroupQuery) use ($user) {
-                $classGroupQuery->where('school_id', $user->school_id);
-            })
-            ->whereIn(
-                'my_classes.id',
-                $specificClassIds->merge($generalClassIds)->filter()->unique()->values()
-            )
-            ->pluck('my_classes.id')
-            ->map(fn ($id) => (int) $id);
+        return $this->restrictedTeacherClassTeacherClassIds($user);
     }
 
     protected function accessibleCbtSubjectsQuery(?int $classId = null, ?User $user = null): Builder
@@ -138,21 +90,7 @@ trait RestrictsTeacherCbtManagement
             return $query->orderBy('subjects.name')->distinct();
         }
 
-        $query->whereExists(function ($subQuery) use ($user, $classId) {
-            $subQuery->select(DB::raw(1))
-                ->from('subject_teacher as st')
-                ->whereColumn('st.subject_id', 'subjects.id')
-                ->where('st.user_id', $user->id)
-                ->where('st.school_id', $user->school_id)
-                ->when($classId, function ($assignmentQuery) use ($classId) {
-                    $assignmentQuery->where(function ($classAssignmentQuery) use ($classId) {
-                        $classAssignmentQuery->where('st.is_general', true)
-                            ->orWhere('st.my_class_id', $classId);
-                    });
-                });
-        });
-
-        return $query->orderBy('subjects.name')->distinct();
+        return $this->restrictedTeacherSubjectsQuery($classId, $user);
     }
 
     protected function accessibleCbtAssessmentsQuery(?User $user = null): Builder
