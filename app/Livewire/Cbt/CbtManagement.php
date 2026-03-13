@@ -123,6 +123,7 @@ class CbtManagement extends Component
         $canLockAssessments = $this->currentUserCanLockAssessments();
         $canAdministerParticipants = $this->currentUserCanAdministerCbtParticipants();
         $canPublishCbtResults = $this->currentUserCanPublishCbtResults();
+        $canDeleteAssessments = $this->currentUserCanDeleteAssessments();
 
         return view('livewire.cbt.cbt-management', compact(
             'assessments',
@@ -132,6 +133,7 @@ class CbtManagement extends Component
             'canLockAssessments',
             'canAdministerParticipants',
             'canPublishCbtResults',
+            'canDeleteAssessments',
         ));
     }
 
@@ -259,6 +261,11 @@ class CbtManagement extends Component
 
     public function deleteAssessment($assessmentId)
     {
+        if (!$this->currentUserCanDeleteAssessments()) {
+            session()->flash('error', 'Only super admin and principal can delete CBT assessments.');
+            return;
+        }
+
         $assessment = $this->getAssessmentForCurrentSchool($assessmentId);
         if ($assessment) {
             $assessment->delete();
@@ -973,6 +980,11 @@ class CbtManagement extends Component
     protected function currentUserCanPublishCbtResults(): bool
     {
         return auth()->user()?->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']) === true;
+    }
+
+    protected function currentUserCanDeleteAssessments(): bool
+    {
+        return auth()->user()?->hasAnyRole(['super-admin', 'super_admin', 'principal']) === true;
     }
 
     protected function currentUserCanAccessQuestionBank(Assessment $assessment): bool

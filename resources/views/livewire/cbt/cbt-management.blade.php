@@ -293,11 +293,13 @@
                                 <i class="fas fa-edit mr-2"></i>Edit
                             </button>
 
-                            <button wire:click="deleteAssessment({{ $assessment->id }})"
-                                wire:confirm="Are you sure you want to delete this assessment?"
-                                class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 sm:col-span-2">
-                                <i class="fas fa-trash mr-2"></i>Delete Assessment
-                            </button>
+                            @if($canDeleteAssessments)
+                                <button wire:click="deleteAssessment({{ $assessment->id }})"
+                                    wire:confirm="Are you sure you want to delete this assessment?"
+                                    class="inline-flex items-center justify-center rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 transition-colors hover:bg-red-100 sm:col-span-2">
+                                    <i class="fas fa-trash mr-2"></i>Delete Assessment
+                                </button>
+                            @endif
                         </div>
                     </article>
                 @endforeach
