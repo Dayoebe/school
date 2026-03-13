@@ -131,17 +131,44 @@ class Subject extends Model
      */
     public function assignTeacher($teacherId, $classId = null, $isGeneral = false)
     {
-        $data = [
-            'school_id' => $this->school_id,
-            'is_general' => $isGeneral,
-        ];
+        $teacherId = (int) $teacherId;
+        $classId = $classId ? (int) $classId : null;
+        $timestamp = now();
 
-        if (!$isGeneral && $classId) {
-            $data['my_class_id'] = $classId;
+        if ($teacherId <= 0) {
+            return;
         }
 
-        $this->teachers()->syncWithoutDetaching([
-            $teacherId => $data
+        $assignmentQuery = DB::table('subject_teacher')
+            ->where('subject_id', $this->id)
+            ->where('user_id', $teacherId);
+
+        if ($isGeneral) {
+            $assignmentQuery->whereNull('my_class_id');
+        } elseif ($classId) {
+            $assignmentQuery->where('my_class_id', $classId);
+        } else {
+            return;
+        }
+
+        if ($assignmentQuery->exists()) {
+            $assignmentQuery->update([
+                'school_id' => $this->school_id,
+                'is_general' => (bool) $isGeneral,
+                'updated_at' => $timestamp,
+            ]);
+
+            return;
+        }
+
+        DB::table('subject_teacher')->insert([
+            'subject_id' => $this->id,
+            'user_id' => $teacherId,
+            'my_class_id' => $isGeneral ? null : $classId,
+            'school_id' => $this->school_id,
+            'is_general' => (bool) $isGeneral,
+            'created_at' => $timestamp,
+            'updated_at' => $timestamp,
         ]);
     }
 

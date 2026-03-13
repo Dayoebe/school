@@ -108,7 +108,8 @@
                         @foreach($selectedTeachers as $teacherId)
                             @php
                                 $teacher = $this->teachers->firstWhere('id', $teacherId);
-                                $assignment = $teacherAssignments[$teacherId] ?? ['class_id' => null, 'is_general' => true];
+                                $assignment = $teacherAssignments[$teacherId] ?? ['class_ids' => [], 'is_general' => true];
+                                $assignedClassIds = $assignment['class_ids'] ?? [];
                             @endphp
                             @if($teacher)
                                 <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -142,7 +143,7 @@
                                         @if(count($selectedClasses) > 0)
                                             <details class="mt-2">
                                                 <summary class="cursor-pointer text-xs text-blue-600 hover:text-blue-800">
-                                                    Or assign to specific class
+                                                    Or assign to specific classes
                                                 </summary>
                                                 <div class="mt-2 space-y-1 pl-4">
                                                     @foreach($selectedClasses as $classId)
@@ -152,13 +153,19 @@
                                                         @if($class)
                                                             <button type="button"
                                                                     wire:click="setTeacherClassAssignment({{ $teacherId }}, {{ $classId }})"
-                                                                    class="block w-full text-left px-3 py-2 rounded border text-sm {{ !$assignment['is_general'] && $assignment['class_id'] == $classId ? 'bg-blue-100 border-blue-500 text-blue-800' : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300' }}">
+                                                                    class="block w-full text-left px-3 py-2 rounded border text-sm {{ !$assignment['is_general'] && in_array($classId, $assignedClassIds) ? 'bg-blue-100 border-blue-500 text-blue-800' : 'bg-white border-gray-300 text-gray-700 hover:border-blue-300' }}">
                                                                 {{ $class->name }}
                                                             </button>
                                                         @endif
                                                     @endforeach
                                                 </div>
                                             </details>
+
+                                            @if(!$assignment['is_general'])
+                                                <p class="text-xs text-blue-700 mt-2">
+                                                    {{ count($assignedClassIds) }} class{{ count($assignedClassIds) !== 1 ? 'es' : '' }} selected for this teacher
+                                                </p>
+                                            @endif
                                         @endif
                                     </div>
                                 </div>

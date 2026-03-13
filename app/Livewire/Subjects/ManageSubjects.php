@@ -35,7 +35,7 @@ class ManageSubjects extends Component
     public $short_name = '';
     public $selectedClasses = []; // Multiple classes
     public $selectedTeachers = [];
-    public $teacherAssignments = []; // ['teacher_id' => ['class_id' => X, 'is_general' => false]]
+    public $teacherAssignments = []; // ['teacher_id' => ['class_ids' => [X, Y], 'is_general' => false]]
     public $teacherSearch = '';
 
     protected $queryString = [
@@ -141,7 +141,7 @@ class ManageSubjects extends Component
         }
 
         $subject = Subject::query()
-            ->with(['teachers', 'classes'])
+            ->with('classes')
             ->findOrFail($this->subjectId);
 
         $this->fill([
@@ -150,16 +150,31 @@ class ManageSubjects extends Component
             'selectedClasses' => $subject->classes->pluck('id')->toArray(),
         ]);
 
-        // Load teacher assignments with class specificity
+        // Load teacher assignments with class specificity.
         $this->teacherAssignments = [];
-        foreach ($subject->teachers as $teacher) {
-            $this->teacherAssignments[$teacher->id] = [
-                'class_id' => $teacher->pivot->my_class_id,
-                'is_general' => $teacher->pivot->is_general,
-            ];
+
+        $assignmentRows = DB::table('subject_teacher')
+            ->where('subject_id', $subject->id)
+            ->select('user_id', 'my_class_id', 'is_general')
+            ->orderBy('user_id')
+            ->get()
+            ->groupBy('user_id');
+
+        foreach ($assignmentRows as $teacherId => $assignments) {
+            $classIds = $assignments->pluck('my_class_id')
+                ->map(fn ($id) => (int) $id)
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            $this->teacherAssignments[(int) $teacherId] = $this->makeTeacherAssignment(
+                $assignments->contains(fn ($assignment) => (bool) $assignment->is_general),
+                $classIds
+            );
         }
         
-        $this->selectedTeachers = array_keys($this->teacherAssignments);
+        $this->selectedTeachers = array_map('intval', array_keys($this->teacherAssignments));
     }
 
     public function toggleClass($classId)
@@ -173,15 +188,18 @@ class ManageSubjects extends Component
             // Remove class
             $this->selectedClasses = array_values(array_filter($this->selectedClasses, fn($id) => $id != $classId));
             
-            // Remove any teacher assignments specific to this class
+            // Remove any teacher assignments specific to this class.
             foreach ($this->teacherAssignments as $teacherId => $assignment) {
-                if (!$assignment['is_general'] && $assignment['class_id'] == $classId) {
-                    // Convert to general or remove
-                    $this->teacherAssignments[$teacherId] = [
-                        'class_id' => null,
-                        'is_general' => true,
-                    ];
+                if ($assignment['is_general']) {
+                    continue;
                 }
+
+                $remainingClassIds = array_values(array_filter(
+                    $assignment['class_ids'] ?? [],
+                    fn ($assignedClassId) => (int) $assignedClassId !== (int) $classId
+                ));
+
+                $this->teacherAssignments[$teacherId] = $this->makeTeacherAssignment(false, $remainingClassIds);
             }
         } else {
             $this->selectedClasses[] = $classId;
@@ -199,11 +217,7 @@ class ManageSubjects extends Component
             $this->removeTeacher($teacherId);
         } else {
             $this->selectedTeachers[] = $teacherId;
-            // Default to general assignment
-            $this->teacherAssignments[$teacherId] = [
-                'class_id' => null,
-                'is_general' => true,
-            ];
+            $this->teacherAssignments[$teacherId] = $this->makeTeacherAssignment();
         }
     }
 
@@ -219,10 +233,19 @@ class ManageSubjects extends Component
             return;
         }
 
-        $this->teacherAssignments[$teacherId] = [
-            'class_id' => $classId,
-            'is_general' => false,
-        ];
+        $assignment = $this->normalizeTeacherAssignment($this->teacherAssignments[$teacherId] ?? []);
+        $assignedClassIds = $assignment['class_ids'];
+
+        if (in_array((int) $classId, $assignedClassIds, true)) {
+            $assignedClassIds = array_values(array_filter(
+                $assignedClassIds,
+                fn ($assignedClassId) => (int) $assignedClassId !== (int) $classId
+            ));
+        } else {
+            $assignedClassIds[] = (int) $classId;
+        }
+
+        $this->teacherAssignments[$teacherId] = $this->makeTeacherAssignment(false, $assignedClassIds);
     }
 
     public function setTeacherAsGeneral($teacherId)
@@ -231,10 +254,7 @@ class ManageSubjects extends Component
             return;
         }
 
-        $this->teacherAssignments[$teacherId] = [
-            'class_id' => null,
-            'is_general' => true,
-        ];
+        $this->teacherAssignments[$teacherId] = $this->makeTeacherAssignment();
     }
 
     public function getTeachersProperty()
@@ -251,6 +271,36 @@ class ManageSubjects extends Component
     {
         $this->selectedTeachers = array_values(array_filter($this->selectedTeachers, fn($id) => $id != $teacherId));
         unset($this->teacherAssignments[$teacherId]);
+    }
+
+    protected function makeTeacherAssignment(bool $isGeneral = true, array $classIds = []): array
+    {
+        $normalizedClassIds = collect($classIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($isGeneral || $normalizedClassIds === []) {
+            return [
+                'class_ids' => [],
+                'is_general' => true,
+            ];
+        }
+
+        return [
+            'class_ids' => $normalizedClassIds,
+            'is_general' => false,
+        ];
+    }
+
+    protected function normalizeTeacherAssignment(array $assignment): array
+    {
+        return $this->makeTeacherAssignment(
+            (bool) ($assignment['is_general'] ?? true),
+            $assignment['class_ids'] ?? []
+        );
     }
 
     public function createSubject()
@@ -280,7 +330,7 @@ class ManageSubjects extends Component
             return;
         }
 
-        DB::transaction(function () {
+        DB::transaction(function () use ($validClassIds, $validTeacherIds) {
             $subject = Subject::create([
                 'name' => $this->name,
                 'short_name' => $this->short_name,
@@ -290,22 +340,24 @@ class ManageSubjects extends Component
             ]);
 
             // Assign to classes
-            foreach ($this->getValidClassIdsForCurrentSchool($this->selectedClasses) as $classId) {
+            foreach ($validClassIds as $classId) {
                 $subject->assignToClass($classId);
             }
 
             // Assign teachers
-            foreach ($this->getValidTeacherIdsForCurrentSchool($this->selectedTeachers) as $teacherId) {
-                $assignment = $this->teacherAssignments[$teacherId] ?? ['class_id' => null, 'is_general' => true];
-                
-                // Validate class assignment
-                if (!$assignment['is_general'] && $assignment['class_id']) {
-                    if (!in_array($assignment['class_id'], $this->selectedClasses)) {
-                        continue; // Skip invalid assignment
-                    }
+            foreach ($validTeacherIds as $teacherId) {
+                $assignment = $this->normalizeTeacherAssignment($this->teacherAssignments[$teacherId] ?? []);
+
+                if ($assignment['is_general']) {
+                    $subject->assignTeacher($teacherId, null, true);
+                    continue;
                 }
-                
-                $subject->assignTeacher($teacherId, $assignment['class_id'], $assignment['is_general']);
+
+                $classIds = array_values(array_intersect($assignment['class_ids'], $validClassIds));
+
+                foreach ($classIds as $classId) {
+                    $subject->assignTeacher($teacherId, $classId, false);
+                }
             }
         });
 
@@ -343,7 +395,7 @@ class ManageSubjects extends Component
             return;
         }
 
-        DB::transaction(function () use ($subject) {
+        DB::transaction(function () use ($subject, $validClassIds, $validTeacherIds) {
             $subject->update([
                 'name' => $this->name,
                 'short_name' => $this->short_name,
@@ -352,7 +404,7 @@ class ManageSubjects extends Component
             // Sync classes with school_id in pivot (handle empty array)
             if (count($this->selectedClasses) > 0) {
                 $syncData = [];
-                foreach ($this->getValidClassIdsForCurrentSchool($this->selectedClasses) as $classId) {
+                foreach ($validClassIds as $classId) {
                     $syncData[$classId] = ['school_id' => auth()->user()->school_id];
                 }
                 $subject->classes()->sync($syncData);
@@ -372,24 +424,24 @@ class ManageSubjects extends Component
             // Clear old teacher assignments and add new ones
             $subject->teachers()->detach();
             
-            foreach ($this->getValidTeacherIdsForCurrentSchool($this->selectedTeachers) as $teacherId) {
-                $assignment = $this->teacherAssignments[$teacherId] ?? ['class_id' => null, 'is_general' => true];
-                
+            foreach ($validTeacherIds as $teacherId) {
+                $assignment = $this->normalizeTeacherAssignment($this->teacherAssignments[$teacherId] ?? []);
+
                 // If no classes are selected, force general assignment
                 if (count($this->selectedClasses) === 0) {
-                    $assignment['class_id'] = null;
-                    $assignment['is_general'] = true;
+                    $assignment = $this->makeTeacherAssignment();
                 }
-                // Validate class assignment if classes exist
-                elseif (!$assignment['is_general'] && $assignment['class_id']) {
-                    if (!in_array($assignment['class_id'], $this->selectedClasses)) {
-                        // Convert to general if class no longer selected
-                        $assignment['class_id'] = null;
-                        $assignment['is_general'] = true;
-                    }
+
+                if ($assignment['is_general']) {
+                    $subject->assignTeacher($teacherId, null, true);
+                    continue;
                 }
-                
-                $subject->assignTeacher($teacherId, $assignment['class_id'], $assignment['is_general']);
+
+                $classIds = array_values(array_intersect($assignment['class_ids'], $validClassIds));
+
+                foreach ($classIds as $classId) {
+                    $subject->assignTeacher($teacherId, $classId, false);
+                }
             }
         });
 

@@ -20,7 +20,11 @@
                         @endif
                         <span class="flex items-center">
                             <i class="fas fa-chalkboard-teacher mr-2"></i>
-                            {{ $teacher->subjects->count() }} Subject{{ $teacher->subjects->count() !== 1 ? 's' : '' }}
+                            {{ $teacherSummary['assigned_subjects'] }} Subject{{ $teacherSummary['assigned_subjects'] !== 1 ? 's' : '' }}
+                        </span>
+                        <span class="flex items-center">
+                            <i class="fas fa-school mr-2"></i>
+                            {{ $teacherSummary['teaching_classes'] }} Class{{ $teacherSummary['teaching_classes'] !== 1 ? 'es' : '' }}
                         </span>
                         @if($teacher->gender)
                             <span class="flex items-center">
@@ -56,7 +60,7 @@
             <button @click="activeTab = 'subjects'" 
                     :class="activeTab === 'subjects' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
                     class="px-6 py-4 font-semibold transition whitespace-nowrap">
-                <i class="fas fa-book mr-2"></i>Subjects ({{ $teacher->subjects->count() }})
+                <i class="fas fa-book mr-2"></i>Subjects ({{ $teacherSummary['assigned_subjects'] }})
             </button>
             <button @click="activeTab = 'timetable'" 
                     :class="activeTab === 'timetable' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-gray-600 hover:text-indigo-600'"
@@ -170,31 +174,75 @@
 
                     <!-- Current Subjects -->
                     <div>
-                        <h3 class="text-xl font-bold text-gray-900 mb-4">Assigned Subjects ({{ $teacher->subjects->count() }})</h3>
+                        <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between mb-4">
+                            <div>
+                                <h3 class="text-xl font-bold text-gray-900">Teaching Assignments</h3>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    Subject and class assignments currently attached to this teacher.
+                                </p>
+                            </div>
+                            <div class="flex flex-wrap gap-2 text-sm">
+                                <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full font-semibold">
+                                    {{ $teacherSummary['assigned_subjects'] }} Subject{{ $teacherSummary['assigned_subjects'] !== 1 ? 's' : '' }}
+                                </span>
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-semibold">
+                                    {{ $teacherSummary['teaching_classes'] }} Class{{ $teacherSummary['teaching_classes'] !== 1 ? 'es' : '' }}
+                                </span>
+                                <span class="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-semibold">
+                                    {{ $teacherSummary['teaching_assignments'] }} Assignment{{ $teacherSummary['teaching_assignments'] !== 1 ? 's' : '' }}
+                                </span>
+                            </div>
+                        </div>
                         
-                        @if($teacher->subjects->count() > 0)
+                        @if(count($subjectAssignmentGroups) > 0)
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                @foreach($teacher->subjects as $subject)
+                                @foreach($subjectAssignmentGroups as $assignmentGroup)
                                     <div class="bg-white border rounded-lg p-4 shadow-sm hover:shadow-md transition">
                                         <div class="flex justify-between items-start mb-3">
                                             <div>
-                                                <h4 class="font-bold text-gray-900">{{ $subject->name }}</h4>
-                                                <p class="text-sm text-gray-600">{{ $subject->short_name }}</p>
+                                                <h4 class="font-bold text-gray-900">{{ $assignmentGroup['subject_name'] }}</h4>
+                                                <p class="text-sm text-gray-600">
+                                                    {{ $assignmentGroup['subject_short_name'] ?: 'No short name' }}
+                                                </p>
                                             </div>
-                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                                {{ $subject->myClass->name ?? 'N/A' }}
+                                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded font-semibold">
+                                                {{ $assignmentGroup['class_count'] }} Class{{ $assignmentGroup['class_count'] !== 1 ? 'es' : '' }}
                                             </span>
+                                        </div>
+
+                                        <div class="mb-4">
+                                            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                                                Classes Taught
+                                            </p>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($assignmentGroup['classes'] as $class)
+                                                    <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-800 text-xs font-medium">
+                                                        <span>{{ $class['class_name'] }}</span>
+                                                        @if(!empty($class['class_group']))
+                                                            <span class="text-slate-500">({{ $class['class_group'] }})</span>
+                                                        @endif
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        </div>
+
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach($assignmentGroup['assignment_scopes'] as $scope)
+                                                <span class="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full font-semibold">
+                                                    {{ $scope }}
+                                                </span>
+                                            @endforeach
                                         </div>
                                         
                                         <div class="flex justify-between items-center mt-4 pt-4 border-t">
-                                            <a href="{{ route('subjects.show', $subject->id) }}" 
+                                            <a href="{{ route('subjects.show', $assignmentGroup['subject_id']) }}" 
                                                class="text-sm text-indigo-600 hover:text-indigo-800">
                                                 <i class="fas fa-external-link-alt mr-1"></i>View Subject
                                             </a>
-                                            <button wire:click="removeSubject({{ $subject->id }})" 
+                                            <button wire:click="removeSubject({{ $assignmentGroup['subject_id'] }})" 
                                                     wire:confirm="Are you sure you want to remove this subject from this teacher?"
                                                     class="text-sm text-red-600 hover:text-red-800">
-                                                <i class="fas fa-trash mr-1"></i>Remove
+                                                <i class="fas fa-trash mr-1"></i>Remove Subject
                                             </button>
                                         </div>
                                     </div>
@@ -203,8 +251,8 @@
                         @else
                             <div class="text-center py-8 bg-gray-50 rounded-lg">
                                 <i class="fas fa-book text-gray-300 text-4xl mb-3"></i>
-                                <p class="text-gray-500">No subjects assigned to this teacher</p>
-                                <p class="text-gray-400 text-sm mt-1">Use the search above to assign subjects</p>
+                                <p class="text-gray-500">No subject or class assignment found for this teacher</p>
+                                <p class="text-gray-400 text-sm mt-1">Use the search above to assign a subject</p>
                             </div>
                         @endif
                     </div>
