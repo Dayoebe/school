@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\ClassGroup;
+use App\Support\TeacherResponsibilityBuilder;
 use App\Traits\RestrictsTeacherPortalAccess;
 use App\Traits\RestrictsTeacherResultViewing;
 use Livewire\Component;
@@ -70,7 +71,7 @@ class DashboardStats extends Component
             $this->loadStats($user);
         }
 
-        if ($this->isRestrictedTeacher) {
+        if ($this->isTeacher) {
             $this->loadTeacherPanel($user);
         }
 
@@ -222,6 +223,14 @@ class DashboardStats extends Component
                 'group' => 'Academic',
                 'roles' => $adminAndStaffRoles,
                 'permissions' => ['read subject', 'create subject', 'update subject'],
+            ],
+            [
+                'title' => 'Responsibilities',
+                'description' => 'View the information and tools relevant to your role.',
+                'icon' => 'fas fa-briefcase',
+                'route' => 'dashboard.responsibilities',
+                'group' => 'Academic',
+                'permissions' => ['view dashboard'],
             ],
             [
                 'title' => 'Exams',
@@ -584,19 +593,101 @@ class DashboardStats extends Component
 
     private function loadTeacherPanel(User $user): void
     {
-        $classTeacherClasses = $this->restrictedTeacherClassTeacherClassIds($user);
-        $subjectTeacherClasses = $this->restrictedTeacherAllClassIds($user);
-        $assignedSubjects = $this->restrictedTeacherSubjectsQuery(null, $user)->count();
+        $teacherPanel = app(TeacherResponsibilityBuilder::class)->build($user);
+
         $teacherToolCount = collect($this->quickActions)
             ->reject(fn (array $action) => in_array($action['route'] ?? '', ['profile.edit', 'password.change'], true))
             ->count();
 
-        $this->teacherPanel = [
-            'class_teacher_classes' => $classTeacherClasses->count(),
-            'teaching_classes' => $subjectTeacherClasses->count(),
-            'assigned_subjects' => $assignedSubjects,
-            'teacher_tools' => $teacherToolCount,
+        $teacherPanel['teacher_tools'] = $teacherToolCount;
+        $teacherPanel['focus_items'] = $this->loadTeacherFocusItems(
+            $user,
+            (int) ($teacherPanel['class_teacher_classes'] ?? 0),
+            (int) ($teacherPanel['teaching_assignments'] ?? 0)
+        );
+
+        $this->teacherPanel = $teacherPanel;
+    }
+
+    private function loadTeacherFocusItems(User $user, int $managedClassCount, int $teachingAssignmentCount): array
+    {
+        $items = [
+            [
+                'title' => 'Responsibilities',
+                'description' => 'Open the page that shows the information relevant to your role.',
+                'icon' => 'fas fa-briefcase',
+                'route' => 'dashboard.responsibilities',
+                'permissions' => ['view dashboard'],
+                'tone' => 'bg-violet-600 text-white',
+                'cta' => 'Open page',
+            ],
+            [
+                'title' => 'Attendance',
+                'description' => 'Record attendance for the classes assigned to you.',
+                'icon' => 'fas fa-user-check',
+                'route' => 'attendance.index',
+                'roles' => ['teacher'],
+                'permissions' => ['read attendance'],
+                'tone' => 'bg-blue-600 text-white',
+                'cta' => 'Open page',
+                'requires_managed_classes' => true,
+            ],
+            [
+                'title' => 'Results',
+                'description' => 'Upload or review results for your assigned subjects.',
+                'icon' => 'fas fa-chart-line',
+                'route' => 'result',
+                'roles' => ['teacher'],
+                'permissions' => ['upload result'],
+                'tone' => 'bg-emerald-600 text-white',
+                'cta' => 'Open page',
+                'requires_teaching_assignments' => true,
+            ],
+            [
+                'title' => 'CBT Management',
+                'description' => 'Manage CBT assessments and questions for your assigned subjects.',
+                'icon' => 'fas fa-laptop-code',
+                'route' => 'cbt.manage',
+                'roles' => ['teacher'],
+                'permissions' => ['manage cbt'],
+                'tone' => 'bg-amber-500 text-slate-950',
+                'cta' => 'Open page',
+                'requires_teaching_assignments' => true,
+            ],
+            [
+                'title' => 'Syllabi',
+                'description' => 'Manage syllabi for the classes and subjects assigned to you.',
+                'icon' => 'fas fa-list-check',
+                'route' => 'syllabi.index',
+                'roles' => ['teacher'],
+                'permissions' => ['read syllabus', 'create syllabus'],
+                'tone' => 'bg-rose-600 text-white',
+                'cta' => 'Open page',
+                'requires_teaching_assignments' => true,
+            ],
+            [
+                'title' => 'Timetable',
+                'description' => 'View the timetable for your classes and teaching schedule.',
+                'icon' => 'fas fa-clock',
+                'route' => 'timetables.index',
+                'roles' => ['teacher'],
+                'permissions' => ['read timetable', 'create timetable'],
+                'tone' => 'bg-slate-800 text-white',
+                'cta' => 'Open page',
+            ],
         ];
+
+        return array_values(array_filter($items, function (array $item) use ($managedClassCount, $teachingAssignmentCount, $user): bool {
+            if (($item['requires_managed_classes'] ?? false) && $managedClassCount === 0) {
+                return false;
+            }
+
+            if (($item['requires_teaching_assignments'] ?? false) && $teachingAssignmentCount === 0) {
+                return false;
+            }
+
+            return $this->canAccessAction($user, $item);
+        }));
     }
 
     public function render()

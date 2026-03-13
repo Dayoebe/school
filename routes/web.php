@@ -34,6 +34,7 @@ use App\Livewire\Students\{ManageStudents, StudentDetail, PromoteStudents, Gradu
 use App\Livewire\Classes\{ManageClassGroups, ManageClasses};
 use App\Livewire\Admissions\ManageAdmissionRegistrations;
 use App\Livewire\Contacts\ManageContactMessages;
+use App\Livewire\Dashboard\TeacherResponsibilities;
 use App\Livewire\Gallery\ManageGallery;
 use App\Livewire\Syllabi\ManageSyllabi;
 
@@ -160,6 +161,10 @@ Route::middleware(['auth', 'restrict.teacher.portal', 'App\Http\Middleware\Ensur
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware('permission:view dashboard')
         ->name('dashboard');
+
+    Route::get('/dashboard/responsibilities', TeacherResponsibilities::class)
+        ->middleware('permission:view dashboard')
+        ->name('dashboard.responsibilities');
 
     Route::get('/dashboard/analytics', \App\Livewire\Dashboard\AnalyticsDashboard::class)
         ->middleware('permission:read analytics dashboard')

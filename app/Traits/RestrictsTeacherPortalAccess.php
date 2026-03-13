@@ -23,6 +23,7 @@ trait RestrictsTeacherPortalAccess
     {
         return [
             'dashboard',
+            'dashboard.responsibilities',
             'results.index',
             'result',
             'result.upload.individual',

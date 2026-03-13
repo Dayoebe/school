@@ -58,7 +58,7 @@ trait RestrictsTeacherCbtManagement
             return collect();
         }
 
-        return $this->restrictedTeacherClassTeacherClassIds($user);
+        return $this->restrictedTeacherSubjectTeacherClassIds($user);
     }
 
     protected function accessibleCbtSubjectsQuery(?int $classId = null, ?User $user = null): Builder
@@ -90,7 +90,36 @@ trait RestrictsTeacherCbtManagement
             return $query->orderBy('subjects.name')->distinct();
         }
 
-        return $this->restrictedTeacherSubjectsQuery($classId, $user);
+        $classIds = $this->accessibleCbtClassIds($user);
+
+        if ($classIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($classId !== null && !$classIds->contains((int) $classId)) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->whereExists(function ($subQuery) use ($user, $classId, $classIds) {
+            $subQuery->select(DB::raw(1))
+                ->from('subject_teacher as st')
+                ->whereColumn('st.subject_id', 'subjects.id')
+                ->where('st.user_id', $user->id)
+                ->where('st.school_id', $user->school_id)
+                ->where(function ($assignmentQuery) use ($classId, $classIds) {
+                    $assignmentQuery->where('st.is_general', true);
+
+                    if ($classId !== null) {
+                        $assignmentQuery->orWhere('st.my_class_id', (int) $classId);
+
+                        return;
+                    }
+
+                    $assignmentQuery->orWhereIn('st.my_class_id', $classIds);
+                });
+        });
+
+        return $query->orderBy('subjects.name')->distinct();
     }
 
     protected function accessibleCbtAssessmentsQuery(?User $user = null): Builder

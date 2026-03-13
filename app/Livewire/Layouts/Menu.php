@@ -43,6 +43,13 @@ class Menu extends Component
             ],
             [
                 'type' => 'menu-item',
+                'icon' => 'fas fa-briefcase',
+                'text' => 'Responsibilities',
+                'route' => 'dashboard.responsibilities',
+                'permissions' => ['view dashboard'],
+            ],
+            [
+                'type' => 'menu-item',
                 'icon' => 'fas fa-chart-bar',
                 'text' => 'Analytics',
                 'route' => 'analytics.index',
