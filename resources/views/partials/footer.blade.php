@@ -8,6 +8,8 @@
     $footerTitle = (string) data_get($settings, 'footer.admissions_title', 'Ready to enroll your child?');
     $footerDescription = (string) data_get($settings, 'footer.admissions_description', 'Start your admission process today or contact us for guidance.');
     $copyrightSuffix = (string) data_get($settings, 'footer.copyright_suffix', 'All rights reserved.');
+    $creatorName = 'Wireless Terminal';
+    $creatorUrl = 'https://dayoebe.github.io';
     $socialLinks = [
         'facebook' => trim((string) data_get($settings, 'footer.social.facebook', '')),
         'instagram' => trim((string) data_get($settings, 'footer.social.instagram', '')),
@@ -143,7 +145,15 @@
         </div>
 
         <div class="mt-10 flex flex-col gap-3 border-t border-white/10 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
-            <p>&copy; {{ date('Y') }} {{ $schoolName }}. {{ $copyrightSuffix }}</p>
+            <div class="space-y-1">
+                <p>&copy; {{ date('Y') }} {{ $schoolName }}. {{ $copyrightSuffix }}</p>
+                <p>
+                    Created by
+                    <a href="{{ $creatorUrl }}" target="_blank" rel="noopener noreferrer" class="font-semibold text-amber-300 transition hover:text-amber-200">
+                        {{ $creatorName }}
+                    </a>
+                </p>
+            </div>
             <a href="#top" class="inline-flex items-center gap-2 font-semibold text-fuchsia-300 transition hover:text-fuchsia-200">
                 <span>Back to Top</span>
                 <i class="fas fa-arrow-up text-[10px]"></i>

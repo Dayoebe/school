@@ -54,7 +54,7 @@
         <div class="lg:flex lg:flex-cols text-gray-900 bg-gray-100 dark:bg-gray-700 dark:text-gray-50 min-h-screen">
             <livewire:layouts.menu />
 
-            <div class="w-full max-w-full overflow-scroll beautify-scrollbar">
+            <div class="flex min-h-screen w-full max-w-full flex-col overflow-scroll beautify-scrollbar">
                 <div class="bg-white dark:bg-gray-800 p-4 w-full border-b-2">
                     <h1 class="text-3xl my-2 capitalize font-semibold flex items-center gap-2">
                         @if (!empty($icon))
@@ -77,9 +77,16 @@
                     </div>
                 </div>
 
-                <main class="p-4" id="main">
+                <main class="flex-1 p-4" id="main">
                     {{ $slot }}
                 </main>
+
+                <footer class="border-t border-gray-200 bg-white px-4 py-4 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <p>Created by <a href="https://dayoebe.github.io" target="_blank" rel="noopener noreferrer" class="font-semibold text-red-600 transition hover:text-red-500 dark:text-red-400 dark:hover:text-red-300">Wireless Terminal</a></p>
+                        <p>&copy; {{ date('Y') }} {{ config('app.name', 'School Portal') }}</p>
+                    </div>
+                </footer>
             </div>
         </div>
 
