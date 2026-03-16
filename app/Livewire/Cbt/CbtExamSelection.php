@@ -23,19 +23,39 @@ class CbtExamSelection extends Component
         if ($isAuthorizedStudent) {
             $availableAssessments = $this->publishedAssessmentsForCurrentSchool()
                 ->with([
-                    'questions',
-                    'course',
-                    'lesson',
-                    'studentLocks' => fn ($query) => $query->where('user_id', $userId),
+                    'questions:id,assessment_id,points',
+                    'course:id,name',
+                    'lesson:id,name',
+                    'studentLocks' => fn ($query) => $query
+                        ->select('id', 'assessment_id', 'user_id')
+                        ->where('user_id', $userId),
                     'studentAnswers' => fn ($query) => $query
                         ->where('user_id', $userId)
-                        ->with('question'),
+                        ->select(
+                            'id',
+                            'assessment_id',
+                            'user_id',
+                            'question_id',
+                            'attempt_number',
+                            'points_earned',
+                            'is_correct',
+                            'submitted_at'
+                        ),
                     'attemptSessions' => fn ($query) => $query
+                        ->select(
+                            'id',
+                            'assessment_id',
+                            'user_id',
+                            'attempt_number',
+                            'status',
+                            'started_at',
+                            'expires_at'
+                        )
                         ->where('user_id', $userId),
                 ])
                 ->whereHas('questions')
                 ->get()
-                ->map(function ($assessment) use ($canViewUnpublished) {
+                ->map(function ($assessment) use ($canViewUnpublished, $userId) {
                     $submittedAnswers = $assessment->studentAnswers
                         ->whereNotNull('submitted_at');
                     $attemptCount = $submittedAnswers

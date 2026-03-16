@@ -1,7 +1,7 @@
 <div x-data="modernCbtExam()"
      data-cbt-exam-root
-     data-offline-package-url="{{ route('cbt.offline.package', ['assessment' => $assessment->id]) }}"
-     data-offline-launch-url="{{ url('/offline-cbt.html?assessment=' . $assessment->id) }}"
+     data-recovery-package-url="{{ route('cbt.offline.package', ['assessment' => $assessment->id]) }}"
+     data-recovery-launch-url="{{ url('/cbt-recovery.html?assessment=' . $assessment->id) }}"
      class="cbt-interface-solid min-h-screen bg-stone-50 dark:bg-gray-900"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
@@ -47,7 +47,7 @@
                         :disabled="offlineBackupRefreshing"
                         class="rounded-full bg-white/80 px-4 py-2 font-semibold text-slate-900"
                     >
-                        <span x-show="!offlineBackupRefreshing">Refresh Offline Backup</span>
+                        <span x-show="!offlineBackupRefreshing">Refresh Saved Copy</span>
                         <span x-show="offlineBackupRefreshing" x-cloak>Refreshing...</span>
                     </button>
                     <a
@@ -55,7 +55,7 @@
                         :href="offlineLaunchUrl"
                         class="rounded-full bg-slate-900 px-4 py-2 font-semibold text-white"
                     >
-                        Open Offline Player
+                        Open Saved Copy
                     </a>
                 </div>
             </div>
@@ -746,6 +746,7 @@
     @endif
 </div>
 
+@push('scripts')
 {{-- OPTIMIZED Alpine.js Components - Register BEFORE page render --}}
 <script>
 function registerCbtExamAlpineComponents() {
@@ -964,8 +965,8 @@ function registerCbtExamAlpineComponents() {
         init() {
             const root = document.querySelector('[data-cbt-exam-root]');
 
-            this.offlinePackageUrl = root?.dataset?.offlinePackageUrl || '';
-            this.offlineLaunchUrl = root?.dataset?.offlineLaunchUrl || '';
+            this.offlinePackageUrl = root?.dataset?.recoveryPackageUrl || '';
+            this.offlineLaunchUrl = root?.dataset?.recoveryLaunchUrl || '';
             this.loadOfflineBackupState();
             this.initializeMathJax();
             this.setupEventListeners();
@@ -1035,19 +1036,26 @@ function registerCbtExamAlpineComponents() {
                     this.updateStartExamFeedback(state, message);
                 });
 
+                if (this.$wire && typeof this.$wire.$watch === 'function') {
+                    this.$wire.$watch('examStarted', (value) => {
+                        if (value) {
+                            this.applyExamStartedState();
+                        }
+                    });
+
+                    this.$wire.$watch('examCompleted', (value) => {
+                        if (value) {
+                            this.applyExamCompletedState();
+                        }
+                    });
+                }
+
                 Livewire.on('startTimer', () => {
-                    this.startExamSubmitting = false;
-                    this.updateStartExamFeedback('success', 'Exam started successfully. Timer is now running.');
-                    this.examStarted = true;
-                    this.examCompleted = false;
-                    this.prepareOfflineBackup(true);
-                    this.startTimer();
-                    this.syncWithServer(true);
+                    this.applyExamStartedState();
                 });
 
                 Livewire.on('examCompleted', () => {
-                    this.examCompleted = true;
-                    this.stopTimer();
+                    this.applyExamCompletedState();
                 });
 
                 Livewire.on('questionChanged', () => {
@@ -1068,6 +1076,17 @@ function registerCbtExamAlpineComponents() {
 
                 Livewire.hook('request', ({ fail }) => {
                     fail(({ status, content, preventDefault }) => {
+                        if (this.isExamActive()) {
+                            if (typeof preventDefault === 'function') {
+                                preventDefault();
+                            }
+
+                            this.offlineBackupMessage = !this.isOnline && this.offlineBackupReady
+                                ? 'Connection lost. Your latest saved copy is ready on this device.'
+                                : 'We could not reach the server. Keep this tab open and continue from the saved copy if the page stops responding.';
+                            return;
+                        }
+
                         if (!this.startExamSubmitting && this.startExamStatus !== 'starting') {
                             return;
                         }
@@ -1141,6 +1160,21 @@ function registerCbtExamAlpineComponents() {
                 clearTimeout(this.startExamFeedbackTimeout);
                 this.startExamFeedbackTimeout = null;
             }
+        },
+
+        applyExamStartedState() {
+            this.startExamSubmitting = false;
+            this.updateStartExamFeedback('success', 'Exam started successfully. Timer is now running.');
+            this.examStarted = true;
+            this.examCompleted = false;
+            this.prepareOfflineBackup(true);
+            this.startTimer();
+            this.syncWithServer(true);
+        },
+
+        applyExamCompletedState() {
+            this.examCompleted = true;
+            this.stopTimer();
         },
 
         startExamStatusClasses() {
@@ -1253,7 +1287,13 @@ function registerCbtExamAlpineComponents() {
 
             window.addEventListener('online', () => {
                 this.isOnline = true;
+                this.offlineBackupMessage = 'Connection restored. Sync resumed.';
                 this.prepareOfflineBackup(true);
+                window.setTimeout(() => {
+                    if (this.isOnline && this.offlineBackupMessage === 'Connection restored. Sync resumed.') {
+                        this.offlineBackupMessage = '';
+                    }
+                }, 4000);
             });
 
             window.addEventListener('offline', () => {
@@ -1345,6 +1385,13 @@ function registerCbtExamAlpineComponents() {
                 }
             } catch (error) {
                 console.error('Timer sync failed', error);
+                if (!this.isOnline) {
+                    this.offlineBackupMessage = this.offlineBackupReady
+                        ? 'Connection lost. Your latest saved copy is ready on this device.'
+                        : 'Connection lost. Keep this page open and reconnect so syncing can resume.';
+                } else {
+                    this.offlineBackupMessage = 'We could not reach the server. Keep this page open while the connection stabilizes.';
+                }
             } finally {
                 this.heartbeatInFlight = false;
             }
@@ -1379,7 +1426,7 @@ function registerCbtExamAlpineComponents() {
 
         loadOfflineBackupState() {
             const root = document.querySelector('[data-cbt-exam-root]');
-            const packageUrl = root?.dataset?.offlinePackageUrl || '';
+            const packageUrl = root?.dataset?.recoveryPackageUrl || '';
             const assessmentId = packageUrl.split('/').pop();
 
             if (!assessmentId) {
@@ -1423,18 +1470,18 @@ function registerCbtExamAlpineComponents() {
                 const payload = await response.json().catch(() => ({}));
 
                 if (!response.ok) {
-                    throw new Error(payload.message || 'Could not refresh the offline backup.');
+                    throw new Error(payload.message || 'Could not refresh the saved copy.');
                 }
 
                 window.localStorage.setItem(this.offlinePackageKey(payload.assessment.id), JSON.stringify(payload));
                 this.offlineBackupReady = true;
 
                 if (!silent) {
-                    this.offlineBackupMessage = 'Offline backup refreshed on this device.';
+                    this.offlineBackupMessage = 'Saved copy updated on this device.';
                 }
             } catch (error) {
                 if (!silent) {
-                    this.offlineBackupMessage = error.message || 'Could not refresh the offline backup.';
+                    this.offlineBackupMessage = error.message || 'Could not refresh the saved copy.';
                 }
             } finally {
                 this.offlineBackupRefreshing = false;
@@ -1442,27 +1489,27 @@ function registerCbtExamAlpineComponents() {
         },
 
         offlineBannerVisible() {
-            return this.offlineBackupReady || this.offlineBackupRefreshing || this.offlineBackupMessage !== '' || !this.isOnline;
+            return this.offlineBackupRefreshing || this.offlineBackupMessage !== '' || !this.isOnline;
         },
 
         offlineBannerTitle() {
             if (!this.isOnline && this.offlineBackupReady) {
-                return 'Offline backup ready';
+                return 'Connection lost';
             }
 
             if (!this.isOnline) {
-                return 'Internet disconnected';
+                return 'Connection lost';
             }
 
             if (this.offlineBackupRefreshing) {
-                return 'Refreshing offline backup';
+                return 'Refreshing saved copy';
             }
 
             if (this.offlineBackupReady) {
-                return 'Offline backup available';
+                return 'Saved copy ready';
             }
 
-            return 'Offline backup status';
+            return 'Connection status';
         },
 
         offlineBannerMessage() {
@@ -1471,18 +1518,18 @@ function registerCbtExamAlpineComponents() {
             }
 
             if (!this.isOnline && this.offlineBackupReady) {
-                return 'This paper has a local backup on this device. If Livewire actions stop responding, open the offline player and continue there.';
+                return 'Your latest exam copy is saved on this device. Keep this tab open if it still responds. If actions stop responding, open the saved copy and continue.';
             }
 
             if (!this.isOnline) {
-                return 'This page needs the server for normal exam actions. Reconnect or use a prepared offline paper on this device.';
+                return 'This exam needs the server for normal sync. Reconnect and keep this page open so your work can continue syncing.';
             }
 
             if (this.offlineBackupReady) {
-                return 'This exam is being mirrored locally so the student can switch into the offline player if internet fails.';
+                return 'A saved copy of this exam is ready on this device.';
             }
 
-            return 'Preparing a local backup for this exam.';
+            return 'Preparing a saved copy for this exam.';
         },
 
         offlineBannerClasses() {
@@ -1537,7 +1584,9 @@ window.renderMathInElement = function(element) {
     }
 };
 </script>
+@endpush
 
+@push('styles')
 <style>
     .cbt-interface-solid {
         background-color: #f5f5f4;
@@ -1624,3 +1673,4 @@ window.renderMathInElement = function(element) {
         background-color: #d97706 !important;
     }
 </style>
+@endpush

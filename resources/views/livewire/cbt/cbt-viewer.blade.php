@@ -480,6 +480,19 @@
                             
                             <!-- Question Content -->
                             <div class="p-3 sm:p-4 bg-white dark:bg-gray-800">
+                                <!-- Explanation -->
+                                @if($question->explanation)
+                                    <div class="mb-3 sm:mb-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                                        <div class="flex items-center mb-2">
+                                            <i class="fas fa-lightbulb text-blue-600 dark:text-blue-400 mr-2"></i>
+                                            <span class="text-xs sm:text-sm font-semibold text-blue-800 dark:text-blue-300">Explanation:</span>
+                                        </div>
+                                        <div class="text-xs sm:text-sm text-blue-900 dark:text-blue-200 prose prose-sm max-w-none dark:prose-invert math-content whitespace-pre-line break-words leading-relaxed">
+                                            {!! $question->explanation !!}
+                                        </div>
+                                    </div>
+                                @endif
+
                                 <!-- Question Text -->
                                 <div class="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 prose prose-sm sm:prose max-w-none dark:prose-invert math-content text-sm sm:text-base">
                                     {!! $question->question_text !!}
@@ -544,19 +557,6 @@
                                     <div class="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
                                         <div class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-xs sm:text-sm">Your Answer:</div>
                                         <div class="text-gray-900 dark:text-white text-sm sm:text-base">{{ $answer->formatted_answer }}</div>
-                                    </div>
-                                @endif
-
-                                <!-- Explanation -->
-                                @if($question->explanation)
-                                    <div class="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                                        <div class="flex items-center mb-2">
-                                            <i class="fas fa-lightbulb text-blue-600 dark:text-blue-400 mr-2"></i>
-                                            <span class="text-xs sm:text-sm font-semibold text-blue-800 dark:text-blue-300">Explanation:</span>
-                                        </div>
-                                        <div class="text-xs sm:text-sm text-blue-900 dark:text-blue-200 prose prose-sm max-w-none dark:prose-invert math-content">
-                                            {!! $question->explanation !!}
-                                        </div>
                                     </div>
                                 @endif
 

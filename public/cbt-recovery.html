@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#dc2626">
+  <title>CBT Recovery</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      --bg: #f5f5f4;
+      --surface: #ffffff;
+      --border: #d6d3d1;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    a { color: inherit; }
+
+    .page {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .hero {
+      padding: 1.5rem;
+      background: #0f172a;
+      color: #fff;
+    }
+
+    .hero p {
+      margin: 0.4rem 0 0;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.6;
+    }
+
+    .stack {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .stats {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .stat {
+      padding: 1rem;
+      border-radius: 18px;
+      color: #fff;
+      min-height: 110px;
+    }
+
+    .stat small {
+      display: block;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      font-size: 0.7rem;
+      opacity: 0.82;
+    }
+
+    .stat strong {
+      display: block;
+      margin-top: 0.85rem;
+      font-size: 1.45rem;
+    }
+
+    .red { background: #ef4444; }
+    .orange { background: #f97316; }
+    .amber { background: #f59e0b; color: #111827; }
+    .green { background: #10b981; }
+    .blue { background: #2563eb; }
+    .slate { background: #334155; }
+    .emerald-soft {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+    }
+    .amber-soft {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+    }
+    .red-soft {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+    .blue-soft {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+    }
+
+    .panel {
+      padding: 1.25rem;
+    }
+
+    .muted {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button,
+    .button-link {
+      appearance: none;
+      border: 0;
+      border-radius: 999px;
+      padding: 0.9rem 1.2rem;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    button.primary,
+    .button-link.primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    button.primary:hover,
+    .button-link.primary:hover {
+      background: var(--primary-dark);
+    }
+
+    button.secondary,
+    .button-link.secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    button.warning {
+      background: #f59e0b;
+      color: #111827;
+    }
+
+    button.danger {
+      background: #dc2626;
+      color: #fff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .banner {
+      padding: 0.9rem 1rem;
+      border-radius: 16px;
+      font-size: 0.92rem;
+      line-height: 1.5;
+    }
+
+    .exam-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      margin-bottom: 1rem;
+    }
+
+    .exam-header .card {
+      overflow: hidden;
+    }
+
+    .exam-bar {
+      display: grid;
+      gap: 1rem;
+      padding: 1rem;
+      background: #0f172a;
+      color: white;
+    }
+
+    .exam-bar-top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      border-radius: 999px;
+      padding: 0.5rem 0.8rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .timer {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #facc15;
+      transition: width 0.2s ease;
+    }
+
+    .exam-layout {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .question-card,
+    .navigator-card {
+      padding: 1.25rem;
+    }
+
+    .question-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .question-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 3rem;
+      height: 3rem;
+      border-radius: 16px;
+      background: #2563eb;
+      color: white;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+
+    .question-html,
+    .option-html {
+      line-height: 1.7;
+    }
+
+    .option-list {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .option {
+      border: 2px solid #d6d3d1;
+      border-radius: 18px;
+      padding: 1rem;
+      cursor: pointer;
+      background: #fff;
+      transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    }
+
+    .option:hover {
+      border-color: #93c5fd;
+      transform: translateY(-1px);
+    }
+
+    .option.selected {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .option-head {
+      display: flex;
+      gap: 0.8rem;
+      align-items: flex-start;
+    }
+
+    .option-badge {
+      flex-shrink: 0;
+      width: 2.3rem;
+      height: 2.3rem;
+      border-radius: 14px;
+      background: #2563eb;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+    }
+
+    .navigator-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.6rem;
+      margin-top: 1rem;
+    }
+
+    .nav-question {
+      border: 0;
+      border-radius: 14px;
+      min-height: 48px;
+      font-weight: 800;
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .nav-question.current {
+      background: #2563eb;
+      color: white;
+    }
+
+    .nav-question.answered {
+      background: #10b981;
+      color: white;
+    }
+
+    .nav-question.flagged {
+      outline: 3px solid #f59e0b;
+      outline-offset: 1px;
+    }
+
+    .footer-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      justify-content: space-between;
+      margin-top: 1.25rem;
+    }
+
+    .footer-actions .group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .empty {
+      padding: 2rem 1.5rem;
+      text-align: center;
+    }
+
+    @media (min-width: 900px) {
+      .stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .exam-layout {
+        grid-template-columns: minmax(0, 2fr) minmax(300px, 0.9fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div id="app"></div>
+  </main>
+
+  <script>
+    (() => {
+      const PACKAGE_PREFIX = 'elites:cbt:offline-package:v1';
+      const STATE_PREFIX = 'elites:cbt:offline-state:v1';
+      const appRoot = document.getElementById('app');
+
+      const app = {
+        assessmentId: null,
+        packageData: null,
+        state: null,
+        timer: null,
+        syncing: false,
+        notice: '',
+        noticeLevel: 'blue-soft',
+
+        init() {
+          const params = new URLSearchParams(window.location.search);
+          this.assessmentId = params.get('assessment');
+
+          if (!this.assessmentId) {
+            this.renderMissing('No assessment was selected for recovery.');
+            return;
+          }
+
+          this.packageData = this.readPackage(this.assessmentId);
+
+          if (!this.packageData) {
+            this.renderMissing('This exam has not been saved on this device yet. Open CBT Exams while connected first.');
+            return;
+          }
+
+          this.state = this.normalizeState(this.readState(this.packageData));
+          this.saveState();
+          this.attachWindowListeners();
+          this.render();
+
+          if (this.isExamRunning()) {
+            this.startTimer();
+          }
+
+          if (this.state.completed_at && this.state.pending_sync && navigator.onLine) {
+            this.syncAttempt();
+          }
+        },
+
+        attachWindowListeners() {
+          window.addEventListener('online', () => {
+            this.setNotice('Internet restored. You can sync this exam now.', 'emerald-soft');
+            this.render();
+
+            if (this.state.completed_at && this.state.pending_sync) {
+              this.syncAttempt();
+            }
+          });
+
+          window.addEventListener('offline', () => {
+            this.setNotice('Connection lost. Your answers are still being kept on this device.', 'amber-soft');
+            this.render();
+          });
+
+          document.addEventListener('visibilitychange', () => {
+            if (this.isExamRunning() && document.hidden) {
+              this.state.security_violations.push({
+                type: 'visibility_change',
+                timestamp: new Date().toISOString(),
+              });
+              this.saveState();
+            }
+          });
+
+          window.addEventListener('beforeunload', (event) => {
+            if (!this.isExamRunning()) {
+              return;
+            }
+
+            this.saveState();
+            event.preventDefault();
+            event.returnValue = 'You have an active CBT attempt in progress.';
+          });
+        },
+
+        packageKey(assessmentId) {
+          return `${PACKAGE_PREFIX}:${assessmentId}`;
+        },
+
+        stateKey(packageData) {
+          return `${STATE_PREFIX}:${packageData.assessment.id}:${packageData.attempt.attempt_number}`;
+        },
+
+        readPackage(assessmentId) {
+          try {
+            const raw = window.localStorage.getItem(this.packageKey(assessmentId));
+            return raw ? JSON.parse(raw) : null;
+          } catch (error) {
+            return null;
+          }
+        },
+
+        readState(packageData) {
+          try {
+            const raw = window.localStorage.getItem(this.stateKey(packageData));
+            return raw ? JSON.parse(raw) : null;
+          } catch (error) {
+            return null;
+          }
+        },
+
+        normalizeState(savedState) {
+          const packageAttempt = this.packageData.attempt || {};
+          const baseState = {
+            attempt_number: this.packageData.attempt.attempt_number,
+            started_at: packageAttempt.started_at || null,
+            completed_at: null,
+            synced_at: null,
+            pending_sync: false,
+            current_question_index: Number(packageAttempt.current_question_index || 0),
+            time_remaining: Number(packageAttempt.time_remaining || this.packageData.assessment.duration_seconds || 0),
+            answers: packageAttempt.answers || {},
+            flagged_question_ids: packageAttempt.flagged_question_ids || [],
+            security_violations: packageAttempt.security_violations || [],
+            question_durations: {},
+            current_question_started_at: packageAttempt.started_at || null,
+            last_timer_tick_at: packageAttempt.started_at || null,
+            server_results: null,
+          };
+
+          const state = Object.assign({}, baseState, savedState || {});
+
+          if (state.started_at && !state.completed_at && state.last_timer_tick_at) {
+            const elapsedSeconds = Math.max(
+              0,
+              Math.floor((Date.now() - Date.parse(state.last_timer_tick_at)) / 1000)
+            );
+
+            if (elapsedSeconds > 0) {
+              state.time_remaining = Math.max(0, Number(state.time_remaining || 0) - elapsedSeconds);
+              state.last_timer_tick_at = new Date().toISOString();
+            }
+
+            if (state.time_remaining === 0) {
+              state.completed_at = state.last_timer_tick_at;
+              state.pending_sync = true;
+            }
+          }
+
+          return state;
+        },
+
+        saveState() {
+          window.localStorage.setItem(this.stateKey(this.packageData), JSON.stringify(this.state));
+        },
+
+        savePackage() {
+          window.localStorage.setItem(this.packageKey(this.packageData.assessment.id), JSON.stringify(this.packageData));
+        },
+
+        setNotice(message, level = 'blue-soft') {
+          this.notice = message;
+          this.noticeLevel = level;
+        },
+
+        clearNotice() {
+          this.notice = '';
+        },
+
+        currentQuestion() {
+          return this.packageData.questions[this.state.current_question_index] || null;
+        },
+
+        isExamRunning() {
+          return !!this.state.started_at && !this.state.completed_at;
+        },
+
+        answeredCount() {
+          return Object.values(this.state.answers || {}).filter((answer) => answer !== null && answer !== '').length;
+        },
+
+        questionIsAnswered(questionId) {
+          const answer = this.state.answers[String(questionId)] ?? this.state.answers[questionId];
+          return answer !== null && answer !== '' && typeof answer !== 'undefined';
+        },
+
+        questionIsFlagged(questionId) {
+          return (this.state.flagged_question_ids || []).includes(Number(questionId));
+        },
+
+        startExam() {
+          if (this.state.started_at) {
+            return;
+          }
+
+          const now = new Date().toISOString();
+          this.state.started_at = now;
+          this.state.current_question_started_at = now;
+          this.state.last_timer_tick_at = now;
+          this.state.pending_sync = false;
+          this.setNotice('Saved exam copy started on this device. Keep this page open as much as possible.', 'amber-soft');
+          this.saveState();
+          this.render();
+          this.startTimer();
+        },
+
+        startTimer() {
+          this.stopTimer();
+
+          this.timer = window.setInterval(() => {
+            if (!this.isExamRunning()) {
+              return;
+            }
+
+            if (this.state.time_remaining > 0) {
+              this.state.time_remaining -= 1;
+            }
+
+            this.state.last_timer_tick_at = new Date().toISOString();
+            this.saveState();
+            this.renderHeaderOnly();
+
+            if (this.state.time_remaining <= 0) {
+              this.completeExam(true);
+            }
+          }, 1000);
+        },
+
+        stopTimer() {
+          if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+          }
+        },
+
+        trackCurrentQuestionTime() {
+          if (!this.isExamRunning()) {
+            return;
+          }
+
+          const question = this.currentQuestion();
+          if (!question) {
+            return;
+          }
+
+          const startedAt = this.state.current_question_started_at
+            ? Date.parse(this.state.current_question_started_at)
+            : Date.now();
+          const spent = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+          const key = String(question.id);
+
+          this.state.question_durations[key] = Number(this.state.question_durations[key] || 0) + spent;
+          this.state.current_question_started_at = new Date().toISOString();
+          this.saveState();
+        },
+
+        chooseAnswer(questionId, answer) {
+          this.state.answers[String(questionId)] = Number(answer);
+          this.state.pending_sync = !!this.state.completed_at || this.state.pending_sync;
+          this.saveState();
+          this.render();
+        },
+
+        toggleFlag() {
+          const question = this.currentQuestion();
+          if (!question) {
+            return;
+          }
+
+          const questionId = Number(question.id);
+          const flags = new Set((this.state.flagged_question_ids || []).map(Number));
+
+          if (flags.has(questionId)) {
+            flags.delete(questionId);
+          } else {
+            flags.add(questionId);
+          }
+
+          this.state.flagged_question_ids = Array.from(flags);
+          this.saveState();
+          this.render();
+        },
+
+        goToQuestion(index) {
+          if (index < 0 || index >= this.packageData.questions.length) {
+            return;
+          }
+
+          this.trackCurrentQuestionTime();
+          this.state.current_question_index = index;
+          this.saveState();
+          this.render();
+        },
+
+        previousQuestion() {
+          this.goToQuestion(this.state.current_question_index - 1);
+        },
+
+        nextQuestion() {
+          this.goToQuestion(this.state.current_question_index + 1);
+        },
+
+        completeExam(isAutoSubmit = false) {
+          if (this.state.completed_at) {
+            return;
+          }
+
+          this.trackCurrentQuestionTime();
+          this.state.completed_at = new Date().toISOString();
+          this.state.pending_sync = true;
+          this.state.last_timer_tick_at = this.state.completed_at;
+          this.stopTimer();
+          this.saveState();
+          this.setNotice(
+            isAutoSubmit
+              ? 'Time is up. Your exam has been captured on this device and is waiting to sync.'
+              : 'Your exam was captured on this device. Sync when internet is available.',
+            isAutoSubmit ? 'red-soft' : 'emerald-soft'
+          );
+          this.render();
+
+          if (navigator.onLine) {
+            this.syncAttempt();
+          }
+        },
+
+        removePackage() {
+          this.stopTimer();
+          window.localStorage.removeItem(this.packageKey(this.packageData.assessment.id));
+          window.localStorage.removeItem(this.stateKey(this.packageData));
+          this.packageData = null;
+          this.state = null;
+          this.renderMissing('Saved exam copy removed from this device.');
+        },
+
+        async syncAttempt() {
+          if (this.syncing || !this.state.completed_at) {
+            return;
+          }
+
+          if (!navigator.onLine) {
+            this.setNotice('You are still disconnected. Reconnect to sync this exam to the server.', 'amber-soft');
+            this.render();
+            return;
+          }
+
+          this.syncing = true;
+          this.setNotice('Syncing CBT attempt to the server...', 'blue-soft');
+          this.render();
+
+          const payload = {
+            assessment_id: Number(this.packageData.assessment.id),
+            attempt_number: Number(this.state.attempt_number),
+            started_at: this.state.started_at,
+            completed_at: this.state.completed_at,
+            current_question_index: Number(this.state.current_question_index || 0),
+            time_remaining: Number(this.state.time_remaining || 0),
+            answers: this.state.answers || {},
+            flagged_question_ids: this.state.flagged_question_ids || [],
+            security_violations: this.state.security_violations || [],
+            question_durations: this.state.question_durations || {},
+          };
+
+          try {
+            const response = await fetch(this.packageData.offline.sync_url, {
+              method: 'POST',
+              credentials: 'same-origin',
+              headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': this.readXsrfToken(),
+              },
+              body: JSON.stringify(payload),
+            });
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+              throw new Error(result.message || 'Sync failed.');
+            }
+
+            this.state.pending_sync = false;
+            this.state.synced_at = new Date().toISOString();
+            this.state.server_results = result.results || this.state.server_results;
+            this.saveState();
+
+            this.setNotice(result.message || 'CBT attempt synced successfully.', 'emerald-soft');
+          } catch (error) {
+            this.setNotice(error.message || 'Could not sync this paper yet.', 'red-soft');
+          } finally {
+            this.syncing = false;
+            this.render();
+          }
+        },
+
+        readXsrfToken() {
+          const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+          return match ? decodeURIComponent(match[1]) : '';
+        },
+
+        formatTime(totalSeconds) {
+          const seconds = Math.max(0, Number(totalSeconds || 0));
+          const hours = Math.floor(seconds / 3600);
+          const minutes = Math.floor((seconds % 3600) / 60);
+          const secs = seconds % 60;
+
+          if (hours > 0) {
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          }
+
+          return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        },
+
+        renderHeaderOnly() {
+          const timerNode = document.querySelector('[data-role="timer"]');
+          const progressNode = document.querySelector('[data-role="progress-fill"]');
+          const answeredNode = document.querySelector('[data-role="answered-count"]');
+
+          if (timerNode) {
+            timerNode.textContent = this.formatTime(this.state.time_remaining);
+          }
+
+          if (progressNode) {
+            const progress = (this.answeredCount() / Math.max(1, this.packageData.questions.length)) * 100;
+            progressNode.style.width = `${progress}%`;
+          }
+
+          if (answeredNode) {
+            answeredNode.textContent = String(this.answeredCount());
+          }
+        },
+
+        renderMissing(message) {
+          appRoot.innerHTML = `
+            <section class="stack">
+              <div class="card hero">
+                <h1>CBT Recovery</h1>
+                <p>Use this page only when a saved exam copy already exists on this device.</p>
+              </div>
+              <div class="card empty">
+                <h2>Saved exam copy not found</h2>
+                <p class="muted">${message}</p>
+                <div class="button-row" style="justify-content:center;">
+                  <a class="button-link primary" href="./">Open Home</a>
+                </div>
+              </div>
+            </section>
+          `;
+        },
+
+        render() {
+          if (!this.packageData || !this.state) {
+            return;
+          }
+
+          const question = this.currentQuestion();
+          const answeredCount = this.answeredCount();
+          const progress = (answeredCount / Math.max(1, this.packageData.questions.length)) * 100;
+          const networkChip = navigator.onLine
+            ? '<span class="chip">Online</span>'
+            : '<span class="chip">No Internet</span>';
+          const syncChip = this.state.pending_sync
+            ? '<span class="chip">Pending Sync</span>'
+            : (this.state.synced_at ? '<span class="chip">Synced</span>' : '<span class="chip">Saved Copy</span>');
+          const notice = this.notice
+            ? `<div class="banner ${this.noticeLevel}">${this.notice}</div>`
+            : '';
+
+          if (!this.state.started_at) {
+            appRoot.innerHTML = `
+              <section class="stack">
+                <div class="card hero">
+                  <h1>${this.packageData.assessment.title}</h1>
+                  <p>${this.packageData.assessment.description || 'A saved copy of this exam is ready on this device.'}</p>
+                </div>
+
+                ${notice}
+
+                <div class="grid stats">
+                  <div class="stat red"><small>Questions</small><strong>${this.packageData.questions.length}</strong></div>
+                  <div class="stat orange"><small>Duration</small><strong>${this.packageData.assessment.formatted_duration}</strong></div>
+                  <div class="stat amber"><small>Pass Mark</small><strong>${this.packageData.assessment.pass_percentage}%</strong></div>
+                  <div class="stat green"><small>Attempt</small><strong>#${this.state.attempt_number}</strong></div>
+                </div>
+
+                <div class="card panel stack">
+                  <div class="banner blue-soft">
+                    This saved copy can keep the paper going on this device if the connection becomes unstable. Once you start here, finish and sync to the server when internet returns.
+                  </div>
+                  <div class="grid" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+                    <div class="banner amber-soft"><strong>Class:</strong> ${this.packageData.assessment.class_name}</div>
+                    <div class="banner emerald-soft"><strong>Subject:</strong> ${this.packageData.assessment.subject_name}</div>
+                  </div>
+                  <div class="button-row">
+                    <button class="primary" data-action="start">Start Saved Exam</button>
+                    <a class="button-link secondary" href="${this.packageData.offline.selection_url}">Back to Exams</a>
+                    <button class="danger" data-action="remove-package">Remove Saved Copy</button>
+                  </div>
+                </div>
+              </section>
+            `;
+            return;
+          }
+
+          if (this.state.completed_at) {
+            const results = this.state.server_results;
+            const resultBlock = results
+              ? `
+                <div class="grid stats">
+                  <div class="stat blue"><small>Score</small><strong>${results.percentage}%</strong></div>
+                  <div class="stat green"><small>Correct</small><strong>${results.correct_answers}</strong></div>
+                  <div class="stat amber"><small>Answered</small><strong>${results.answered_questions}</strong></div>
+                  <div class="stat ${results.passed ? 'green' : 'red'}"><small>Status</small><strong>${results.pending_publish ? 'Pending Publish' : (results.passed ? 'Passed' : 'Not Passed')}</strong></div>
+                </div>
+              `
+              : `
+                <div class="banner amber-soft">
+                  Your responses are saved on this device. Sync them to the server to finalize grading and visibility.
+                </div>
+              `;
+
+            appRoot.innerHTML = `
+              <section class="stack">
+                <div class="card hero">
+                  <h1>CBT Submitted</h1>
+                  <p>${this.packageData.assessment.title}</p>
+                </div>
+                ${notice}
+                ${resultBlock}
+                <div class="card panel stack">
+                  <div class="banner ${this.state.pending_sync ? 'amber-soft' : 'emerald-soft'}">
+                    ${this.state.pending_sync
+                      ? 'This exam is waiting to sync back to the server.'
+                      : `Synced successfully${this.state.synced_at ? ` at ${new Date(this.state.synced_at).toLocaleString()}` : ''}.`}
+                  </div>
+                  <div class="button-row">
+                    <button class="primary" data-action="sync" ${this.state.pending_sync ? '' : 'disabled'}>${this.syncing ? 'Syncing...' : 'Sync Now'}</button>
+                    <a class="button-link secondary" href="${this.packageData.offline.selection_url}">Back to Exams</a>
+                    <a class="button-link secondary" href="${this.packageData.offline.viewer_url}">Open Results</a>
+                  </div>
+                </div>
+              </section>
+            `;
+            return;
+          }
+
+          appRoot.innerHTML = `
+            <section class="exam-header">
+              <div class="card">
+                <div class="exam-bar">
+                  <div class="exam-bar-top">
+                    <div>
+                      <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.16em; opacity:0.75;">CBT Recovery</div>
+                      <div style="margin-top:0.35rem; font-size:1.2rem; font-weight:800;">${this.packageData.assessment.title}</div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:center;">
+                      ${networkChip}
+                      ${syncChip}
+                      <span class="chip">Answered <span data-role="answered-count">${answeredCount}</span> / ${this.packageData.questions.length}</span>
+                      <span class="chip timer" data-role="timer">${this.formatTime(this.state.time_remaining)}</span>
+                    </div>
+                  </div>
+                  <div class="progress-track">
+                    <div class="progress-fill" data-role="progress-fill" style="width:${progress}%"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="stack">
+              ${notice}
+              <div class="exam-layout">
+                <div class="card question-card">
+                  <div class="question-meta">
+                    <div style="display:flex; gap:0.9rem; align-items:center;">
+                      <span class="question-number">${this.state.current_question_index + 1}</span>
+                      <div>
+                        <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.16em; color:#64748b;">Question Type</div>
+                        <div style="margin-top:0.25rem; font-weight:700;">${String(question.question_type || 'multiple_choice').replaceAll('_', ' ')}</div>
+                      </div>
+                    </div>
+                    <div class="banner blue-soft"><strong>${question.points}</strong> point(s)</div>
+                  </div>
+
+                  <div class="question-html">${question.question_text || ''}</div>
+                  <div class="option-list">${this.renderOptions(question)}</div>
+
+                  <div class="footer-actions">
+                    <div class="group">
+                      <button class="secondary" data-action="prev" ${this.state.current_question_index === 0 ? 'disabled' : ''}>Previous</button>
+                      <button class="secondary" data-action="next" ${this.state.current_question_index >= this.packageData.questions.length - 1 ? 'disabled' : ''}>Next</button>
+                    </div>
+                    <div class="group">
+                      <button class="warning" data-action="flag">${this.questionIsFlagged(question.id) ? 'Remove Flag' : 'Flag Question'}</button>
+                      <button class="danger" data-action="submit">Submit Exam</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card navigator-card">
+                  <div style="font-size:0.78rem; text-transform:uppercase; letter-spacing:0.16em; color:#64748b;">Question Navigator</div>
+                  <div style="margin-top:0.5rem; font-size:1.1rem; font-weight:800;">Jump between questions</div>
+                  <div class="navigator-grid">
+                    ${this.packageData.questions.map((item, index) => {
+                      const classes = ['nav-question'];
+                      if (index === this.state.current_question_index) classes.push('current');
+                      else if (this.questionIsAnswered(item.id)) classes.push('answered');
+                      if (this.questionIsFlagged(item.id)) classes.push('flagged');
+                      return `<button class="${classes.join(' ')}" data-action="goto" data-index="${index}">${index + 1}</button>`;
+                    }).join('')}
+                  </div>
+
+                  <div class="stack" style="margin-top:1rem;">
+                    <div class="banner emerald-soft"><strong>Answered:</strong> ${answeredCount}</div>
+                    <div class="banner amber-soft"><strong>Remaining:</strong> ${Math.max(0, this.packageData.questions.length - answeredCount)}</div>
+                    <div class="banner blue-soft"><strong>Attempt:</strong> #${this.state.attempt_number}</div>
+                    <div class="button-row">
+                      <button class="primary" data-action="sync" ${this.state.pending_sync ? '' : 'disabled'}>${this.syncing ? 'Syncing...' : 'Sync Completed Paper'}</button>
+                      <a class="button-link secondary" href="${this.packageData.offline.selection_url}">Exit to Exams</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          `;
+        },
+
+        renderOptions(question) {
+          const selectedAnswer = this.state.answers[String(question.id)] ?? this.state.answers[question.id];
+
+          if (question.question_type === 'true_false') {
+            const options = [
+              { value: 0, label: 'True' },
+              { value: 1, label: 'False' },
+            ];
+
+            return options.map((option, index) => `
+              <button
+                class="option ${Number(selectedAnswer) === option.value ? 'selected' : ''}"
+                data-action="answer"
+                data-question="${question.id}"
+                data-answer="${option.value}"
+              >
+                <span class="option-head">
+                  <span class="option-badge">${index === 0 ? 'T' : 'F'}</span>
+                  <span class="option-html">${option.label}</span>
+                </span>
+              </button>
+            `).join('');
+          }
+
+          return (question.options || []).map((optionHtml, index) => `
+            <button
+              class="option ${Number(selectedAnswer) === index ? 'selected' : ''}"
+              data-action="answer"
+              data-question="${question.id}"
+              data-answer="${index}"
+            >
+              <span class="option-head">
+                <span class="option-badge">${String.fromCharCode(65 + index)}</span>
+                <span class="option-html">${optionHtml}</span>
+              </span>
+            </button>
+          `).join('');
+        },
+      };
+
+      document.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-action]');
+
+        if (!target) {
+          return;
+        }
+
+        const action = target.dataset.action;
+
+        if (action === 'start') {
+          app.startExam();
+        }
+
+        if (action === 'prev') {
+          app.previousQuestion();
+        }
+
+        if (action === 'next') {
+          app.nextQuestion();
+        }
+
+        if (action === 'flag') {
+          app.toggleFlag();
+        }
+
+        if (action === 'submit') {
+          app.completeExam(false);
+        }
+
+        if (action === 'sync') {
+          app.syncAttempt();
+        }
+
+        if (action === 'remove-package') {
+          app.removePackage();
+        }
+
+        if (action === 'goto') {
+          app.goToQuestion(Number(target.dataset.index || 0));
+        }
+
+        if (action === 'answer') {
+          app.chooseAnswer(target.dataset.question, target.dataset.answer);
+        }
+      });
+
+      app.init();
+    })();
+  </script>
+</body>
+</html>

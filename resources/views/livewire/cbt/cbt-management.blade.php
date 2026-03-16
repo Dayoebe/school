@@ -635,6 +635,29 @@
                             </div>
                             <form wire:submit="addQuestion">
                             <div class="mb-4">
+
+                                <div class="mb-4">
+                                <label for="explanation" class="block text-sm font-medium text-themed-primary mb-2">
+                                    Explanation
+                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
+                                        display math)</span>
+                                </label>
+                                <textarea wire:model="explanation"
+                                    class="w-full px-3 py-2 border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary"
+                                    rows="2" placeholder="E.g., Using Pythagorean theorem: $a^2 + b^2 = c^2$"></textarea>
+
+                                <!-- Live Preview -->
+                                <div class="mt-2 p-3 bg-themed-tertiary rounded-lg">
+                                    <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
+                                    <div id="explanation-preview" class="text-themed-primary min-h-6 math-content">
+                                        @if($explanation)
+                                            {!! $explanation !!}
+                                        @else
+                                            <span class="text-themed-tertiary">Preview will appear here</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
                                 <label for="question_text" class="block text-sm font-medium text-themed-primary mb-2">
                                     Question Text
                                     <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
@@ -749,28 +772,7 @@
                                 </div>
                             @endif
 
-                            <div class="mb-4">
-                                <label for="explanation" class="block text-sm font-medium text-themed-primary mb-2">
-                                    Explanation
-                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
-                                        display math)</span>
-                                </label>
-                                <textarea wire:model="explanation"
-                                    class="w-full px-3 py-2 border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary"
-                                    rows="2" placeholder="E.g., Using Pythagorean theorem: $a^2 + b^2 = c^2$"></textarea>
-
-                                <!-- Live Preview -->
-                                <div class="mt-2 p-3 bg-themed-tertiary rounded-lg">
-                                    <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
-                                    <div id="explanation-preview" class="text-themed-primary min-h-6 math-content">
-                                        @if($explanation)
-                                            {!! $explanation !!}
-                                        @else
-                                            <span class="text-themed-tertiary">Preview will appear here</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
+                            
 
                                 <button type="submit"
                                     class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center">

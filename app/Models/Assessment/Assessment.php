@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Models\MyClass;
 use App\Models\Section;
+use App\Models\StudentRecord;
 use App\Models\Subject;
 use App\Models\User;
 
@@ -190,6 +191,15 @@ class Assessment extends Model
      */
     public function getStudentAttemptCount($userId)
     {
+        if ($this->relationLoaded('studentAnswers')) {
+            return $this->studentAnswers
+                ->where('user_id', (int) $userId)
+                ->whereNotNull('submitted_at')
+                ->pluck('attempt_number')
+                ->unique()
+                ->count();
+        }
+
         return $this->studentAnswers()
             ->where('user_id', $userId)
             ->whereNotNull('submitted_at')
@@ -217,6 +227,14 @@ class Assessment extends Model
      */
     public function getStudentLatestAttempt($userId)
     {
+        if ($this->relationLoaded('studentAnswers')) {
+            return $this->studentAnswers
+                ->where('user_id', (int) $userId)
+                ->whereNotNull('submitted_at')
+                ->sortByDesc('attempt_number')
+                ->first();
+        }
+
         return $this->studentAnswers()
             ->where('user_id', $userId)
             ->whereNotNull('submitted_at')
@@ -229,6 +247,65 @@ class Assessment extends Model
      */
     public function getStudentResults($userId, $attemptNumber = null)
     {
+        if ($this->relationLoaded('studentAnswers')) {
+            $answers = $this->studentAnswers
+                ->where('user_id', (int) $userId)
+                ->whereNotNull('submitted_at');
+
+            if ($attemptNumber !== null) {
+                $answers = $answers->where('attempt_number', (int) $attemptNumber);
+            } else {
+                $latestAttemptNumber = $answers->max('attempt_number');
+
+                if ($latestAttemptNumber === null) {
+                    return null;
+                }
+
+                $attemptNumber = (int) $latestAttemptNumber;
+                $answers = $answers->where('attempt_number', $attemptNumber);
+            }
+
+            if ($answers->isEmpty()) {
+                return null;
+            }
+
+            $questionCollection = $this->relationLoaded('questions') ? $this->questions : null;
+
+            if ($questionCollection !== null) {
+                $questionsById = $questionCollection->keyBy('id');
+
+                $answers = $answers->map(function (StudentAnswer $answer) use ($questionsById) {
+                    if (!$answer->relationLoaded('question') && $questionsById->has($answer->question_id)) {
+                        $answer->setRelation('question', $questionsById->get($answer->question_id));
+                    }
+
+                    return $answer;
+                });
+            }
+
+            $totalQuestions = $questionCollection?->count() ?? $this->questions()->count();
+            $correctAnswers = $answers->where('is_correct', true)->count();
+            $totalPoints = $answers->sum('points_earned');
+            $maxPoints = $questionCollection !== null
+                ? $questionCollection->sum('points')
+                : $this->questions()->sum('points');
+
+            $percentage = $maxPoints > 0 ? round(($totalPoints / $maxPoints) * 100, 1) : 0;
+
+            return [
+                'total_questions' => $totalQuestions,
+                'answered_questions' => $answers->count(),
+                'correct_answers' => $correctAnswers,
+                'total_points' => $totalPoints,
+                'max_points' => $maxPoints,
+                'percentage' => $percentage,
+                'passed' => $percentage >= $this->pass_percentage,
+                'attempt_number' => $attemptNumber ?? ($answers->first()->attempt_number ?? 1),
+                'submitted_at' => $answers->sortByDesc('submitted_at')->first()?->submitted_at,
+                'answers' => $answers->keyBy('question_id')
+            ];
+        }
+
         $query = $this->studentAnswers()
             ->where('user_id', $userId)
             ->whereNotNull('submitted_at')
@@ -296,14 +373,23 @@ class Assessment extends Model
      */
     public function getNextAttemptNumber($userId)
     {
-        $lastSubmittedAttempt = $this->studentAnswers()
-            ->where('user_id', $userId)
-            ->whereNotNull('submitted_at')
-            ->max('attempt_number');
+        $lastSubmittedAttempt = $this->relationLoaded('studentAnswers')
+            ? $this->studentAnswers
+                ->where('user_id', (int) $userId)
+                ->whereNotNull('submitted_at')
+                ->max('attempt_number')
+            : $this->studentAnswers()
+                ->where('user_id', $userId)
+                ->whereNotNull('submitted_at')
+                ->max('attempt_number');
 
-        $lastSessionAttempt = $this->attemptSessions()
-            ->where('user_id', $userId)
-            ->max('attempt_number');
+        $lastSessionAttempt = $this->relationLoaded('attemptSessions')
+            ? $this->attemptSessions
+                ->where('user_id', (int) $userId)
+                ->max('attempt_number')
+            : $this->attemptSessions()
+                ->where('user_id', $userId)
+                ->max('attempt_number');
 
         $lastAttempt = max((int) ($lastSubmittedAttempt ?? 0), (int) ($lastSessionAttempt ?? 0));
 
@@ -312,6 +398,14 @@ class Assessment extends Model
 
     public function getActiveAttemptSession($userId): ?AttemptSession
     {
+        if ($this->relationLoaded('attemptSessions')) {
+            return $this->attemptSessions
+                ->where('user_id', (int) $userId)
+                ->where('status', 'in_progress')
+                ->sortByDesc(fn (AttemptSession $attemptSession) => $attemptSession->started_at?->getTimestamp() ?? 0)
+                ->first();
+        }
+
         return $this->attemptSessions()
             ->where('user_id', $userId)
             ->where('status', 'in_progress')
@@ -453,9 +547,7 @@ class Assessment extends Model
             return $query->whereRaw('1 = 0');
         }
 
-        $studentRecord = $user->relationLoaded('studentRecord')
-            ? $user->studentRecord
-            : $user->studentRecord()->first();
+        $studentRecord = static::resolveStudentRecordForUser($user);
 
         return $query
             ->where('course_id', $classId)
@@ -497,12 +589,15 @@ class Assessment extends Model
             return null;
         }
 
-        $studentRecord = $user->relationLoaded('studentRecord')
-            ? $user->studentRecord
-            : $user->studentRecord()->first();
+        $assignedClassCache = static::assignedClassIdCache();
+        if (isset($assignedClassCache[$user])) {
+            return $assignedClassCache[$user];
+        }
+
+        $studentRecord = static::resolveStudentRecordForUser($user);
 
         if (!$studentRecord) {
-            return null;
+            return $assignedClassCache[$user] = null;
         }
 
         $academicYearId = $user->school?->academic_year_id;
@@ -513,11 +608,35 @@ class Assessment extends Model
                 ->value('my_class_id');
 
             if ($classId) {
-                return (int) $classId;
+                return $assignedClassCache[$user] = (int) $classId;
             }
         }
 
-        return $studentRecord->my_class_id ? (int) $studentRecord->my_class_id : null;
+        return $assignedClassCache[$user] = ($studentRecord->my_class_id ? (int) $studentRecord->my_class_id : null);
+    }
+
+    protected static function resolveStudentRecordForUser(?User $user): ?StudentRecord
+    {
+        if (!$user) {
+            return null;
+        }
+
+        $user->loadMissing(['studentRecord', 'school']);
+
+        $studentRecord = $user->getRelation('studentRecord');
+
+        return $studentRecord instanceof StudentRecord ? $studentRecord : null;
+    }
+
+    protected static function assignedClassIdCache(): \WeakMap
+    {
+        static $cache;
+
+        if (!$cache instanceof \WeakMap) {
+            $cache = new \WeakMap();
+        }
+
+        return $cache;
     }
 
     /**

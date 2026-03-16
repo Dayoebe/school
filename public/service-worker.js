@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'elites-pwa-v3';
+const CACHE_VERSION = 'elites-pwa-v4';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
@@ -6,6 +6,7 @@ const OFFLINE_URL = './offline.html';
 const MANIFEST_URL = './build/manifest.json';
 const CORE_ASSETS = [
   OFFLINE_URL,
+  './cbt-recovery.html',
   './offline-cbt.html',
   './',
   './icons/pwa-192x192.png',

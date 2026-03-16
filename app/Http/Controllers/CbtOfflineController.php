@@ -22,7 +22,34 @@ class CbtOfflineController extends Controller
 
         $assessment = Assessment::query()
             ->availableForStudentExamAccess($user)
-            ->with(['questions', 'course', 'lesson', 'studentLocks'])
+            ->with([
+                'questions',
+                'course',
+                'lesson',
+                'studentLocks' => fn ($query) => $query
+                    ->select('id', 'assessment_id', 'user_id')
+                    ->where('user_id', (int) $user->id),
+                'studentAnswers' => fn ($query) => $query
+                    ->select(
+                        'id',
+                        'assessment_id',
+                        'user_id',
+                        'attempt_number',
+                        'submitted_at'
+                    )
+                    ->where('user_id', (int) $user->id),
+                'attemptSessions' => fn ($query) => $query
+                    ->select(
+                        'id',
+                        'assessment_id',
+                        'user_id',
+                        'attempt_number',
+                        'status',
+                        'started_at',
+                        'expires_at'
+                    )
+                    ->where('user_id', (int) $user->id),
+            ])
             ->findOrFail($assessment->id);
 
         if ($assessment->questions->isEmpty()) {
@@ -79,7 +106,7 @@ class CbtOfflineController extends Controller
             'offline' => [
                 'downloaded_at' => now()->toIso8601String(),
                 'package_version' => 1,
-                'launch_url' => url('/offline-cbt.html?assessment=' . $assessment->id),
+                'launch_url' => url('/cbt-recovery.html?assessment=' . $assessment->id),
                 'selection_url' => route('cbt.exams'),
                 'sync_url' => route('cbt.offline.sync'),
                 'viewer_url' => route('cbt.viewer'),
@@ -140,7 +167,7 @@ class CbtOfflineController extends Controller
 
         if ($existingSubmission) {
             return response()->json([
-                'message' => 'This offline attempt was already synced.',
+                'message' => 'This CBT attempt was already synced.',
                 'already_synced' => true,
             ]);
         }
@@ -168,6 +195,7 @@ class CbtOfflineController extends Controller
             $validated,
             $userId,
             $user,
+            $payloadBuilder,
             $startedAt,
             $completedAt,
             $expiresAt
@@ -244,7 +272,7 @@ class CbtOfflineController extends Controller
                         'submitted_at' => $submittedAt,
                         'question_order' => $questionPayload->pluck('id')->values()->all(),
                         'exam_data' => [
-                            'offline_mode' => true,
+                            'recovery_copy' => true,
                             'was_shuffled' => $questionData['was_shuffled'] ?? false,
                             'user_displayed_answer' => (int) $displayAnswer,
                             'user_original_answer' => $originalAnswer,
@@ -284,7 +312,7 @@ class CbtOfflineController extends Controller
         });
 
         return response()->json([
-            'message' => 'Offline CBT attempt synced successfully.',
+            'message' => 'CBT attempt synced successfully.',
             'already_synced' => false,
             'results' => $summary,
         ]);
