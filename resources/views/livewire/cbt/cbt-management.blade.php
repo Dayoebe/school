@@ -628,11 +628,16 @@
                     <div>
                         @if(!$questionsLocked)
                             <h6 class="text-lg font-semibold text-themed-primary mb-4">Add New Question</h6>
-                            <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
-                                <p class="font-semibold">Math Upload Guide</p>
-                                <p class="mt-1">Inline math: <code>$x^2 + y^2 = 25$</code>. Block math: <code>$$\frac{-b \pm \sqrt{b^2-4ac}}{2a}$$</code>.</p>
-                                <p class="mt-1">Use normal text outside the math markers. The preview updates as you type.</p>
-                            </div>
+                            <details class="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-200">
+                                <summary class="flex cursor-pointer list-none items-center justify-between gap-3 p-4 font-semibold">
+                                    <span>Math Upload Guide</span>
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </summary>
+                                <div class="border-t border-blue-200 px-4 pb-4 pt-3 dark:border-blue-800">
+                                    <p>Inline math: <code>$x^2 + y^2 = 25$</code>. Block math: <code>$$\frac{-b \pm \sqrt{b^2-4ac}}{2a}$$</code>.</p>
+                                    <p class="mt-1">Use normal text outside the math markers. The preview updates as you type.</p>
+                                </div>
+                            </details>
                             <form wire:submit="addQuestion">
                             <div class="mb-4">
 
@@ -660,12 +665,12 @@
                             </div>
                                 <label for="question_text" class="block text-sm font-medium text-themed-primary mb-2">
                                     Question Text
-                                    <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
+                                    <span class="text-xs text-themed-tertiary">(Optional if you upload a question file. Use $...$ for inline math and $$...$$ for
                                         display math)</span>
                                 </label>
                                 <textarea wire:model="question_text"
                                     class="w-full px-3 py-2 border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary"
-                                    rows="3" placeholder="E.g., Solve the equation: $x^2 + y^2 = 25$" required></textarea>
+                                    rows="3" placeholder="E.g., Solve the equation: $x^2 + y^2 = 25$"></textarea>
                                 @error('question_text') <div class="text-red-500 dark:text-red-400 text-sm mt-1">
                                 {{ $message }}</div> @enderror
 
@@ -680,6 +685,35 @@
                                         @endif
                                     </div>
                                 </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="question_media" class="block text-sm font-medium text-themed-primary mb-2">
+                                    Question File
+                                    <span class="text-xs text-themed-tertiary">(Optional. Images display inside the CBT. PDF files will open as links.)</span>
+                                </label>
+                                <input type="file"
+                                    id="question_media"
+                                    wire:model="question_media"
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.doc,.docx"
+                                    class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary text-themed-primary file:mr-4 file:rounded-md file:border-0 file:bg-accent-themed-primary file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white">
+                                @error('question_media') <div class="text-red-500 dark:text-red-400 text-sm mt-1">{{ $message }}</div> @enderror
+
+                                @if($question_media)
+                                    <div class="mt-3 rounded-lg border border-themed-secondary bg-themed-tertiary p-3">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <div class="text-sm font-semibold text-themed-primary">{{ $question_media->getClientOriginalName() }}</div>
+                                                <div class="text-xs text-themed-secondary">Selected for upload</div>
+                                            </div>
+                                        </div>
+                                        @if(str_starts_with((string) $question_media->getMimeType(), 'image/'))
+                                            <img src="{{ $question_media->temporaryUrl() }}"
+                                                alt="Question file preview"
+                                                class="mt-3 max-h-64 rounded-lg border border-themed-secondary object-contain bg-white">
+                                        @endif
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -831,6 +865,17 @@
                                                         <span class="math-content">{!! Str::limit($question->explanation, 80) !!}</span>
                                                     </div>
                                                 @endif
+                                                @if($question->has_question_media)
+                                                    <div class="mt-2 text-sm text-themed-secondary">
+                                                        <strong>Question File:</strong>
+                                                        <a href="{{ $question->question_media_url }}"
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            class="font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200">
+                                                            {{ $question->question_media_original_name ?: 'Open file' }}
+                                                        </a>
+                                                    </div>
+                                                @endif
                                                 <div class="flex space-x-2 mt-2">
                                                     <span
                                                         class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-themed-secondary text-accent-themed-primary">
@@ -895,12 +940,12 @@
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-themed-primary mb-2">
                                 Question Text
-                                <span class="text-xs text-themed-tertiary">(Use $...$ for inline math, $$...$$ for
+                                <span class="text-xs text-themed-tertiary">(Optional if a question file is attached. Use $...$ for inline math, $$...$$ for
                                     display)</span>
                             </label>
                             <textarea wire:model="question_text" rows="3"
                                 class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary text-themed-primary focus:ring-2 focus:ring-accent-themed-primary"
-                                required></textarea>
+                                ></textarea>
 
                             <!-- Live Preview -->
                             <div class="mt-2 p-3 bg-themed-tertiary rounded-lg">
@@ -932,6 +977,55 @@
                                     class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary focus:ring-2 focus:ring-accent-themed-primary"
                                     required>
                             </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-themed-primary mb-2">
+                                Question File
+                                <span class="text-xs text-themed-tertiary">(Optional. Upload a new file to replace the current one.)</span>
+                            </label>
+                            <input type="file"
+                                wire:model="question_media"
+                                accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.doc,.docx"
+                                class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary text-themed-primary file:mr-4 file:rounded-md file:border-0 file:bg-accent-themed-primary file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white">
+                            @error('question_media') <div class="text-red-500 dark:text-red-400 text-sm mt-1">{{ $message }}</div> @enderror
+
+                            @if($existing_question_media_path && !$question_media && !$remove_question_media)
+                                <div class="mt-3 rounded-lg border border-themed-secondary bg-themed-tertiary p-3">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div>
+                                            <div class="text-sm font-semibold text-themed-primary">{{ $existing_question_media_name ?: 'Current question file' }}</div>
+                                            <a href="{{ asset('storage/' . $existing_question_media_path) }}"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="mt-1 inline-flex text-xs font-medium text-blue-700 hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200">
+                                                Open current file
+                                            </a>
+                                        </div>
+                                        <label class="inline-flex items-center gap-2 text-sm text-themed-primary">
+                                            <input type="checkbox" wire:model="remove_question_media" class="form-checkbox h-4 w-4 text-red-600">
+                                            <span>Remove file</span>
+                                        </label>
+                                    </div>
+                                    @if($existing_question_media_mime_type && str_starts_with($existing_question_media_mime_type, 'image/'))
+                                        <img src="{{ asset('storage/' . $existing_question_media_path) }}"
+                                            alt="Current question file"
+                                            class="mt-3 max-h-64 rounded-lg border border-themed-secondary object-contain bg-white">
+                                    @endif
+                                </div>
+                            @endif
+
+                            @if($question_media)
+                                <div class="mt-3 rounded-lg border border-themed-secondary bg-themed-tertiary p-3">
+                                    <div class="text-sm font-semibold text-themed-primary">{{ $question_media->getClientOriginalName() }}</div>
+                                    <div class="text-xs text-themed-secondary">New file selected</div>
+                                    @if(str_starts_with((string) $question_media->getMimeType(), 'image/'))
+                                        <img src="{{ $question_media->temporaryUrl() }}"
+                                            alt="New question file preview"
+                                            class="mt-3 max-h-64 rounded-lg border border-themed-secondary object-contain bg-white">
+                                    @endif
+                                </div>
+                            @endif
                         </div>
 
                         <!-- Options (Multiple Choice) -->

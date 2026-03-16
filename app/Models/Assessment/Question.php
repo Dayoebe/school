@@ -5,6 +5,7 @@ namespace App\Models\Assessment;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Question extends Model
 {
@@ -18,6 +19,10 @@ class Question extends Model
         'correct_answers',
         'points',
         'explanation',
+        'question_media_disk',
+        'question_media_path',
+        'question_media_original_name',
+        'question_media_mime_type',
         'is_required',
         'time_limit',
         'order',
@@ -31,6 +36,12 @@ class Question extends Model
         'is_required' => 'boolean',
         'tags' => 'array',
         'points' => 'decimal:2'
+    ];
+
+    protected $appends = [
+        'has_question_media',
+        'question_media_is_image',
+        'question_media_url',
     ];
 
     const QUESTION_TYPES = [
@@ -138,6 +149,35 @@ class Question extends Model
     public function getDifficultyLabelAttribute()
     {
         return self::DIFFICULTY_LEVELS[$this->difficulty_level] ?? ucfirst($this->difficulty_level);
+    }
+
+    public function getHasQuestionMediaAttribute(): bool
+    {
+        return is_string($this->question_media_path) && $this->question_media_path !== '';
+    }
+
+    public function getQuestionMediaIsImageAttribute(): bool
+    {
+        if (!$this->has_question_media) {
+            return false;
+        }
+
+        if (is_string($this->question_media_mime_type) && str_starts_with($this->question_media_mime_type, 'image/')) {
+            return true;
+        }
+
+        $extension = strtolower((string) pathinfo((string) $this->question_media_path, PATHINFO_EXTENSION));
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'], true);
+    }
+
+    public function getQuestionMediaUrlAttribute(): ?string
+    {
+        if (!$this->has_question_media) {
+            return null;
+        }
+
+        return Storage::disk($this->question_media_disk ?: 'public')->url($this->question_media_path);
     }
 
     public function hasMultipleCorrectAnswers()

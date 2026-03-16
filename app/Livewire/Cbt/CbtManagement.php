@@ -10,8 +10,10 @@ use App\Models\User;
 use App\Traits\RestrictsTeacherCbtManagement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Collection;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
 
@@ -19,6 +21,7 @@ use Livewire\Attributes\Layout;
 class CbtManagement extends Component
 {
     use RestrictsTeacherCbtManagement;
+    use WithFileUploads;
     use WithPagination;
 
     public $showCreateModal = false;
@@ -50,6 +53,11 @@ class CbtManagement extends Component
     public $options = ['', '', '', ''];
     public $correct_answers = [];
     public $explanation = '';
+    public $question_media = null;
+    public $existing_question_media_path = null;
+    public $existing_question_media_name = null;
+    public $existing_question_media_mime_type = null;
+    public $remove_question_media = false;
 
     protected $validationAttributes = [
         'course_id' => 'class',
@@ -57,6 +65,7 @@ class CbtManagement extends Component
         'question_text' => 'question text',
         'question_type' => 'question type',
         'correct_answers' => 'correct answer',
+        'question_media' => 'question file',
     ];
 
     protected $rules = [
@@ -70,11 +79,12 @@ class CbtManagement extends Component
         'shuffle_options' => 'boolean',
         'course_id' => 'required|exists:my_classes,id',
         'lesson_id' => 'required|exists:subjects,id',
-        'question_text' => 'required|string',
+        'question_text' => 'nullable|string',
         'question_type' => 'required|string',
         'points' => 'required|numeric|min:0.1',
         'options' => 'required_if:question_type,multiple_choice,true_false|array|min:2',
         'correct_answers' => 'required|array|min:1',
+        'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,pdf,doc,docx|max:10240',
     ];
 
     public function mount()
@@ -91,6 +101,11 @@ class CbtManagement extends Component
     public function updatedExplanation($value)
     {
         $this->dispatch('explanation-updated', $value);
+    }
+
+    public function updatedQuestionMedia(): void
+    {
+        $this->remove_question_media = false;
     }
 
     public function updatedCourseId($value): void
@@ -446,10 +461,16 @@ class CbtManagement extends Component
         }
 
         $this->validate([
-            'question_text' => 'required|string',
+            'question_text' => 'nullable|string',
             'question_type' => 'required|string',
             'points' => 'required|numeric|min:0.1',
+            'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,pdf,doc,docx|max:10240',
         ]);
+
+        if (!$this->questionHasRenderableContent()) {
+            $this->addError('question_text', 'Provide question text or upload a question file.');
+            return;
+        }
 
         if ($this->question_type === 'multiple_choice') {
             $this->validate([
@@ -467,6 +488,8 @@ class CbtManagement extends Component
             }
         }
 
+        $questionMedia = $this->storeQuestionMediaUpload($assessment->id);
+
         Question::create([
             'assessment_id' => $assessment->id,
             'question_text' => $this->question_text,
@@ -475,6 +498,10 @@ class CbtManagement extends Component
             'options' => $this->question_type === 'multiple_choice' ? $this->options : null,
             'correct_answers' => $this->correct_answers,
             'explanation' => $this->explanation,
+            'question_media_disk' => $questionMedia['disk'] ?? null,
+            'question_media_path' => $questionMedia['path'] ?? null,
+            'question_media_original_name' => $questionMedia['original_name'] ?? null,
+            'question_media_mime_type' => $questionMedia['mime_type'] ?? null,
         ]);
 
         $this->resetQuestionForm();
@@ -516,6 +543,11 @@ class CbtManagement extends Component
         $this->options = $this->editingQuestion->options ?? ['', '', '', ''];
         $this->correct_answers = $this->editingQuestion->correct_answers ?? [];
         $this->explanation = $this->editingQuestion->explanation ?? '';
+        $this->question_media = null;
+        $this->existing_question_media_path = $this->editingQuestion->question_media_path;
+        $this->existing_question_media_name = $this->editingQuestion->question_media_original_name;
+        $this->existing_question_media_mime_type = $this->editingQuestion->question_media_mime_type;
+        $this->remove_question_media = false;
 
         $this->showEditQuestionModal = true;
     }
@@ -553,10 +585,16 @@ class CbtManagement extends Component
         }
 
         $this->validate([
-            'question_text' => 'required|string',
+            'question_text' => 'nullable|string',
             'question_type' => 'required|string',
             'points' => 'required|numeric|min:0.1',
+            'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,pdf,doc,docx|max:10240',
         ]);
+
+        if (!$this->questionHasRenderableContent($question)) {
+            $this->addError('question_text', 'Provide question text or upload a question file.');
+            return;
+        }
 
         if ($this->question_type === 'multiple_choice') {
             $this->validate([
@@ -569,6 +607,33 @@ class CbtManagement extends Component
             }));
         }
 
+        $questionMedia = [
+            'question_media_disk' => $question->question_media_disk,
+            'question_media_path' => $question->question_media_path,
+            'question_media_original_name' => $question->question_media_original_name,
+            'question_media_mime_type' => $question->question_media_mime_type,
+        ];
+
+        if ($this->remove_question_media || $this->question_media) {
+            $this->deleteQuestionMediaFile($question->question_media_disk, $question->question_media_path);
+            $questionMedia = [
+                'question_media_disk' => null,
+                'question_media_path' => null,
+                'question_media_original_name' => null,
+                'question_media_mime_type' => null,
+            ];
+        }
+
+        if ($this->question_media) {
+            $storedMedia = $this->storeQuestionMediaUpload($assessment->id);
+            $questionMedia = [
+                'question_media_disk' => $storedMedia['disk'] ?? null,
+                'question_media_path' => $storedMedia['path'] ?? null,
+                'question_media_original_name' => $storedMedia['original_name'] ?? null,
+                'question_media_mime_type' => $storedMedia['mime_type'] ?? null,
+            ];
+        }
+
         $question->update([
             'question_text' => $this->question_text,
             'question_type' => $this->question_type,
@@ -576,6 +641,7 @@ class CbtManagement extends Component
             'options' => $this->question_type === 'multiple_choice' ? $this->options : null,
             'correct_answers' => $this->correct_answers,
             'explanation' => $this->explanation,
+            ...$questionMedia,
         ]);
 
         $this->resetQuestionForm();
@@ -644,6 +710,7 @@ class CbtManagement extends Component
             ->find($questionId);
 
         if ($question) {
+            $this->deleteQuestionMediaFile($question->question_media_disk, $question->question_media_path);
             $question->delete();
             $this->selectedAssessment = $assessment->fresh('questions');
             session()->flash('message', 'Question deleted successfully!');
@@ -916,6 +983,11 @@ class CbtManagement extends Component
         $this->options = ['', '', '', ''];
         $this->correct_answers = [];
         $this->explanation = '';
+        $this->question_media = null;
+        $this->existing_question_media_path = null;
+        $this->existing_question_media_name = null;
+        $this->existing_question_media_mime_type = null;
+        $this->remove_question_media = false;
         $this->editingQuestion = null;
     }
 
@@ -934,6 +1006,58 @@ class CbtManagement extends Component
     protected function currentSchoolId(): ?int
     {
         return auth()->user()?->school_id;
+    }
+
+    protected function questionHasRenderableContent(?Question $question = null): bool
+    {
+        if (trim((string) $this->question_text) !== '') {
+            return true;
+        }
+
+        if ($this->question_media !== null) {
+            return true;
+        }
+
+        if (
+            $question !== null
+            && !$this->remove_question_media
+            && is_string($question->question_media_path)
+            && $question->question_media_path !== ''
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function storeQuestionMediaUpload(int $assessmentId): ?array
+    {
+        if ($this->question_media === null) {
+            return null;
+        }
+
+        $schoolId = (int) $this->currentSchoolId();
+        $disk = 'public';
+        $path = $this->question_media->store(
+            'cbt-questions/' . $schoolId . '/' . $assessmentId . '/' . now()->format('Y/m'),
+            $disk
+        );
+
+        return [
+            'disk' => $disk,
+            'path' => $path,
+            'original_name' => $this->question_media->getClientOriginalName(),
+            'mime_type' => $this->question_media->getMimeType() ?: 'application/octet-stream',
+        ];
+    }
+
+    protected function deleteQuestionMediaFile(?string $disk, ?string $path): void
+    {
+        if (!is_string($path) || $path === '') {
+            return;
+        }
+
+        Storage::disk($disk ?: 'public')->delete($path);
     }
 
     protected function assessmentsForCurrentSchool(): Builder

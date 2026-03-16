@@ -509,6 +509,28 @@
                                     </div>
                                 @endif
 
+                                @if($question->has_question_media)
+                                    <div class="mb-3 sm:mb-4 p-3 sm:p-4 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-slate-200 dark:border-slate-700">
+                                        <div class="flex items-center mb-2">
+                                            <i class="fas fa-paperclip text-slate-600 dark:text-slate-300 mr-2"></i>
+                                            <span class="text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200">Question File:</span>
+                                        </div>
+                                        @if($question->question_media_is_image)
+                                            <img src="{{ $question->question_media_url }}"
+                                                alt="{{ $question->question_media_original_name ?: 'Question image' }}"
+                                                class="max-h-[28rem] w-full rounded-lg border border-slate-200 bg-white object-contain dark:border-slate-700 dark:bg-slate-950">
+                                        @else
+                                            <a href="{{ $question->question_media_url }}"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                class="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">
+                                                <i class="fas fa-file-arrow-down"></i>
+                                                <span>{{ $question->question_media_original_name ?: 'Open question file' }}</span>
+                                            </a>
+                                        @endif
+                                    </div>
+                                @endif
+
                                 <!-- Question Text -->
                                 <div class="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 prose prose-sm sm:prose max-w-none dark:prose-invert math-content text-sm sm:text-base">
                                     {!! $question->question_text !!}

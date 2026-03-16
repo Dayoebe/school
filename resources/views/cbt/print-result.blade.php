@@ -302,6 +302,23 @@
                     <div class="question-body">
                         <div class="question-text">{!! $question->question_text !!}</div>
 
+                        @if($question->has_question_media)
+                            <div class="card" style="margin-top: 12px;">
+                                <div class="card-label">Question File</div>
+                                @if($question->question_media_is_image)
+                                    <img src="{{ $question->question_media_url }}"
+                                        alt="{{ $question->question_media_original_name ?: 'Question image' }}"
+                                        style="max-width: 100%; max-height: 420px; border: 1px solid #d9e2ec; border-radius: 10px; background: #fff; object-fit: contain;">
+                                @else
+                                    <div class="answer-text">
+                                        <a href="{{ $question->question_media_url }}" target="_blank" rel="noopener noreferrer">
+                                            {{ $question->question_media_original_name ?: 'Open question file' }}
+                                        </a>
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
+
                         @if(in_array($question->question_type, ['multiple_choice', 'true_false'], true))
                             @php
                                 $options = $question->question_type === 'true_false'

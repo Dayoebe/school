@@ -985,6 +985,15 @@
                       <div class="question-html">${question.explanation}</div>
                     </div>
                   ` : ''}
+                  ${question.question_media_url ? `
+                    <div class="banner blue-soft" style="margin-bottom:1rem;">
+                      <strong style="display:block; margin-bottom:0.45rem; text-transform:uppercase; letter-spacing:0.12em; font-size:0.78rem;">Question File</strong>
+                      ${question.question_media_is_image
+                        ? `<img src="${question.question_media_url}" alt="${question.question_media_original_name || 'Question image'}" style="display:block; max-width:100%; max-height:28rem; border-radius:1rem; border:1px solid rgba(148, 163, 184, 0.45); background:#fff; object-fit:contain;">`
+                        : `<a href="${question.question_media_url}" target="_blank" rel="noopener noreferrer" class="button-link secondary">${question.question_media_original_name || 'Open question file'}</a>`
+                      }
+                    </div>
+                  ` : ''}
                   <div class="question-html">${question.question_text || ''}</div>
                   <div class="option-list">${this.renderOptions(question)}</div>
 

@@ -508,6 +508,28 @@
                             </div>
                             @endif
 
+                            @if(!empty($question['question_media_url']))
+                            <div class="mb-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                                <div class="mb-3 flex items-center gap-2 text-slate-800 dark:text-slate-200">
+                                    <i class="fas fa-paperclip text-slate-500"></i>
+                                    <span class="text-sm font-semibold uppercase tracking-[0.18em]">Question File</span>
+                                </div>
+                                @if(!empty($question['question_media_is_image']))
+                                    <img src="{{ $question['question_media_url'] }}"
+                                        alt="{{ $question['question_media_original_name'] ?? 'Question image' }}"
+                                        class="max-h-[28rem] w-full rounded-xl border border-slate-200 bg-white object-contain dark:border-slate-700 dark:bg-slate-950">
+                                @else
+                                    <a href="{{ $question['question_media_url'] }}"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        class="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200">
+                                        <i class="fas fa-file-arrow-down"></i>
+                                        <span>{{ $question['question_media_original_name'] ?? 'Open question file' }}</span>
+                                    </a>
+                                @endif
+                            </div>
+                            @endif
+
                             {{-- Question Text --}}
                             <div class="prose prose-lg max-w-none dark:prose-invert math-content text-gray-800 dark:text-gray-200"
                                  wire:key="question-{{ $question['id'] }}"
