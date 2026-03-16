@@ -493,6 +493,21 @@
                                 </div>
                             </div>
 
+                            {{-- Instruction --}}
+                            @if(!empty($question['explanation']))
+                            <div class="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 md:p-5 dark:border-amber-800 dark:bg-amber-900/20">
+                                <div class="mb-2 flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                                    <i class="fas fa-circle-info text-amber-600 dark:text-amber-400"></i>
+                                    <span class="text-sm font-semibold uppercase tracking-[0.18em]">Instruction</span>
+                                </div>
+                                <div class="prose prose-base max-w-none text-amber-950 dark:prose-invert math-content whitespace-pre-line break-words leading-relaxed"
+                                     wire:key="instruction-{{ $question['id'] }}"
+                                     x-init="renderMathInElement($el)">
+                                    {!! $question['explanation'] !!}
+                                </div>
+                            </div>
+                            @endif
+
                             {{-- Question Text --}}
                             <div class="prose prose-lg max-w-none dark:prose-invert math-content text-gray-800 dark:text-gray-200"
                                  wire:key="question-{{ $question['id'] }}"

@@ -281,6 +281,11 @@
     .question-html,
     .option-html {
       line-height: 1.7;
+      overflow-wrap: anywhere;
+    }
+
+    .question-html {
+      white-space: pre-line;
     }
 
     .option-list {
@@ -974,6 +979,12 @@
                     <div class="banner blue-soft"><strong>${question.points}</strong> point(s)</div>
                   </div>
 
+                  ${question.explanation ? `
+                    <div class="banner amber-soft" style="margin-bottom:1rem;">
+                      <strong style="display:block; margin-bottom:0.45rem; text-transform:uppercase; letter-spacing:0.12em; font-size:0.78rem;">Instruction</strong>
+                      <div class="question-html">${question.explanation}</div>
+                    </div>
+                  ` : ''}
                   <div class="question-html">${question.question_text || ''}</div>
                   <div class="option-list">${this.renderOptions(question)}</div>
 

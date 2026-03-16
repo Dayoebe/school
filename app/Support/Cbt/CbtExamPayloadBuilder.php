@@ -75,7 +75,7 @@ class CbtExamPayloadBuilder
                 }
 
                 $payload['points'] = (float) ($payload['points'] ?? 1);
-                unset($payload['correct_answers'], $payload['explanation']);
+                unset($payload['correct_answers']);
 
                 return $payload;
             })
