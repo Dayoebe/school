@@ -81,18 +81,13 @@ class CbtExamInterface extends Component
                 return redirect()->route('cbt.viewer');
             }
 
-            $this->attemptSessionId = $activeSession->id;
             $this->attemptNumber = (int) $activeSession->attempt_number;
             $this->loadQuestions();
             $this->initializeExam();
             $this->restoreAttemptSnapshot($activeSession);
-            $this->timeRemaining = max(0, now()->diffInSeconds($activeSession->expires_at, false));
-            $this->examStarted = true;
-            $this->isFullscreenForced = true;
+            $this->activateExamSession($activeSession);
             $this->resumedAttempt = true;
-            $this->startTime = $activeSession->started_at ?: Carbon::now();
             $this->resumeBanner = 'Resumed your in-progress attempt.';
-            $this->startQuestionTimer();
             return;
         }
 
@@ -105,6 +100,17 @@ class CbtExamInterface extends Component
         $this->attemptNumber = $this->assessment->getNextAttemptNumber(Auth::id());
         $this->loadQuestions();
         $this->initializeExam();
+
+        if (request()->boolean('autostart')) {
+            try {
+                $session = $this->createAttemptSession();
+                $this->activateExamSession($session);
+            } catch (\Throwable $e) {
+                report($e);
+                session()->flash('error', $this->resolveStartExamErrorMessage($e));
+                return redirect()->route('cbt.exam.take', ['assessment' => $this->assessment->id]);
+            }
+        }
     }
 
     public function render()
@@ -215,13 +221,7 @@ class CbtExamInterface extends Component
 
         try {
             $session = $this->createAttemptSession();
-
-            $this->attemptSessionId = $session->id;
-            $this->examStarted = true;
-            $this->isFullscreenForced = true;
-            $this->startTime = $session->started_at ?: Carbon::now();
-            $this->timeRemaining = max(0, now()->diffInSeconds($session->expires_at, false));
-            $this->startQuestionTimer();
+            $this->activateExamSession($session);
             $this->dispatch('exam-start-feedback', state: 'success', message: 'Exam started successfully. Timer is now running.');
             $this->dispatch('startTimer');
         } catch (\Throwable $e) {
@@ -658,6 +658,16 @@ class CbtExamInterface extends Component
             'ip_address' => request()->ip(),
             'user_agent' => (string) request()->userAgent(),
         ]);
+    }
+
+    protected function activateExamSession(AttemptSession $session): void
+    {
+        $this->attemptSessionId = $session->id;
+        $this->examStarted = true;
+        $this->isFullscreenForced = true;
+        $this->startTime = $session->started_at ?: Carbon::now();
+        $this->timeRemaining = max(0, now()->diffInSeconds($session->expires_at, false));
+        $this->startQuestionTimer();
     }
 
     protected function getActiveAttemptSession(): ?AttemptSession

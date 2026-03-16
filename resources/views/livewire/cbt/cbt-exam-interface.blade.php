@@ -147,32 +147,12 @@
                     </div>
                 @endif
 
-                <div x-show="startExamMessage"
-                     x-transition.opacity.duration.250ms
-                     x-cloak
-                     class="mb-6 rounded-2xl border px-4 py-3 text-sm font-medium"
-                     :class="startExamStatusClasses()">
-                    <div class="flex items-start">
-                        <i class="mr-2 mt-0.5"
-                           :class="startExamStatusIcon()"></i>
-                        <span x-text="startExamMessage"></span>
-                    </div>
-                </div>
-
                 {{-- Start Button --}}
-                <button type="button"
-                        x-on:click="handleStartButtonClick()"
-                        :disabled="startExamSubmitting"
-                        class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xl font-bold py-5 rounded-2xl transition-all shadow-lg disabled:opacity-50">
-                    <div x-show="!startExamSubmitting" class="flex items-center justify-center">
-                        <i class="fas fa-rocket mr-3"></i>
-                        <span>Start Exam Now</span>
-                    </div>
-                    <div x-show="startExamSubmitting" x-cloak class="flex items-center justify-center">
-                        <i class="fas fa-spinner fa-spin mr-3"></i>
-                        <span>Preparing Exam...</span>
-                    </div>
-                </button>
+                <a href="{{ route('cbt.exam.take', ['assessment' => $assessment->id, 'autostart' => 1]) }}"
+                   class="flex w-full items-center justify-center bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-5 text-xl font-bold text-white rounded-2xl transition-all shadow-lg hover:from-blue-700 hover:to-indigo-700">
+                    <i class="fas fa-rocket mr-3"></i>
+                    <span>Start Exam Now</span>
+                </a>
             </div>
         </div>
     </div>
