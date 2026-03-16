@@ -517,22 +517,24 @@
                         </div>
 
                         {{-- Answer Options --}}
-                        <div class="space-y-4 mb-6">
+                        <div class="space-y-4 mb-6"
+                             x-data="{ selectedAnswer: @js(isset($answers[$question['id']]) && $answers[$question['id']] !== null ? (string) $answers[$question['id']] : null) }">
                             @if(($question['question_type'] ?? '') === 'multiple_choice')
                                 @if(is_array($question['options']) && count($question['options']) > 0)
                                     @foreach($question['options'] as $optionIndex => $option)
                                         @if(trim(strip_tags($option)))
-                                        <label class="block cursor-pointer group">
+                                        <label class="block cursor-pointer group"
+                                               x-on:click="selectedAnswer = '{{ $optionIndex }}'; $wire.saveAnswer({{ $question['id'] }}, '{{ $optionIndex }}')">
                                             <input type="radio" 
-                                                   wire:click="saveAnswer({{ $question['id'] }}, {{ $optionIndex }})"
+                                                   x-model="selectedAnswer"
                                                    name="question_{{ $question['id'] }}" 
                                                    value="{{ $optionIndex }}"
-                                                   class="hidden peer"
+                                                   class="hidden"
                                                    {{ isset($answers[$question['id']]) && $answers[$question['id']] == $optionIndex ? 'checked' : '' }}>
                                             
                                             <div class="bg-white dark:bg-gray-800 border-2 rounded-2xl p-5 transition-all duration-200 border-gray-200 dark:border-gray-700 group-hover:border-blue-300"
                                                  :class="{ 
-                                                     'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg': {{ isset($answers[$question['id']]) && $answers[$question['id']] == $optionIndex ? 'true' : 'false' }}
+                                                     'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg': selectedAnswer == '{{ $optionIndex }}'
                                                  }">
                                                 <div class="flex items-start">
                                                     <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold mr-4 shadow-lg">
@@ -546,11 +548,11 @@
                                                     <div class="flex-shrink-0 ml-4">
                                                         <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
                                                              :class="{
-                                                                 'border-blue-500 bg-blue-500': {{ isset($answers[$question['id']]) && $answers[$question['id']] == $optionIndex ? 'true' : 'false' }},
-                                                                 'border-gray-300 dark:border-gray-600': {{ !isset($answers[$question['id']]) || $answers[$question['id']] != $optionIndex ? 'true' : 'false' }}
+                                                                 'border-blue-500 bg-blue-500': selectedAnswer == '{{ $optionIndex }}',
+                                                                 'border-gray-300 dark:border-gray-600': selectedAnswer != '{{ $optionIndex }}'
                                                              }">
-                                                            <i class="fas fa-check text-white text-xs"
-                                                               :class="{ 'opacity-100': {{ isset($answers[$question['id']]) && $answers[$question['id']] == $optionIndex ? 'true' : 'false' }}, 'opacity-0': {{ !isset($answers[$question['id']]) || $answers[$question['id']] != $optionIndex ? 'true' : 'false' }} }"></i>
+                                                            <i class="fas fa-check text-white text-xs transition-opacity"
+                                                               :class="{ 'opacity-100': selectedAnswer == '{{ $optionIndex }}', 'opacity-0': selectedAnswer != '{{ $optionIndex }}' }"></i>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -561,17 +563,18 @@
                                 @endif
 
                             @elseif(($question['question_type'] ?? '') === 'true_false')
-                                <label class="block cursor-pointer group">
+                                <label class="block cursor-pointer group"
+                                       x-on:click="selectedAnswer = '0'; $wire.saveAnswer({{ $question['id'] }}, '0')">
                                     <input type="radio" 
-                                           wire:click="saveAnswer({{ $question['id'] }}, 0)"
+                                           x-model="selectedAnswer"
                                            name="question_{{ $question['id'] }}" 
                                            value="0"
-                                           class="hidden peer"
+                                           class="hidden"
                                            {{ isset($answers[$question['id']]) && $answers[$question['id']] == 0 ? 'checked' : '' }}>
                                     
                                     <div class="bg-white dark:bg-gray-800 border-2 rounded-2xl p-6 transition-all duration-200 border-gray-200 dark:border-gray-700 group-hover:border-green-300"
                                          :class="{
-                                             'border-green-500 bg-green-50 dark:bg-green-900/20 shadow-lg': {{ isset($answers[$question['id']]) && $answers[$question['id']] == 0 ? 'true' : 'false' }}
+                                             'border-green-500 bg-green-50 dark:bg-green-900/20 shadow-lg': selectedAnswer == '0'
                                          }">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-4">
@@ -582,27 +585,28 @@
                                             </div>
                                             <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
                                                  :class="{
-                                                     'border-green-500 bg-green-500': {{ isset($answers[$question['id']]) && $answers[$question['id']] == 0 ? 'true' : 'false' }},
-                                                     'border-gray-300 dark:border-gray-600': {{ !isset($answers[$question['id']]) || $answers[$question['id']] != 0 ? 'true' : 'false' }}
+                                                     'border-green-500 bg-green-500': selectedAnswer == '0',
+                                                     'border-gray-300 dark:border-gray-600': selectedAnswer != '0'
                                                  }">
-                                                <i class="fas fa-check text-white text-xs"
-                                                   :class="{ 'opacity-100': {{ isset($answers[$question['id']]) && $answers[$question['id']] == 0 ? 'true' : 'false' }}, 'opacity-0': {{ !isset($answers[$question['id']]) || $answers[$question['id']] != 0 ? 'true' : 'false' }} }"></i>
+                                                <i class="fas fa-check text-white text-xs transition-opacity"
+                                                   :class="{ 'opacity-100': selectedAnswer == '0', 'opacity-0': selectedAnswer != '0' }"></i>
                                             </div>
                                         </div>
                                     </div>
                                 </label>
 
-                                <label class="block cursor-pointer group">
+                                <label class="block cursor-pointer group"
+                                       x-on:click="selectedAnswer = '1'; $wire.saveAnswer({{ $question['id'] }}, '1')">
                                     <input type="radio" 
-                                           wire:click="saveAnswer({{ $question['id'] }}, 1)"
+                                           x-model="selectedAnswer"
                                            name="question_{{ $question['id'] }}" 
                                            value="1"
-                                           class="hidden peer"
+                                           class="hidden"
                                            {{ isset($answers[$question['id']]) && $answers[$question['id']] == 1 ? 'checked' : '' }}>
                                     
                                     <div class="bg-white dark:bg-gray-800 border-2 rounded-2xl p-6 transition-all duration-200 border-gray-200 dark:border-gray-700 group-hover:border-red-300"
                                          :class="{
-                                             'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-lg': {{ isset($answers[$question['id']]) && $answers[$question['id']] == 1 ? 'true' : 'false' }}
+                                             'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-lg': selectedAnswer == '1'
                                          }">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-4">
@@ -613,11 +617,11 @@
                                             </div>
                                             <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
                                                  :class="{
-                                                     'border-red-500 bg-red-500': {{ isset($answers[$question['id']]) && $answers[$question['id']] == 1 ? 'true' : 'false' }},
-                                                     'border-gray-300 dark:border-gray-600': {{ !isset($answers[$question['id']]) || $answers[$question['id']] != 1 ? 'true' : 'false' }}
+                                                     'border-red-500 bg-red-500': selectedAnswer == '1',
+                                                     'border-gray-300 dark:border-gray-600': selectedAnswer != '1'
                                                  }">
-                                                <i class="fas fa-check text-white text-xs"
-                                                   :class="{ 'opacity-100': {{ isset($answers[$question['id']]) && $answers[$question['id']] == 1 ? 'true' : 'false' }}, 'opacity-0': {{ !isset($answers[$question['id']]) || $answers[$question['id']] != 1 ? 'true' : 'false' }} }"></i>
+                                                <i class="fas fa-check text-white text-xs transition-opacity"
+                                                   :class="{ 'opacity-100': selectedAnswer == '1', 'opacity-0': selectedAnswer != '1' }"></i>
                                             </div>
                                         </div>
                                     </div>
@@ -646,7 +650,7 @@
                         {{-- Progress Bar --}}
                         <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4 overflow-hidden">
                             <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-500"
-                                 :style="`width: ${({{ $this->getAnsweredQuestionsCount() }} / {{ count($questions) }}) * 100}%`"></div>
+                                 style="width: {{ count($questions) > 0 ? round(($this->getAnsweredQuestionsCount() / count($questions)) * 100, 2) : 0 }}%"></div>
                         </div>
 
                         {{-- Navigation Buttons --}}
@@ -666,7 +670,8 @@
                             </div>
 
                             @if($this->isLastQuestion())
-                            <button wire:click="showSubmitConfirmation"
+                            <button type="button"
+                                    x-on:click="openSubmitModal()"
                                     class="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg flex-1 justify-center">
                                 <i class="fas fa-paper-plane"></i>
                                 <span class="hidden sm:inline">Submit</span>
@@ -688,8 +693,11 @@
     @endif
 
     {{-- Submit Confirmation Modal --}}
-    @if($showSubmitModal)
-    <div class="fixed inset-0 bg-black bg-opacity-75 z-[110] flex items-center justify-center p-4">
+    <div x-show="submitModalOpen"
+         x-cloak
+         x-on:keydown.escape.window="closeSubmitModal()"
+         class="fixed inset-0 bg-black bg-opacity-75 z-[110] flex items-center justify-center p-4"
+         @click.self="closeSubmitModal()">
         <div class="bg-white dark:bg-gray-800 rounded-3xl max-w-md w-full shadow-2xl">
             <div class="p-8">
                 <div class="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -724,21 +732,35 @@
                     @endif
                 </div>
 
+                <div x-show="submitFeedback"
+                     x-cloak
+                     class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+                    <i class="fas fa-circle-exclamation mr-2"></i><span x-text="submitFeedback"></span>
+                </div>
+
                 {{-- Action Buttons --}}
                 <div class="flex gap-4">
-                    <button wire:click="cancelSubmission"
+                    <button type="button"
+                            x-on:click="closeSubmitModal()"
+                            :disabled="submitSubmitting"
                             class="flex-1 px-6 py-4 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all">
                         <i class="fas fa-times mr-2"></i>Cancel
                     </button>
-                    <button wire:click="submitExam"
-                            class="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg">
-                        <i class="fas fa-check mr-2"></i>Submit
+                    <button type="button"
+                            x-on:click="confirmSubmitExam()"
+                            :disabled="submitSubmitting"
+                            class="flex-1 px-6 py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg disabled:cursor-not-allowed disabled:opacity-70">
+                        <span x-show="!submitSubmitting">
+                            <i class="fas fa-check mr-2"></i>Submit
+                        </span>
+                        <span x-show="submitSubmitting" x-cloak>
+                            <i class="fas fa-spinner fa-spin mr-2"></i>Submitting...
+                        </span>
                     </button>
                 </div>
             </div>
         </div>
     </div>
-    @endif
 </div>
 
 @push('scripts')
@@ -939,14 +961,17 @@ function registerCbtExamAlpineComponents() {
         offlineRefreshInterval: null,
         offlineBackupDebounce: null,
         heartbeatInFlight: false,
-        livewireListenersRegistered: false,
-        startExamFeedbackTimeout: null,
-        startExamStatus: '',
-        startExamMessage: '',
-        startExamSubmitting: false,
-        sidebarOpen: false,
-        examStarted: @js($examStarted ?? false),
-        examCompleted: @js($examCompleted ?? false),
+                        livewireListenersRegistered: false,
+                        startExamFeedbackTimeout: null,
+                        startExamStatus: '',
+                        startExamMessage: '',
+                        startExamSubmitting: false,
+                        submitModalOpen: false,
+                        submitSubmitting: false,
+                        submitFeedback: '',
+                        sidebarOpen: false,
+                        examStarted: @js($examStarted ?? false),
+                        examCompleted: @js($examCompleted ?? false),
         isOnline: navigator.onLine,
         offlineBackupReady: false,
         offlineBackupRefreshing: false,
@@ -1071,6 +1096,17 @@ function registerCbtExamAlpineComponents() {
 
                 Livewire.hook('request', ({ fail }) => {
                     fail(({ status, content, preventDefault }) => {
+                        if (this.submitSubmitting) {
+                            this.submitSubmitting = false;
+
+                            if (typeof preventDefault === 'function') {
+                                preventDefault();
+                            }
+
+                            this.submitFeedback = this.resolveSubmitFailureMessage(status, content);
+                            return;
+                        }
+
                         if (this.isExamActive()) {
                             if (typeof preventDefault === 'function') {
                                 preventDefault();
@@ -1147,6 +1183,44 @@ function registerCbtExamAlpineComponents() {
             }
         },
 
+        openSubmitModal() {
+            this.submitFeedback = '';
+            this.submitModalOpen = true;
+        },
+
+        closeSubmitModal() {
+            if (this.submitSubmitting) {
+                return;
+            }
+
+            this.submitModalOpen = false;
+            this.submitFeedback = '';
+        },
+
+        async confirmSubmitExam() {
+            if (this.submitSubmitting) {
+                return;
+            }
+
+            if (!window.Livewire || !this.$wire || typeof this.$wire.submitExam !== 'function') {
+                this.submitFeedback = 'Livewire is not ready on this page, so the exam cannot be submitted yet. Refresh the page and try again.';
+                return;
+            }
+
+            this.submitSubmitting = true;
+            this.submitFeedback = '';
+
+            try {
+                await this.$wire.submitExam();
+            } catch (error) {
+                this.submitFeedback = this.resolveSubmitClientErrorMessage(error);
+            } finally {
+                if (!this.examCompleted) {
+                    this.submitSubmitting = false;
+                }
+            }
+        },
+
         updateStartExamFeedback(state, message) {
             this.startExamStatus = state || '';
             this.startExamMessage = message || '';
@@ -1169,6 +1243,9 @@ function registerCbtExamAlpineComponents() {
 
         applyExamCompletedState() {
             this.examCompleted = true;
+            this.submitSubmitting = false;
+            this.submitModalOpen = false;
+            this.submitFeedback = '';
             this.stopTimer();
         },
 
@@ -1226,6 +1303,30 @@ function registerCbtExamAlpineComponents() {
             return 'The exam start request failed before the page could confirm success.';
         },
 
+        resolveSubmitFailureMessage(status, content) {
+            if (status === 419) {
+                return 'Your session expired before submission. Refresh the page, sign in again if needed, then submit once more.';
+            }
+
+            if (status === 403) {
+                return 'You do not have permission to submit this exam.';
+            }
+
+            if (status === 404) {
+                return 'The exam submit endpoint could not be found.';
+            }
+
+            if (status >= 500) {
+                return 'The server returned an internal error while submitting the exam.';
+            }
+
+            if (typeof content === 'string' && content.trim() !== '') {
+                return `Exam submission failed: ${content.slice(0, 180)}`;
+            }
+
+            return 'The exam submission request failed before the page could confirm success.';
+        },
+
         resolveClientErrorMessage(error) {
             if (error?.status) {
                 return this.resolveRequestFailureMessage(error.status, error.content || error.message || '');
@@ -1236,6 +1337,18 @@ function registerCbtExamAlpineComponents() {
             }
 
             return 'The exam start request could not be completed.';
+        },
+
+        resolveSubmitClientErrorMessage(error) {
+            if (error?.status) {
+                return this.resolveSubmitFailureMessage(error.status, error.content || error.message || '');
+            }
+
+            if (error?.message) {
+                return `Exam submission failed: ${error.message}`;
+            }
+
+            return 'The exam submission could not be completed.';
         },
 
         setupSecurityListeners() {
