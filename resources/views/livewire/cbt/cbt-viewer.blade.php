@@ -425,7 +425,7 @@
             <!-- Modal Body -->
             <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
                 <!-- Summary Stats -->
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <div class="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
                     <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl p-4 text-center border border-blue-200 dark:border-blue-800">
                         <div class="text-2xl sm:text-3xl font-bold {{ $selectedAttempt['passed'] ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
                             {{ $selectedAttempt['percentage'] }}%
@@ -440,9 +440,15 @@
                     </div>
                     <div class="bg-gradient-to-br from-red-50 to-pink-50 dark:from-red-900/30 dark:to-pink-900/30 rounded-xl p-4 text-center border border-red-200 dark:border-red-800">
                         <div class="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">
-                            {{ $selectedAttempt['total_questions'] - $selectedAttempt['correct_answers'] }}
+                            {{ $selectedAttempt['incorrect_answers'] }}
                         </div>
                         <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Incorrect</div>
+                    </div>
+                    <div class="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30 rounded-xl p-4 text-center border border-amber-200 dark:border-amber-800">
+                        <div class="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">
+                            {{ $selectedAttempt['unanswered_questions'] }}
+                        </div>
+                        <div class="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">Not Attempted</div>
                     </div>
                     <div class="bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-xl p-4 text-center border border-purple-200 dark:border-purple-800">
                         <div class="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">
@@ -459,21 +465,31 @@
                         Question Review
                     </h4>
                     
-                    @foreach($selectedAttempt['answers'] as $questionId => $answer)
-                        @php $question = $answer->question; @endphp
-                        <div class="border-2 rounded-xl overflow-hidden {{ $answer->is_correct ? 'border-green-300 dark:border-green-600' : 'border-red-300 dark:border-red-600' }} animate__animated animate__fadeInUp"
+                    @foreach($selectedAssessment->questions as $question)
+                        @php
+                            $answer = $selectedAttempt['answers']->get($question->id);
+                            $isAnswered = $answer !== null;
+                            $isCorrect = $isAnswered && (bool) $answer->is_correct;
+                            $statusBorderClass = !$isAnswered
+                                ? 'border-gray-300 dark:border-gray-600'
+                                : ($isCorrect ? 'border-green-300 dark:border-green-600' : 'border-red-300 dark:border-red-600');
+                            $statusHeaderClass = !$isAnswered
+                                ? 'bg-gray-50 dark:bg-gray-700/60 border-b border-gray-200 dark:border-gray-600'
+                                : ($isCorrect ? 'bg-green-50 dark:bg-green-900/30 border-b border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-700');
+                        @endphp
+                        <div class="border-2 rounded-xl overflow-hidden {{ $statusBorderClass }} animate__animated animate__fadeInUp"
                              style="animation-delay: {{ $loop->index * 0.05 }}s">
                             
                             <!-- Question Header -->
-                            <div class="flex items-center justify-between px-3 sm:px-4 py-3 {{ $answer->is_correct ? 'bg-green-50 dark:bg-green-900/30 border-b border-green-200 dark:border-green-700' : 'bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-700' }}">
+                            <div class="flex items-center justify-between px-3 sm:px-4 py-3 {{ $statusHeaderClass }}">
                                 <span class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">Question {{ $loop->iteration }}</span>
                                 <div class="flex items-center space-x-2">
-                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full {{ $answer->is_correct ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300' }} flex items-center">
-                                        <i class="fas {{ $answer->is_correct ? 'fa-check-circle' : 'fa-times-circle' }} mr-1"></i>
-                                        {{ $answer->is_correct ? 'Correct' : 'Incorrect' }}
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full {{ !$isAnswered ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200' : ($isCorrect ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300') }} flex items-center">
+                                        <i class="fas {{ !$isAnswered ? 'fa-minus-circle' : ($isCorrect ? 'fa-check-circle' : 'fa-times-circle') }} mr-1"></i>
+                                        {{ !$isAnswered ? 'Not Attempted' : ($isCorrect ? 'Correct' : 'Incorrect') }}
                                     </span>
                                     <span class="px-2.5 py-1 text-xs font-bold bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-full">
-                                        {{ $answer->points_earned }}/{{ $question->points }} pts
+                                        {{ $isAnswered ? $answer->points_earned : 0 }}/{{ $question->points }} pts
                                     </span>
                                 </div>
                             </div>
@@ -503,19 +519,19 @@
                                     <div class="space-y-2">
                                         @foreach($question->options as $index => $option)
                                             @php
-                                                $isUserAnswer = $answer->answer == $index;
-                                                $isCorrectAnswer = in_array($index, $question->correct_answers);
+                                                $isUserAnswer = $isAnswered && (int) $answer->answer === (int) $index;
+                                                $isCorrectAnswer = in_array((int) $index, array_map('intval', $question->correct_answers ?? []), true);
                                             @endphp
-                                            <div class="flex items-start p-2.5 sm:p-3 rounded-lg {{ $isUserAnswer ? ($answer->is_correct ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-600') : ($isCorrectAnswer ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700') }}">
+                                            <div class="flex items-start p-2.5 sm:p-3 rounded-lg {{ $isUserAnswer ? ($isCorrect ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-600') : ($isCorrectAnswer ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700') }}">
                                                 <span class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm mr-2 sm:mr-3 mt-0.5">
                                                     {{ chr(65 + $index) }}
                                                 </span>
                                                 <div class="flex-1 prose prose-sm sm:prose max-w-none dark:prose-invert math-content text-sm sm:text-base">
-                                                    <span class="{{ $isUserAnswer ? 'font-semibold' : '' }} {{ ($isUserAnswer && !$answer->is_correct) ? 'text-red-700 dark:text-red-400' : ($isCorrectAnswer ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300') }}">{!! $option !!}</span>
+                                                    <span class="{{ $isUserAnswer ? 'font-semibold' : '' }} {{ ($isUserAnswer && !$isCorrect) ? 'text-red-700 dark:text-red-400' : ($isCorrectAnswer ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300') }}">{!! $option !!}</span>
                                                 </div>
                                                 <div class="flex-shrink-0 ml-2 space-x-1">
                                                     @if($isUserAnswer)
-                                                        <i class="fas fa-arrow-left {{ $answer->is_correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }} text-xs sm:text-sm" title="Your answer"></i>
+                                                        <i class="fas fa-arrow-left {{ $isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }} text-xs sm:text-sm" title="Your answer"></i>
                                                     @endif
                                                     @if($isCorrectAnswer)
                                                         <i class="fas fa-check text-green-600 dark:text-green-400 text-xs sm:text-sm" title="Correct answer"></i>
@@ -529,21 +545,21 @@
                                     <div class="space-y-2">
                                         @foreach([0 => 'True', 1 => 'False'] as $value => $label)
                                             @php
-                                                $isUserAnswer = $answer->answer == $value;
-                                                $isCorrectAnswer = in_array($value, $question->correct_answers);
+                                                $isUserAnswer = $isAnswered && (int) $answer->answer === (int) $value;
+                                                $isCorrectAnswer = in_array((int) $value, array_map('intval', $question->correct_answers ?? []), true);
                                             @endphp
-                                            <div class="flex items-center justify-between p-2.5 sm:p-3 rounded-lg {{ $isUserAnswer ? ($answer->is_correct ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-600') : ($isCorrectAnswer ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700') }}">
+                                            <div class="flex items-center justify-between p-2.5 sm:p-3 rounded-lg {{ $isUserAnswer ? ($isCorrect ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-600') : ($isCorrectAnswer ? 'bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-600' : 'bg-gray-50 dark:bg-gray-750 border border-gray-200 dark:border-gray-700') }}">
                                                 <div class="flex items-center">
                                                     <span class="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gradient-to-br {{ $value === 0 ? 'from-green-500 to-emerald-600' : 'from-red-500 to-pink-600' }} text-white flex items-center justify-center mr-2 sm:mr-3">
                                                         <i class="fas {{ $value === 0 ? 'fa-check' : 'fa-times' }} text-xs sm:text-sm"></i>
                                                     </span>
-                                                    <span class="font-semibold text-sm sm:text-base {{ $isUserAnswer ? ($answer->is_correct ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400') : ($isCorrectAnswer ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300') }}">
+                                                    <span class="font-semibold text-sm sm:text-base {{ $isUserAnswer ? ($isCorrect ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400') : ($isCorrectAnswer ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300') }}">
                                                         {{ $label }}
                                                     </span>
                                                 </div>
                                                 <div class="flex items-center space-x-2">
                                                     @if($isUserAnswer)
-                                                        <i class="fas fa-arrow-left {{ $answer->is_correct ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }} text-xs sm:text-sm"></i>
+                                                        <i class="fas fa-arrow-left {{ $isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }} text-xs sm:text-sm"></i>
                                                     @endif
                                                     @if($isCorrectAnswer)
                                                         <i class="fas fa-check text-green-600 dark:text-green-400 text-xs sm:text-sm"></i>
@@ -556,12 +572,14 @@
                                 @else
                                     <div class="bg-gray-50 dark:bg-gray-750 rounded-lg p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
                                         <div class="font-semibold text-gray-700 dark:text-gray-300 mb-2 text-xs sm:text-sm">Your Answer:</div>
-                                        <div class="text-gray-900 dark:text-white text-sm sm:text-base">{{ $answer->formatted_answer }}</div>
+                                        <div class="text-gray-900 dark:text-white text-sm sm:text-base">
+                                            {{ $isAnswered ? $answer->formatted_answer : 'No answer submitted' }}
+                                        </div>
                                     </div>
                                 @endif
 
                                 <!-- Feedback -->
-                                @if($answer->feedback)
+                                @if($isAnswered && $answer->feedback)
                                     <div class="mt-3 sm:mt-4 p-3 sm:p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
                                         <div class="flex items-center mb-2">
                                             <i class="fas fa-comment-dots text-yellow-600 dark:text-yellow-400 mr-2"></i>

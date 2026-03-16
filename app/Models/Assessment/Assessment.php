@@ -284,7 +284,10 @@ class Assessment extends Model
             }
 
             $totalQuestions = $questionCollection?->count() ?? $this->questions()->count();
+            $answeredQuestions = $answers->count();
             $correctAnswers = $answers->where('is_correct', true)->count();
+            $incorrectAnswers = max(0, $answeredQuestions - $correctAnswers);
+            $unansweredQuestions = max(0, $totalQuestions - $answeredQuestions);
             $totalPoints = $answers->sum('points_earned');
             $maxPoints = $questionCollection !== null
                 ? $questionCollection->sum('points')
@@ -294,8 +297,10 @@ class Assessment extends Model
 
             return [
                 'total_questions' => $totalQuestions,
-                'answered_questions' => $answers->count(),
+                'answered_questions' => $answeredQuestions,
                 'correct_answers' => $correctAnswers,
+                'incorrect_answers' => $incorrectAnswers,
+                'unanswered_questions' => $unansweredQuestions,
                 'total_points' => $totalPoints,
                 'max_points' => $maxPoints,
                 'percentage' => $percentage,
@@ -328,7 +333,10 @@ class Assessment extends Model
         }
 
         $totalQuestions = $this->questions()->count();
+        $answeredQuestions = $answers->count();
         $correctAnswers = $answers->where('is_correct', true)->count();
+        $incorrectAnswers = max(0, $answeredQuestions - $correctAnswers);
+        $unansweredQuestions = max(0, $totalQuestions - $answeredQuestions);
         $totalPoints = $answers->sum('points_earned');
         $maxPoints = $this->questions()->sum('points');
 
@@ -336,8 +344,10 @@ class Assessment extends Model
 
         return [
             'total_questions' => $totalQuestions,
-            'answered_questions' => $answers->count(),
+            'answered_questions' => $answeredQuestions,
             'correct_answers' => $correctAnswers,
+            'incorrect_answers' => $incorrectAnswers,
+            'unanswered_questions' => $unansweredQuestions,
             'total_points' => $totalPoints,
             'max_points' => $maxPoints,
             'percentage' => $percentage,
