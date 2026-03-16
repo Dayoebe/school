@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Cbt;
 
-use App\Jobs\SendExamResultsEmail;
 use App\Models\Assessment\Assessment;
 use App\Models\Assessment\AttemptSession;
 use App\Models\Assessment\StudentAnswer;
@@ -29,7 +28,6 @@ class CbtExamInterface extends Component
     public $attemptNumber;
     public $startTime;
     public $securityViolations = [];
-    public $showSubmitModal = false;
     public $isFullscreenForced = false;
     public $questionOrder = [];
     public ?int $attemptSessionId = null;
@@ -335,8 +333,6 @@ class CbtExamInterface extends Component
             return;
         }
 
-        $this->showSubmitModal = false;
-
         try {
             $this->trackQuestionTime($this->currentQuestionIndex);
             $session = $attemptSession ?: $this->currentAttemptSession();
@@ -559,16 +555,6 @@ class CbtExamInterface extends Component
         }
     }
 
-    public function showSubmitConfirmation(): void
-    {
-        $this->showSubmitModal = true;
-    }
-
-    public function cancelSubmission(): void
-    {
-        $this->showSubmitModal = false;
-    }
-
     public function getCurrentQuestion()
     {
         if ($this->currentQuestionIndex >= 0 && $this->currentQuestionIndex < count($this->questions)) {
@@ -630,22 +616,6 @@ class CbtExamInterface extends Component
         return sprintf('%02d:%02d', $minutes, $secs);
     }
 
-    protected function sendResultsEmail(): void
-    {
-        try {
-            SendExamResultsEmail::dispatch(
-                Auth::user(),
-                $this->assessment,
-                $this->attemptNumber,
-                $this->results
-            );
-
-            session()->flash('message', 'Results will be sent to your email shortly!');
-        } catch (\Throwable $e) {
-            report($e);
-        }
-    }
-
     protected function createAttemptSession(): AttemptSession
     {
         if ($this->isCurrentStudentLocked(true)) {
@@ -656,30 +626,48 @@ class CbtExamInterface extends Component
             throw new \RuntimeException($this->unpublishedAssessmentMessage());
         }
 
-        $active = $this->getActiveAttemptSession();
-        if ($active && !$active->isExpired()) {
-            return $active;
-        }
+        return DB::transaction(function (): AttemptSession {
+            // Serialize exam-start creation per student so duplicate clicks/tabs
+            // cannot create conflicting attempt records for the same paper.
+            DB::table('users')
+                ->where('id', Auth::id())
+                ->lockForUpdate()
+                ->first();
 
-        $durationSeconds = max(60, (int) $this->assessment->estimated_duration_minutes * 60);
+            $active = AttemptSession::query()
+                ->where('assessment_id', $this->assessment->id)
+                ->where('user_id', Auth::id())
+                ->where('status', 'in_progress')
+                ->lockForUpdate()
+                ->latest('started_at')
+                ->first();
 
-        return AttemptSession::create([
-            'assessment_id' => $this->assessment->id,
-            'user_id' => Auth::id(),
-            'school_id' => (int) $this->currentSchoolId(),
-            'attempt_number' => (int) $this->attemptNumber,
-            'current_question_index' => (int) $this->currentQuestionIndex,
-            'status' => 'in_progress',
-            'started_at' => now(),
-            'expires_at' => now()->addSeconds($durationSeconds),
-            'last_activity_at' => now(),
-            'question_order' => $this->questionOrder,
-            'answers_snapshot' => $this->answers,
-            'flagged_question_ids' => array_values($this->flaggedQuestions),
-            'security_violations' => $this->securityViolations,
-            'ip_address' => request()->ip(),
-            'user_agent' => (string) request()->userAgent(),
-        ]);
+            if ($active && !$active->isExpired()) {
+                $this->attemptNumber = (int) $active->attempt_number;
+                return $active;
+            }
+
+            $durationSeconds = max(60, (int) $this->assessment->estimated_duration_minutes * 60);
+            $this->attemptNumber = (int) $this->assessment->getNextAttemptNumber(Auth::id());
+
+            return AttemptSession::create([
+                'assessment_id' => $this->assessment->id,
+                'user_id' => Auth::id(),
+                'school_id' => (int) $this->currentSchoolId(),
+                'attempt_number' => (int) $this->attemptNumber,
+                'current_question_index' => (int) $this->currentQuestionIndex,
+                'status' => 'in_progress',
+                'started_at' => now(),
+                'expires_at' => now()->addSeconds($durationSeconds),
+                'last_activity_at' => now(),
+                'question_order' => $this->questionOrder,
+                'answers_snapshot' => $this->answers,
+                'flagged_question_ids' => array_values($this->flaggedQuestions),
+                'security_violations' => $this->securityViolations,
+                'ip_address' => request()->ip(),
+                'user_agent' => (string) request()->userAgent(),
+            ]);
+        }, 3);
     }
 
     protected function activateExamSession(AttemptSession $session): void
@@ -879,6 +867,13 @@ class CbtExamInterface extends Component
 
         if ($exception instanceof QueryException) {
             $message = $exception->getMessage();
+
+            if (
+                str_contains($message, 'assessment_attempt_sessions_attempt_unique')
+                || str_contains($message, 'Duplicate entry')
+            ) {
+                return 'This exam is already opening in another tab or request. Reload once and resume the active attempt.';
+            }
 
             if (
                 str_contains($message, 'assessment_attempt_sessions')
