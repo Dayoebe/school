@@ -1,4 +1,5 @@
 <div x-data="modernCbtExam()"
+     x-on:cbt-answer-selected="recordAnswer($event.detail.questionId, $event.detail.answer)"
      data-cbt-exam-root
      data-recovery-package-url="{{ route('cbt.offline.package', ['assessment' => $assessment->id]) }}"
      data-recovery-launch-url="{{ url('/cbt-recovery.html?assessment=' . $assessment->id) }}"
@@ -199,7 +200,7 @@
                                         class="text-gray-200 dark:text-gray-700" />
                                 <circle cx="96" cy="96" r="88" stroke="currentColor" stroke-width="12" fill="transparent"
                                         class="{{ $results['passed'] ? 'text-green-500' : 'text-red-500' }}"
-                                        :stroke-dasharray="`${({{ $results['percentage'] }} / 100) * 552.92} 552.92`"
+                                        stroke-dasharray="{{ round((($results['percentage'] ?? 0) / 100) * 552.92, 2) }} 552.92"
                                         stroke-linecap="round" />
                             </svg>
                             <div class="absolute inset-0 flex items-center justify-center">
@@ -321,8 +322,9 @@
                                 {{-- Question Grid --}}
                                 <div class="grid grid-cols-6 gap-2">
                                     @foreach($questions as $index => $question)
-                                    <button wire:click="goToQuestion({{ $index }})"
-                                            @click="open = false"
+                                    <button type="button"
+                                            onclick="window.cbtExamCall(this, 'goToQuestion', {{ $index }})"
+                                            x-on:click="open = false"
                                             class="relative aspect-square flex items-center justify-center rounded-lg font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             :class="{
                                                 'bg-blue-600 text-white scale-110': {{ $currentQuestionIndex }} === {{ $index }},
@@ -356,7 +358,7 @@
                 <div class="hidden md:flex flex-1 max-w-md mx-8">
                     <div class="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm overflow-hidden">
                         <div class="bg-white h-full rounded-full transition-all duration-500"
-                             :style="`width: ${({{ $currentQuestionIndex + 1 }} / {{ count($questions) }}) * 100}%`"></div>
+                             style="width: {{ count($questions) > 0 ? round((($currentQuestionIndex + 1) / count($questions)) * 100, 2) : 0 }}%"></div>
                     </div>
                 </div>
 
@@ -370,12 +372,9 @@
                         'currentQuestionIndex' => $currentQuestionIndex
                     ])
 
-                    <button 
-                        wire:click="toggleFlag({{ $currentQuestionIndex }})"
-                        class="p-2 sm:p-3 rounded-xl transition-all"
-                        :class="'{{ $this->isQuestionFlagged($currentQuestionIndex) }}' ? 
-                            'bg-yellow-500 text-yellow-900' : 
-                            'bg-white/20 hover:bg-white/30'">
+                    <button type="button"
+                        onclick="window.cbtExamCall(this, 'toggleFlag', {{ $currentQuestionIndex }})"
+                        class="p-2 sm:p-3 rounded-xl transition-all {{ $this->isQuestionFlagged($currentQuestionIndex) ? 'bg-yellow-500 text-yellow-900' : 'bg-white/20 hover:bg-white/30' }}">
                         <i class="fas fa-flag"></i>
                     </button>
                 </div>
@@ -385,7 +384,7 @@
             <div class="md:hidden px-4 pb-3">
                 <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
                     <div class="bg-white h-full rounded-full transition-all duration-500"
-                         :style="`width: ${({{ $currentQuestionIndex + 1 }} / {{ count($questions) }}) * 100}%`"></div>
+                         style="width: {{ count($questions) > 0 ? round((($currentQuestionIndex + 1) / count($questions)) * 100, 2) : 0 }}%"></div>
                 </div>
             </div>
         </div>
@@ -436,8 +435,9 @@
                     {{-- Question Numbers --}}
                     <div class="grid grid-cols-5 gap-3">
                         @foreach($questions as $index => $question)
-                        <button wire:click="goToQuestion({{ $index }})"
-                                @click="sidebarOpen = false"
+                        <button type="button"
+                                onclick="window.cbtExamCall(this, 'goToQuestion', {{ $index }})"
+                                x-on:click="sidebarOpen = false"
                                 class="relative aspect-square flex items-center justify-center rounded-xl font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 :class="{
                                     'bg-blue-600 text-white shadow-lg scale-110': {{ $currentQuestionIndex }} === {{ $index }},
@@ -524,7 +524,7 @@
                                     @foreach($question['options'] as $optionIndex => $option)
                                         @if(trim(strip_tags($option)))
                                         <label class="block cursor-pointer group"
-                                               x-on:click="selectedAnswer = '{{ $optionIndex }}'; $wire.saveAnswer({{ $question['id'] }}, '{{ $optionIndex }}')">
+                                               x-on:click="selectedAnswer = '{{ $optionIndex }}'; $dispatch('cbt-answer-selected', { questionId: {{ $question['id'] }}, answer: '{{ $optionIndex }}' }); $wire.saveAnswer({{ $question['id'] }}, '{{ $optionIndex }}')">
                                             <input type="radio" 
                                                    x-model="selectedAnswer"
                                                    name="question_{{ $question['id'] }}" 
@@ -564,7 +564,7 @@
 
                             @elseif(($question['question_type'] ?? '') === 'true_false')
                                 <label class="block cursor-pointer group"
-                                       x-on:click="selectedAnswer = '0'; $wire.saveAnswer({{ $question['id'] }}, '0')">
+                                       x-on:click="selectedAnswer = '0'; $dispatch('cbt-answer-selected', { questionId: {{ $question['id'] }}, answer: '0' }); $wire.saveAnswer({{ $question['id'] }}, '0')">
                                     <input type="radio" 
                                            x-model="selectedAnswer"
                                            name="question_{{ $question['id'] }}" 
@@ -596,7 +596,7 @@
                                 </label>
 
                                 <label class="block cursor-pointer group"
-                                       x-on:click="selectedAnswer = '1'; $wire.saveAnswer({{ $question['id'] }}, '1')">
+                                       x-on:click="selectedAnswer = '1'; $dispatch('cbt-answer-selected', { questionId: {{ $question['id'] }}, answer: '1' }); $wire.saveAnswer({{ $question['id'] }}, '1')">
                                     <input type="radio" 
                                            x-model="selectedAnswer"
                                            name="question_{{ $question['id'] }}" 
@@ -639,23 +639,24 @@
                         <div class="flex items-center justify-between mb-3 text-sm text-gray-600 dark:text-gray-400">
                             <div class="flex items-center space-x-2">
                                 <i class="fas fa-check-circle text-green-500"></i>
-                                <span>{{ $this->getAnsweredQuestionsCount() }} answered</span>
+                                <span><span x-text="answeredQuestionsCount()"></span> answered</span>
                             </div>
                             <div class="flex items-center space-x-2">
                                 <i class="fas fa-circle-notch text-gray-400"></i>
-                                <span>{{ count($questions) - $this->getAnsweredQuestionsCount() }} remaining</span>
+                                <span><span x-text="unansweredQuestionsCount()"></span> remaining</span>
                             </div>
                         </div>
 
                         {{-- Progress Bar --}}
                         <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-4 overflow-hidden">
                             <div class="bg-gradient-to-r from-blue-500 to-indigo-600 h-full rounded-full transition-all duration-500"
-                                 style="width: {{ count($questions) > 0 ? round(($this->getAnsweredQuestionsCount() / count($questions)) * 100, 2) : 0 }}%"></div>
+                                 :style="{ width: `${progressWidth()}%` }"></div>
                         </div>
 
                         {{-- Navigation Buttons --}}
                         <div class="flex items-center justify-between gap-3">
-                            <button wire:click="previousQuestion"
+                            <button type="button"
+                                    onclick="window.cbtExamCall(this, 'previousQuestion')"
                                     class="flex items-center space-x-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-1 justify-center"
                                     {{ !$this->canGoPrevious() ? 'disabled' : '' }}>
                                 <i class="fas fa-arrow-left"></i>
@@ -677,7 +678,8 @@
                                 <span class="hidden sm:inline">Submit</span>
                             </button>
                             @else
-                            <button wire:click="nextQuestion"
+                            <button type="button"
+                                    onclick="window.cbtExamCall(this, 'nextQuestion')"
                                     class="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex-1 justify-center">
                                 <span class="hidden sm:inline">Next</span>
                                 <i class="fas fa-arrow-right"></i>
@@ -716,20 +718,20 @@
                 <div class="bg-gray-50 dark:bg-gray-700 rounded-2xl p-6 mb-6 space-y-3">
                     <div class="flex justify-between items-center">
                         <span class="text-gray-600 dark:text-gray-400">Questions Answered:</span>
-                        <span class="font-bold text-gray-800 dark:text-white">{{ $this->getAnsweredQuestionsCount() }} / {{ count($questions) }}</span>
+                        <span class="font-bold text-gray-800 dark:text-white"><span x-text="answeredQuestionsCount()"></span> / {{ count($questions) }}</span>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-gray-600 dark:text-gray-400">Time Remaining:</span>
                         <span class="font-bold text-gray-800 dark:text-white" x-text="formatTime(timeRemaining)"></span>
                     </div>
-                    @if($this->getAnsweredQuestionsCount() < count($questions))
-                    <div class="flex items-start space-x-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                    <div x-show="unansweredQuestionsCount() > 0"
+                         x-cloak
+                         class="flex items-start space-x-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                         <i class="fas fa-info-circle text-yellow-600 mt-0.5"></i>
                         <span class="text-sm text-yellow-800 dark:text-yellow-300">
-                            You have {{ count($questions) - $this->getAnsweredQuestionsCount() }} unanswered questions
+                            You have <span x-text="unansweredQuestionsCount()"></span> unanswered questions
                         </span>
                     </div>
-                    @endif
                 </div>
 
                 <div x-show="submitFeedback"
@@ -774,7 +776,7 @@ function registerCbtExamAlpineComponents() {
     window.__cbtExamAlpineRegistered = true;
 
     // Enhanced Timer Component
-    Alpine.data('enhancedTimer', () => ({
+    const createEnhancedTimer = () => ({
         // Props from data attributes
         timeRemaining: 0,
         totalDuration: 3600,
@@ -951,27 +953,32 @@ function registerCbtExamAlpineComponents() {
             const avgSeconds = Math.floor(this.timeRemaining / this.questionsRemaining);
             return avgSeconds >= 60 ? `${Math.floor(avgSeconds / 60)}m` : `${avgSeconds}s`;
         }
-    }));
+    });
+
+    Alpine.data('enhancedTimer', createEnhancedTimer);
+    window.enhancedTimer = createEnhancedTimer;
 
     // Main CBT Exam Component
-    Alpine.data('modernCbtExam', () => ({
+    const createModernCbtExam = () => ({
         timeRemaining: @js($timeRemaining ?? 0),
         timerInterval: null,
         heartbeatInterval: null,
         offlineRefreshInterval: null,
         offlineBackupDebounce: null,
         heartbeatInFlight: false,
-                        livewireListenersRegistered: false,
-                        startExamFeedbackTimeout: null,
-                        startExamStatus: '',
-                        startExamMessage: '',
-                        startExamSubmitting: false,
-                        submitModalOpen: false,
-                        submitSubmitting: false,
-                        submitFeedback: '',
-                        sidebarOpen: false,
-                        examStarted: @js($examStarted ?? false),
-                        examCompleted: @js($examCompleted ?? false),
+        livewireListenersRegistered: false,
+        startExamFeedbackTimeout: null,
+        startExamStatus: '',
+        startExamMessage: '',
+        startExamSubmitting: false,
+        submitModalOpen: false,
+        submitSubmitting: false,
+        submitFeedback: '',
+        sidebarOpen: false,
+        examStarted: @js($examStarted ?? false),
+        examCompleted: @js($examCompleted ?? false),
+        questionCount: @js(count($questions ?? [])),
+        answerSnapshot: @js($answers ?? []),
         isOnline: navigator.onLine,
         offlineBackupReady: false,
         offlineBackupRefreshing: false,
@@ -987,6 +994,7 @@ function registerCbtExamAlpineComponents() {
 
             this.offlinePackageUrl = root?.dataset?.recoveryPackageUrl || '';
             this.offlineLaunchUrl = root?.dataset?.recoveryLaunchUrl || '';
+            this.answerSnapshot = this.normalizeAnswerSnapshot(this.answerSnapshot);
             this.loadOfflineBackupState();
             this.initializeMathJax();
             this.setupEventListeners();
@@ -1057,6 +1065,10 @@ function registerCbtExamAlpineComponents() {
                 });
 
                 if (this.$wire && typeof this.$wire.$watch === 'function') {
+                    this.$wire.$watch('answers', (value) => {
+                        this.answerSnapshot = this.normalizeAnswerSnapshot(value);
+                    });
+
                     this.$wire.$watch('examStarted', (value) => {
                         if (value) {
                             this.applyExamStartedState();
@@ -1086,6 +1098,26 @@ function registerCbtExamAlpineComponents() {
                     }, 100);
                 });
 
+                Livewire.on('securityViolation', ({ type, count }) => {
+                    if (!this.isExamActive() || !this.$wire || typeof this.$wire.call !== 'function') {
+                        return;
+                    }
+
+                    this.$wire.call('handleSecurityViolation', type, count ? `count:${count}` : null);
+                });
+
+                Livewire.on('autoSubmitExam', async () => {
+                    if (!this.isExamActive() || !this.$wire || typeof this.$wire.call !== 'function') {
+                        return;
+                    }
+
+                    try {
+                        await this.$wire.call('submitExamWithAnswers', this.answerSnapshot);
+                    } catch (error) {
+                        this.submitFeedback = this.resolveSubmitClientErrorMessage(error);
+                    }
+                });
+
                 Livewire.hook('morph.updated', () => {
                     this.scheduleOfflineBackupRefresh();
                     clearTimeout(this.mathJaxTimeout);
@@ -1108,13 +1140,13 @@ function registerCbtExamAlpineComponents() {
                         }
 
                         if (this.isExamActive()) {
+                            const failureMessage = this.resolveExamActionFailureMessage(status, content);
+
                             if (typeof preventDefault === 'function') {
                                 preventDefault();
                             }
 
-                            this.offlineBackupMessage = !this.isOnline && this.offlineBackupReady
-                                ? 'Connection lost. Your latest saved copy is ready on this device.'
-                                : 'We could not reach the server. Keep this tab open and continue from the saved copy if the page stops responding.';
+                            this.offlineBackupMessage = failureMessage;
                             return;
                         }
 
@@ -1202,7 +1234,7 @@ function registerCbtExamAlpineComponents() {
                 return;
             }
 
-            if (!window.Livewire || !this.$wire || typeof this.$wire.submitExam !== 'function') {
+            if (!window.Livewire || !this.$wire || typeof this.$wire.call !== 'function') {
                 this.submitFeedback = 'Livewire is not ready on this page, so the exam cannot be submitted yet. Refresh the page and try again.';
                 return;
             }
@@ -1211,7 +1243,7 @@ function registerCbtExamAlpineComponents() {
             this.submitFeedback = '';
 
             try {
-                await this.$wire.submitExam();
+                await this.$wire.call('submitExamWithAnswers', this.answerSnapshot);
             } catch (error) {
                 this.submitFeedback = this.resolveSubmitClientErrorMessage(error);
             } finally {
@@ -1349,6 +1381,38 @@ function registerCbtExamAlpineComponents() {
             }
 
             return 'The exam submission could not be completed.';
+        },
+
+        resolveExamActionFailureMessage(status, content) {
+            if (status === 419) {
+                return 'Your session expired during the exam. Refresh this page and sign in again before continuing.';
+            }
+
+            if (status === 403) {
+                return 'You no longer have permission to continue this exam.';
+            }
+
+            if (status === 404) {
+                return 'The exam action endpoint could not be found.';
+            }
+
+            if (status >= 500) {
+                return 'The server returned an internal error while processing this exam action.';
+            }
+
+            if (!this.isOnline && this.offlineBackupReady) {
+                return 'Connection lost. Your latest saved copy is ready on this device.';
+            }
+
+            if (!this.isOnline) {
+                return 'Connection lost. Keep this page open and reconnect so syncing can resume.';
+            }
+
+            if (typeof content === 'string' && content.trim() !== '') {
+                return `Exam action failed: ${content.slice(0, 180)}`;
+            }
+
+            return 'We could not reach the server for this exam action. Keep this tab open and continue from the saved copy if the page stops responding.';
         },
 
         setupSecurityListeners() {
@@ -1524,6 +1588,41 @@ function registerCbtExamAlpineComponents() {
             return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         },
 
+        normalizeAnswerSnapshot(snapshot) {
+            const normalized = {};
+            const source = snapshot && typeof snapshot === 'object' ? snapshot : {};
+
+            Object.entries(source).forEach(([questionId, value]) => {
+                normalized[String(questionId)] = value === null || value === '' || value === 'null'
+                    ? null
+                    : String(value);
+            });
+
+            return normalized;
+        },
+
+        recordAnswer(questionId, answer) {
+            this.answerSnapshot[String(questionId)] = answer === null || answer === '' || answer === 'null'
+                ? null
+                : String(answer);
+        },
+
+        answeredQuestionsCount() {
+            return Object.values(this.answerSnapshot).filter((answer) => answer !== null && answer !== '').length;
+        },
+
+        unansweredQuestionsCount() {
+            return Math.max(0, this.questionCount - this.answeredQuestionsCount());
+        },
+
+        progressWidth() {
+            if (this.questionCount === 0) {
+                return 0;
+            }
+
+            return Number(((this.answeredQuestionsCount() / this.questionCount) * 100).toFixed(2));
+        },
+
         toggleSidebar() {
             this.sidebarOpen = !this.sidebarOpen;
         },
@@ -1667,14 +1766,10 @@ function registerCbtExamAlpineComponents() {
                     .catch(err => console.error('MathJax error:', err));
             }
         }
-    }));
-
-    queueMicrotask(() => {
-        const root = document.querySelector('[data-cbt-exam-root]');
-        if (root && !root._x_dataStack && typeof Alpine.initTree === 'function') {
-            Alpine.initTree(root);
-        }
     });
+
+    Alpine.data('modernCbtExam', createModernCbtExam);
+    window.modernCbtExam = createModernCbtExam;
 }
 
 if (window.Alpine) {
@@ -1682,6 +1777,43 @@ if (window.Alpine) {
 } else {
     document.addEventListener('alpine:init', registerCbtExamAlpineComponents, { once: true });
 }
+
+window.cbtExamCall = function(element, method, ...args) {
+    if (!window.Livewire) {
+        return;
+    }
+
+    const root = element?.closest('[data-cbt-exam-root]') || document.querySelector('[data-cbt-exam-root]');
+    const host = root?.matches?.('[wire\\:id]') ? root : (root?.closest('[wire\\:id]') || element?.closest('[wire\\:id]'));
+    const componentId = host?.getAttribute('wire:id');
+
+    let component = null;
+
+    if (componentId && typeof window.Livewire.find === 'function') {
+        component = window.Livewire.find(componentId);
+    }
+
+    if (!component && host && host.__livewire) {
+        component = host.__livewire;
+    }
+
+    if (!component && typeof window.Livewire.all === 'function') {
+        component = window.Livewire.all().find((candidate) => {
+            const candidateRoot = candidate?.el || candidate?.$el || candidate?.__instance?.el || null;
+            return candidateRoot instanceof Element && candidateRoot.contains(element);
+        }) || null;
+    }
+
+    if (!component || typeof component.call !== 'function') {
+        console.warn('CBT exam action could not resolve a Livewire component.', {
+            method,
+            componentId,
+        });
+        return;
+    }
+
+    return component.call(method, ...args);
+};
 
 // Global helper for rendering math in specific elements
 window.renderMathInElement = function(element) {

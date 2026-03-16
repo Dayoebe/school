@@ -63,6 +63,10 @@
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
 
     <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
         /* ================================================
            MATHJAX STYLES - NON-INTERACTIVE
            ================================================ */
@@ -644,6 +648,12 @@
                 ExamSecurity.deactivate();
             });
             
+            Livewire.on('forceFullscreen', () => {
+                if (ExamSecurity.isExamActive) {
+                    ExamSecurity.requestFullscreen();
+                }
+            });
+
             Livewire.on('allowFullscreenExit', () => {
                 ExamSecurity.deactivate();
             });

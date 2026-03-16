@@ -244,6 +244,28 @@ class CbtExamInterface extends Component
         $this->persistAttemptSessionState();
     }
 
+    public function syncAnswers(array $answers): void
+    {
+        foreach ($this->answers as $questionId => $currentValue) {
+            $incomingAnswer = $answers[$questionId] ?? $answers[(string) $questionId] ?? null;
+
+            if ($incomingAnswer === null || $incomingAnswer === '' || $incomingAnswer === 'null') {
+                $this->answers[$questionId] = null;
+                continue;
+            }
+
+            $this->answers[$questionId] = (int) $incomingAnswer;
+        }
+
+        $this->persistAttemptSessionState();
+    }
+
+    public function submitExamWithAnswers(array $answers): void
+    {
+        $this->syncAnswers($answers);
+        $this->submitExam();
+    }
+
     public function heartbeat(?int $clientTimeRemaining = null): array
     {
         if (!$this->examStarted || $this->examCompleted) {
