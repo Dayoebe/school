@@ -11,6 +11,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 
 #[Layout('layouts.exam', ['title' => 'CBT Exam', 'description' => 'Secure CBT exam interface'])]
@@ -230,6 +231,7 @@ class CbtExamInterface extends Component
         }
     }
 
+    #[Renderless]
     public function saveAnswer($questionId, $answer): void
     {
         if ($answer === null || $answer === '' || $answer === 'null') {
@@ -242,6 +244,7 @@ class CbtExamInterface extends Component
         $this->persistAttemptSessionState();
     }
 
+    #[Renderless]
     public function syncAnswers(array $answers): void
     {
         foreach ($this->answers as $questionId => $currentValue) {
@@ -267,6 +270,8 @@ class CbtExamInterface extends Component
     public function heartbeat(?int $clientTimeRemaining = null): array
     {
         if (!$this->examStarted || $this->examCompleted) {
+            $this->skipRender();
+
             return [
                 'time_remaining' => (int) $this->timeRemaining,
                 'exam_completed' => (bool) $this->examCompleted,
@@ -275,6 +280,7 @@ class CbtExamInterface extends Component
 
         if ($this->isCurrentStudentLocked(true)) {
             session()->flash('warning', $this->currentStudentLockMessage());
+            $this->skipRender();
 
             return [
                 'time_remaining' => (int) $this->timeRemaining,
@@ -285,6 +291,7 @@ class CbtExamInterface extends Component
 
         if (!$this->isAssessmentPublished(true)) {
             session()->flash('warning', $this->unpublishedAssessmentMessage());
+            $this->skipRender();
 
             return [
                 'time_remaining' => (int) $this->timeRemaining,
@@ -295,6 +302,8 @@ class CbtExamInterface extends Component
 
         $session = $this->currentAttemptSession();
         if (!$session) {
+            $this->skipRender();
+
             return [
                 'time_remaining' => (int) $this->timeRemaining,
                 'exam_completed' => (bool) $this->examCompleted,
@@ -320,6 +329,8 @@ class CbtExamInterface extends Component
                 'auto_submitted' => true,
             ];
         }
+
+        $this->skipRender();
 
         return [
             'time_remaining' => $remaining,
@@ -501,6 +512,7 @@ class CbtExamInterface extends Component
         }
     }
 
+    #[Renderless]
     public function toggleFlag($questionIndex): void
     {
         if (!isset($this->questions[$questionIndex])) {
@@ -526,6 +538,7 @@ class CbtExamInterface extends Component
     public function handleSecurityViolation($type, $details = null): void
     {
         if (!$this->examStarted || $this->examCompleted) {
+            $this->skipRender();
             return;
         }
 
@@ -552,7 +565,10 @@ class CbtExamInterface extends Component
         if (count($this->securityViolations) >= 10) {
             session()->flash('error', 'Too many security violations detected. Exam auto-submitted.');
             $this->submitExam(true);
+            return;
         }
+
+        $this->skipRender();
     }
 
     public function getCurrentQuestion()

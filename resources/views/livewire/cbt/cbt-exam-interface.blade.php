@@ -3,7 +3,7 @@
      data-cbt-exam-root
      data-recovery-package-url="{{ route('cbt.offline.package', ['assessment' => $assessment->id]) }}"
      data-recovery-launch-url="{{ url('/cbt-recovery.html?assessment=' . $assessment->id) }}"
-     class="cbt-interface-solid min-h-screen bg-stone-50 dark:bg-gray-900"
+     class="cbt-interface-solid min-h-[100dvh] bg-stone-50 dark:bg-gray-900"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
     @if (session()->has('error') || session()->has('warning') || session()->has('message'))
@@ -65,7 +65,7 @@
 
     {{-- Pre-Exam Welcome Screen --}}
     @if(!$examStarted)
-    <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="min-h-[100dvh] flex items-center justify-center p-4">
         <div class="max-w-4xl w-full bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
             {{-- Header Banner --}}
             <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-8 text-white">
@@ -160,7 +160,7 @@
 
     @elseif($examCompleted)
     {{-- Results Screen --}}
-    <div class="min-h-screen flex items-center justify-center p-4">
+    <div class="min-h-[100dvh] flex items-center justify-center p-4">
         <div class="max-w-4xl w-full bg-white dark:bg-gray-800 rounded-3xl shadow-2xl overflow-hidden">
             @if($pendingPublish)
                 <div class="p-8 text-center bg-gradient-to-r from-blue-600 to-indigo-600">
@@ -255,7 +255,7 @@
     @else
     
 	    {{-- Main Exam Interface --}}
-	    <div class="min-h-screen flex flex-col bg-white dark:bg-gray-900">
+	    <div class="min-h-[100dvh] flex flex-col bg-white dark:bg-gray-900">
             @if($resumeBanner)
                 <div class="mx-4 mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900">
                     {{ $resumeBanner }}
@@ -291,8 +291,8 @@
                             <div class="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600">
                                 <h3 class="font-semibold text-gray-800 dark:text-white mb-2">Jump to Question</h3>
                                 <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-                                    <span>Answered: {{ $this->getAnsweredQuestionsCount() }}</span>
-                                    <span>Remaining: {{ count($questions) - $this->getAnsweredQuestionsCount() }}</span>
+                                    <span>Answered: <span x-text="answeredQuestionsCount()"></span></span>
+                                    <span>Remaining: <span x-text="unansweredQuestionsCount()"></span></span>
                                 </div>
                             </div>
 
@@ -328,13 +328,11 @@
                                             class="relative aspect-square flex items-center justify-center rounded-lg font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             :class="{
                                                 'bg-blue-600 text-white scale-110': {{ $currentQuestionIndex }} === {{ $index }},
-                                                'bg-green-500 text-white hover:bg-green-600': {{ $currentQuestionIndex }} !== {{ $index }} && {{ isset($answers[$question['id']]) && $answers[$question['id']] !== null ? 'true' : 'false' }},
-                                                'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': {{ $currentQuestionIndex }} !== {{ $index }} && {{ !isset($answers[$question['id']]) || $answers[$question['id']] === null ? 'true' : 'false' }}
+                                                'bg-green-500 text-white hover:bg-green-600': {{ $currentQuestionIndex }} !== {{ $index }} && isQuestionAnswered({{ (int) $question['id'] }}),
+                                                'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': {{ $currentQuestionIndex }} !== {{ $index }} && !isQuestionAnswered({{ (int) $question['id'] }})
                                             }">
                                         {{ $index + 1 }}
-                                        @if($this->isQuestionFlagged($index))
-                                        <i class="fas fa-flag absolute -top-1 -right-1 text-yellow-500 text-xs"></i>
-                                        @endif
+                                        <i x-show="isQuestionFlagged({{ (int) $question['id'] }})" x-cloak class="fas fa-flag absolute -top-1 -right-1 text-yellow-500 text-xs"></i>
                                     </button>
                                     @endforeach
                                 </div>
@@ -373,8 +371,9 @@
                     ])
 
                     <button type="button"
-                        onclick="window.cbtExamCall(this, 'toggleFlag', {{ $currentQuestionIndex }})"
-                        class="p-2 sm:p-3 rounded-xl transition-all {{ $this->isQuestionFlagged($currentQuestionIndex) ? 'bg-yellow-500 text-yellow-900' : 'bg-white/20 hover:bg-white/30' }}">
+                        x-on:click="toggleFlag({{ $currentQuestionIndex }}, {{ (int) ($questions[$currentQuestionIndex]['id'] ?? 0) }}, $el)"
+                        class="p-2 sm:p-3 rounded-xl transition-all"
+                        :class="isQuestionFlagged({{ (int) ($questions[$currentQuestionIndex]['id'] ?? 0) }}) ? 'bg-yellow-500 text-yellow-900' : 'bg-white/20 hover:bg-white/30'">
                         <i class="fas fa-flag"></i>
                     </button>
                 </div>
@@ -403,13 +402,13 @@
                         </button>
                     </div>
                     <div class="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
-                        <span>Answered: {{ $this->getAnsweredQuestionsCount() }}</span>
-                        <span>Remaining: {{ count($questions) - $this->getAnsweredQuestionsCount() }}</span>
+                        <span>Answered: <span x-text="answeredQuestionsCount()"></span></span>
+                        <span>Remaining: <span x-text="unansweredQuestionsCount()"></span></span>
                     </div>
                 </div>
 
                 {{-- Question Grid --}}
-                <div class="p-4 overflow-y-auto h-[calc(100vh-180px)]">
+                <div class="p-4 overflow-y-auto h-[calc(100dvh-180px)]">
                     {{-- Legend --}}
                     <div class="grid grid-cols-2 gap-2 mb-4 text-xs">
                         <div class="flex items-center space-x-2">
@@ -441,13 +440,11 @@
                                 class="relative aspect-square flex items-center justify-center rounded-xl font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 :class="{
                                     'bg-blue-600 text-white shadow-lg scale-110': {{ $currentQuestionIndex }} === {{ $index }},
-                                    'bg-green-500 text-white hover:bg-green-600': {{ $currentQuestionIndex }} !== {{ $index }} && {{ isset($answers[$question['id']]) && $answers[$question['id']] !== null ? 'true' : 'false' }},
-                                    'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': {{ $currentQuestionIndex }} !== {{ $index }} && {{ !isset($answers[$question['id']]) || $answers[$question['id']] === null ? 'true' : 'false' }}
+                                    'bg-green-500 text-white hover:bg-green-600': {{ $currentQuestionIndex }} !== {{ $index }} && isQuestionAnswered({{ (int) $question['id'] }}),
+                                    'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': {{ $currentQuestionIndex }} !== {{ $index }} && !isQuestionAnswered({{ (int) $question['id'] }})
                                 }">
                             {{ $index + 1 }}
-                            @if($this->isQuestionFlagged($index))
-                            <i class="fas fa-flag absolute -top-1 -right-1 text-yellow-500 text-xs"></i>
-                            @endif
+                            <i x-show="isQuestionFlagged({{ (int) $question['id'] }})" x-cloak class="fas fa-flag absolute -top-1 -right-1 text-yellow-500 text-xs"></i>
                         </button>
                         @endforeach
                     </div>
@@ -469,7 +466,7 @@
             {{-- Main Content Area --}}
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
                 {{-- Question Content --}}
-                <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-40 sm:pb-44 md:pb-8">
+                <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-[calc(env(safe-area-inset-bottom)+10rem)] sm:pb-[calc(env(safe-area-inset-bottom)+11rem)] md:pb-8">
                     @if($this->getCurrentQuestion())
                     @php $question = $this->getCurrentQuestion(); @endphp
                     <div class="max-w-4xl mx-auto">
@@ -655,7 +652,7 @@
                 </div>
 
                 {{-- Bottom Navigation - FIXED TO BOTTOM OF SCREEN --}}
-                <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 md:p-6 shadow-2xl z-[100]">
+                <div class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] md:p-6 shadow-2xl z-[100]">
                     <div class="max-w-4xl mx-auto">
                         {{-- Progress Info --}}
                         <div class="flex items-center justify-between mb-3 text-sm text-gray-600 dark:text-gray-400">
@@ -1001,6 +998,7 @@ function registerCbtExamAlpineComponents() {
         examCompleted: @js($examCompleted ?? false),
         questionCount: @js(count($questions ?? [])),
         answerSnapshot: @js($answers ?? []),
+        flaggedSnapshot: @js(array_values(array_map('intval', $flaggedQuestions ?? []))),
         isOnline: navigator.onLine,
         offlineBackupReady: false,
         offlineBackupRefreshing: false,
@@ -1017,6 +1015,7 @@ function registerCbtExamAlpineComponents() {
             this.offlinePackageUrl = root?.dataset?.recoveryPackageUrl || '';
             this.offlineLaunchUrl = root?.dataset?.recoveryLaunchUrl || '';
             this.answerSnapshot = this.normalizeAnswerSnapshot(this.answerSnapshot);
+            this.flaggedSnapshot = this.normalizeFlaggedSnapshot(this.flaggedSnapshot);
             this.loadOfflineBackupState();
             this.initializeMathJax();
             this.setupEventListeners();
@@ -1089,6 +1088,10 @@ function registerCbtExamAlpineComponents() {
                 if (this.$wire && typeof this.$wire.$watch === 'function') {
                     this.$wire.$watch('answers', (value) => {
                         this.answerSnapshot = this.normalizeAnswerSnapshot(value);
+                    });
+
+                    this.$wire.$watch('flaggedQuestions', (value) => {
+                        this.flaggedSnapshot = this.normalizeFlaggedSnapshot(value);
                     });
 
                     this.$wire.$watch('examStarted', (value) => {
@@ -1623,14 +1626,67 @@ function registerCbtExamAlpineComponents() {
             return normalized;
         },
 
+        normalizeFlaggedSnapshot(snapshot) {
+            if (!Array.isArray(snapshot)) {
+                return [];
+            }
+
+            return snapshot
+                .map((questionId) => Number(questionId))
+                .filter((questionId) => !Number.isNaN(questionId));
+        },
+
         recordAnswer(questionId, answer) {
             this.answerSnapshot[String(questionId)] = answer === null || answer === '' || answer === 'null'
                 ? null
                 : String(answer);
         },
 
+        isQuestionAnswered(questionId) {
+            const answer = this.answerSnapshot[String(questionId)] ?? null;
+
+            return answer !== null && answer !== '' && answer !== 'null';
+        },
+
+        isQuestionFlagged(questionId) {
+            const normalizedQuestionId = Number(questionId);
+
+            if (Number.isNaN(normalizedQuestionId)) {
+                return false;
+            }
+
+            return this.flaggedSnapshot.includes(normalizedQuestionId);
+        },
+
+        toggleFlagSnapshot(questionId) {
+            const normalizedQuestionId = Number(questionId);
+
+            if (Number.isNaN(normalizedQuestionId)) {
+                return;
+            }
+
+            if (this.isQuestionFlagged(normalizedQuestionId)) {
+                this.flaggedSnapshot = this.flaggedSnapshot.filter((id) => id !== normalizedQuestionId);
+                return;
+            }
+
+            this.flaggedSnapshot = [...this.flaggedSnapshot, normalizedQuestionId];
+        },
+
+        toggleFlag(questionIndex, questionId, element = null) {
+            this.toggleFlagSnapshot(questionId);
+
+            const request = window.cbtExamCall(element || this.$root, 'toggleFlag', questionIndex);
+
+            if (request && typeof request.catch === 'function') {
+                request.catch(() => {
+                    this.toggleFlagSnapshot(questionId);
+                });
+            }
+        },
+
         answeredQuestionsCount() {
-            return Object.values(this.answerSnapshot).filter((answer) => answer !== null && answer !== '').length;
+            return Object.values(this.answerSnapshot).filter((answer) => answer !== null && answer !== '' && answer !== 'null').length;
         },
 
         unansweredQuestionsCount() {
