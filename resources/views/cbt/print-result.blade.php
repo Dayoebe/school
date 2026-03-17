@@ -300,6 +300,13 @@
                     </div>
 
                     <div class="question-body">
+                        @if($question->explanation)
+                            <div class="card" style="margin-top: 12px;">
+                                <div class="card-label">Instruction</div>
+                                <div class="answer-text">{!! $question->explanation !!}</div>
+                            </div>
+                        @endif
+
                         <div class="question-text">{!! $question->question_text !!}</div>
 
                         @if($question->has_question_media)
@@ -358,12 +365,6 @@
                             </div>
                         @endif
 
-                        @if($question->explanation)
-                            <div class="card" style="margin-top: 12px;">
-                                <div class="card-label">Explanation</div>
-                                <div class="answer-text">{!! $question->explanation !!}</div>
-                            </div>
-                        @endif
                     </div>
                 </div>
             @endforeach
