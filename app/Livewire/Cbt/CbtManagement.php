@@ -30,6 +30,13 @@ class CbtManagement extends Component
     public $showParticipantsModal = false;
     public $showEditQuestionModal = false;
 
+    public $filterCourseId = '';
+    public $filterLessonId = '';
+    public $statusFilter = '';
+    public $sortBy = 'created_at';
+    public $sortDirection = 'desc';
+    public $search = '';
+
     public $title = '';
     public $description = '';
     public $pass_percentage = 70;
@@ -122,11 +129,69 @@ class CbtManagement extends Component
         }
     }
 
+    public function updatedFilterCourseId($value): void
+    {
+        $classId = $value ? (int) $value : null;
+
+        if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
+            $this->filterCourseId = '';
+            $this->filterLessonId = '';
+            $this->resetPage();
+            return;
+        }
+
+        if (
+            $this->filterLessonId
+            && !$this->currentUserCanManageCbtSubject($this->filterLessonId, $classId)
+        ) {
+            $this->filterLessonId = '';
+        }
+
+        $this->resetPage();
+    }
+
+    public function updatedFilterLessonId($value): void
+    {
+        $subjectId = $value ? (int) $value : null;
+        $classId = $this->filterCourseId ? (int) $this->filterCourseId : null;
+
+        if (
+            $subjectId
+            && (
+                !$classId
+                || !$this->currentUserCanManageCbtSubject($subjectId, $classId)
+            )
+        ) {
+            $this->filterLessonId = '';
+        }
+
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortBy(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSortDirection(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
-        $assessments = $this->assessmentsForCurrentSchool()
+        $assessments = $this->assessmentLibraryQuery()
             ->with(['questions', 'course', 'lesson'])
-            ->latest()
             ->paginate(10);
 
         $classes = $this->classesForCurrentSchool()
@@ -134,6 +199,7 @@ class CbtManagement extends Component
             ->get(['id', 'name']);
 
         $subjects = $this->availableSubjectsForSelectedClass();
+        $filterSubjects = $this->availableSubjectsForFilterClass();
         $isRestrictedTeacherManager = $this->isRestrictedTeacherCbtManager();
         $canLockAssessments = $this->currentUserCanLockAssessments();
         $canAdministerParticipants = $this->currentUserCanAdministerCbtParticipants();
@@ -144,12 +210,24 @@ class CbtManagement extends Component
             'assessments',
             'classes',
             'subjects',
+            'filterSubjects',
             'isRestrictedTeacherManager',
             'canLockAssessments',
             'canAdministerParticipants',
             'canPublishCbtResults',
             'canDeleteAssessments',
         ));
+    }
+
+    public function clearAssessmentLibraryFilters(): void
+    {
+        $this->filterCourseId = '';
+        $this->filterLessonId = '';
+        $this->statusFilter = '';
+        $this->sortBy = 'created_at';
+        $this->sortDirection = 'desc';
+        $this->search = '';
+        $this->resetPage();
     }
 
     public function createAssessment()
@@ -1065,6 +1143,62 @@ class CbtManagement extends Component
         return $this->accessibleCbtAssessmentsQuery();
     }
 
+    protected function assessmentLibraryQuery(): Builder
+    {
+        $query = $this->assessmentsForCurrentSchool()
+            ->leftJoin('my_classes', 'my_classes.id', '=', 'assessments.course_id')
+            ->leftJoin('subjects', 'subjects.id', '=', 'assessments.lesson_id')
+            ->select('assessments.*')
+            ->withCount('questions');
+
+        if ($this->filterCourseId !== '') {
+            $query->where('assessments.course_id', (int) $this->filterCourseId);
+        }
+
+        if ($this->filterLessonId !== '') {
+            $query->where('assessments.lesson_id', (int) $this->filterLessonId);
+        }
+
+        $searchTerm = trim((string) $this->search);
+
+        if ($searchTerm !== '') {
+            $searchTerm = '%' . $searchTerm . '%';
+
+            $query->where(function (Builder $searchQuery) use ($searchTerm) {
+                $searchQuery->where('assessments.title', 'like', $searchTerm)
+                    ->orWhere('assessments.description', 'like', $searchTerm)
+                    ->orWhere('my_classes.name', 'like', $searchTerm)
+                    ->orWhere('subjects.name', 'like', $searchTerm)
+                    ->orWhere('subjects.short_name', 'like', $searchTerm);
+            });
+        }
+
+        match ($this->statusFilter) {
+            'draft' => $query->where('assessments.is_locked', false),
+            'locked' => $query->where('assessments.is_locked', true),
+            'student_visible' => $query->whereNotNull('assessments.exam_published_at'),
+            'student_hidden' => $query->whereNull('assessments.exam_published_at'),
+            'results_visible' => $query->whereNotNull('assessments.results_published_at'),
+            'results_hidden' => $query->whereNull('assessments.results_published_at'),
+            default => null,
+        };
+
+        $direction = strtolower((string) $this->sortDirection) === 'asc' ? 'asc' : 'desc';
+
+        match ($this->sortBy) {
+            'title' => $query->orderBy('assessments.title', $direction),
+            'class' => $query->orderBy('my_classes.name', $direction)->orderBy('assessments.title'),
+            'subject' => $query->orderBy('subjects.name', $direction)->orderBy('assessments.title'),
+            'duration' => $query->orderBy('assessments.estimated_duration_minutes', $direction),
+            'pass_percentage' => $query->orderBy('assessments.pass_percentage', $direction),
+            'questions_count' => $query->orderBy('questions_count', $direction),
+            'updated_at' => $query->orderBy('assessments.updated_at', $direction),
+            default => $query->orderBy('assessments.created_at', $direction),
+        };
+
+        return $query->orderByDesc('assessments.id');
+    }
+
     protected function classesForCurrentSchool(): Builder
     {
         return $this->accessibleCbtClassesQuery();
@@ -1082,6 +1216,18 @@ class CbtManagement extends Component
     protected function availableSubjectsForSelectedClass(): Collection
     {
         $classId = $this->course_id ? (int) $this->course_id : null;
+
+        if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
+            return collect();
+        }
+
+        return $this->accessibleCbtSubjectsQuery($classId)
+            ->get(['subjects.id', 'subjects.name', 'subjects.short_name']);
+    }
+
+    protected function availableSubjectsForFilterClass(): Collection
+    {
+        $classId = $this->filterCourseId ? (int) $this->filterCourseId : null;
 
         if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
             return collect();

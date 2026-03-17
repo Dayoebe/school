@@ -139,6 +139,15 @@
     </section>
 
     <section class="mt-6 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-lg sm:p-5 lg:p-6">
+        @php
+            $hasActiveLibraryFilters = filled($filterCourseId)
+                || filled($filterLessonId)
+                || filled($statusFilter)
+                || trim((string) $search) !== ''
+                || $sortBy !== 'created_at'
+                || $sortDirection !== 'desc';
+        @endphp
+
         <div class="flex flex-col gap-3 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">Assessment Library</p>
@@ -148,7 +157,117 @@
                 </p>
             </div>
             <div class="rounded-2xl bg-slate-100 px-4 py-3 text-sm font-medium text-slate-700">
-                Page {{ $assessments->currentPage() }} of {{ $assessments->lastPage() }}
+                {{ number_format($assessments->total()) }} match{{ $assessments->total() === 1 ? '' : 'es' }} · Page {{ $assessments->currentPage() }} of {{ $assessments->lastPage() }}
+            </div>
+        </div>
+
+        <div class="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 p-4 sm:p-5">
+            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">Sort And Filter</p>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">
+                        Narrow the library by class or subject, then sort by title, questions, duration, pass mark, or recency.
+                    </p>
+                </div>
+                @if($hasActiveLibraryFilters)
+                    <button
+                        type="button"
+                        wire:click="clearAssessmentLibraryFilters"
+                        class="inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100"
+                    >
+                        <i class="fas fa-rotate-left mr-2"></i>Reset View
+                    </button>
+                @endif
+            </div>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                <div class="xl:col-span-2">
+                    <label for="cbt-library-search" class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Search</label>
+                    <input
+                        id="cbt-library-search"
+                        type="text"
+                        wire:model.live.debounce.300ms="search"
+                        placeholder="Search title, class, or subject"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                </div>
+
+                <div>
+                    <label for="cbt-library-class-filter" class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Class</label>
+                    <select
+                        id="cbt-library-class-filter"
+                        wire:model.live="filterCourseId"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        <option value="">All classes</option>
+                        @foreach($classes as $class)
+                            <option value="{{ $class->id }}">{{ $class->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="cbt-library-subject-filter" class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Subject</label>
+                    <select
+                        id="cbt-library-subject-filter"
+                        wire:model.live="filterLessonId"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        <option value="">{{ $filterCourseId ? 'All subjects' : 'Select class first' }}</option>
+                        @foreach($filterSubjects as $subject)
+                            <option value="{{ $subject->id }}">{{ $subject->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="cbt-library-status-filter" class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Status</label>
+                    <select
+                        id="cbt-library-status-filter"
+                        wire:model.live="statusFilter"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        <option value="">All statuses</option>
+                        <option value="draft">Draft / editable</option>
+                        <option value="locked">Locked / vetted</option>
+                        <option value="student_visible">Student access live</option>
+                        <option value="student_hidden">Student access hidden</option>
+                        <option value="results_visible">Results visible</option>
+                        <option value="results_hidden">Results hidden</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="cbt-library-sort-by" class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Sort by</label>
+                    <select
+                        id="cbt-library-sort-by"
+                        wire:model.live="sortBy"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        <option value="created_at">Date created</option>
+                        <option value="updated_at">Last updated</option>
+                        <option value="title">Assessment title</option>
+                        <option value="class">Class</option>
+                        <option value="subject">Subject</option>
+                        <option value="questions_count">Question count</option>
+                        <option value="duration">Duration</option>
+                        <option value="pass_percentage">Pass mark</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+                <div class="xl:col-start-6">
+                    <label for="cbt-library-sort-direction" class="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Direction</label>
+                    <select
+                        id="cbt-library-sort-direction"
+                        wire:model.live="sortDirection"
+                        class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    >
+                        <option value="desc">Descending</option>
+                        <option value="asc">Ascending</option>
+                    </select>
+                </div>
             </div>
         </div>
 
@@ -313,14 +432,25 @@
                 <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-slate-100">
                     <i class="fas fa-clipboard-list text-4xl text-slate-400"></i>
                 </div>
-                <h5 class="mt-5 text-xl font-semibold text-slate-800">No CBT Assessments Yet</h5>
-                <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
-                    Create your first CBT assessment to start building question banks, locking vetted papers, and controlling student access.
-                </p>
-                <button wire:click="$set('showCreateModal', true)"
-                    class="mt-6 inline-flex items-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i>Create CBT Assessment
-                </button>
+                @if($hasActiveLibraryFilters)
+                    <h5 class="mt-5 text-xl font-semibold text-slate-800">No Assessments Match This View</h5>
+                    <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
+                        Adjust the class, subject, status, search term, or sort settings to broaden the list again.
+                    </p>
+                    <button wire:click="clearAssessmentLibraryFilters"
+                        class="mt-6 inline-flex items-center rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-700">
+                        <i class="fas fa-rotate-left mr-2"></i>Clear Filters
+                    </button>
+                @else
+                    <h5 class="mt-5 text-xl font-semibold text-slate-800">No CBT Assessments Yet</h5>
+                    <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
+                        Create your first CBT assessment to start building question banks, locking vetted papers, and controlling student access.
+                    </p>
+                    <button wire:click="$set('showCreateModal', true)"
+                        class="mt-6 inline-flex items-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i>Create CBT Assessment
+                    </button>
+                @endif
             </div>
         @endif
     </section>
@@ -643,7 +773,7 @@
 
                                 <div class="mb-4">
                                 <label for="explanation" class="block text-sm font-medium text-themed-primary mb-2">
-                                    Explanation
+                                    Instruction
                                     <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for
                                         display math)</span>
                                 </label>
@@ -841,6 +971,12 @@
 
                                             <!-- Question Content -->
                                             <div class="flex-1">
+                                                @if($question->explanation)
+                                                    <div class="mb-2 text-sm text-themed-secondary">
+                                                        <strong>Instruction:</strong>
+                                                        <span class="math-content">{!! Str::limit($question->explanation, 80) !!}</span>
+                                                    </div>
+                                                @endif
                                                 <h6 class="font-semibold text-themed-primary mb-1">
                                                     Q{{ $loop->iteration }}.
                                                     <span
@@ -857,12 +993,6 @@
                                                                 @endif
                                                             </div>
                                                         @endforeach
-                                                    </div>
-                                                @endif
-                                                @if($question->explanation)
-                                                    <div class="mt-2 text-sm text-themed-secondary">
-                                                        <strong>Explanation:</strong>
-                                                        <span class="math-content">{!! Str::limit($question->explanation, 80) !!}</span>
                                                     </div>
                                                 @endif
                                                 @if($question->has_question_media)
@@ -936,6 +1066,28 @@
 
                 <div class="p-6">
                     <form wire:submit="updateQuestion">
+                        <!-- Instruction -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-themed-primary mb-2">
+                                Instruction (Optional)
+                                <span class="text-xs text-themed-tertiary">(Use $...$ for inline math and $$...$$ for display math)</span>
+                            </label>
+                            <textarea wire:model="explanation" rows="2"
+                                class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary focus:ring-2 focus:ring-accent-themed-primary"></textarea>
+
+                            <!-- Live Preview -->
+                            <div class="mt-2 p-3 bg-themed-tertiary rounded-lg">
+                                <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
+                                <div id="edit-explanation-preview" class="math-content text-themed-primary min-h-6">
+                                    @if($explanation)
+                                        {!! $explanation !!}
+                                    @else
+                                        <span class="text-themed-tertiary">Preview will appear here</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Question Text -->
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-themed-primary mb-2">
@@ -1065,25 +1217,6 @@
                                 </div>
                             </div>
                         @endif
-
-                        <!-- Explanation -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-themed-primary mb-2">Explanation (Optional)</label>
-                            <textarea wire:model="explanation" rows="2"
-                                class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary focus:ring-2 focus:ring-accent-themed-primary"></textarea>
-
-                            <!-- Live Preview -->
-                            <div class="mt-2 p-3 bg-themed-tertiary rounded-lg">
-                                <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
-                                <div id="edit-explanation-preview" class="math-content text-themed-primary min-h-6">
-                                    @if($explanation)
-                                        {!! $explanation !!}
-                                    @else
-                                        <span class="text-themed-tertiary">Preview will appear here</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
 
                         <!-- Buttons -->
                         <div class="flex justify-end space-x-3 pt-4 border-t border-themed-secondary">

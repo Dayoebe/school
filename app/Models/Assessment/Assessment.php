@@ -516,7 +516,7 @@ class Assessment extends Model
      */
     public function scopeMandatory($query)
     {
-        return $query->where('is_mandatory', true);
+        return $query->where('assessments.is_mandatory', true);
     }
 
     /**
@@ -525,8 +525,8 @@ class Assessment extends Model
      */
     public function scopeStandaloneCBT($query)
     {
-        return $query->where('type', 'quiz')
-            ->whereNull('section_id');
+        return $query->where('assessments.type', 'quiz')
+            ->whereNull('assessments.section_id');
     }
 
     public function scopeForSchool(Builder $query, ?int $schoolId): Builder
@@ -560,9 +560,9 @@ class Assessment extends Model
         $studentRecord = static::resolveStudentRecordForUser($user);
 
         return $query
-            ->where('course_id', $classId)
+            ->where('assessments.course_id', $classId)
             ->where(function (Builder $assessmentQuery) use ($classId, $studentRecord) {
-                $assessmentQuery->whereNull('lesson_id')
+                $assessmentQuery->whereNull('assessments.lesson_id')
                     ->orWhereHas('lesson', function (Builder $lessonQuery) use ($classId, $studentRecord) {
                         $lessonQuery->where(function (Builder $subjectQuery) use ($classId, $studentRecord) {
                             $subjectQuery->where('subjects.my_class_id', $classId)
