@@ -40,7 +40,7 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div class="flex items-center gap-3">
                             <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo"
-                                class="h-12 w-12 rounded-full border border-slate-200 object-cover">
+                                class="h-12 w-12 rounded-full border border-slate-200 bg-white p-1 object-contain">
                             <div>
                                 <p class="text-sm font-black text-slate-900">{{ $schoolName }}</p>
                                 <p class="text-xs font-semibold text-violet-700">{{ $schoolLocation }}</p>

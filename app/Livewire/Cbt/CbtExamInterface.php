@@ -49,8 +49,15 @@ class CbtExamInterface extends Component
 
     public function mount($assessment)
     {
+        $currentUserId = (int) Auth::id();
+
         $this->assessment = $this->assessmentsForCurrentSchool()
-            ->with(['questions', 'studentLocks'])
+            ->with([
+                'questions',
+                'studentLocks',
+                'studentAnswers' => fn ($query) => $query->where('user_id', $currentUserId),
+                'attemptSessions' => fn ($query) => $query->where('user_id', $currentUserId),
+            ])
             ->find($assessment);
 
         if (!$this->assessment || $this->assessment->questions->count() === 0) {
@@ -68,7 +75,7 @@ class CbtExamInterface extends Component
             return redirect()->route('cbt.exams');
         }
 
-        $activeSession = $this->getActiveAttemptSession();
+        $activeSession = $this->assessment->getActiveAttemptSession($currentUserId);
         if ($activeSession) {
             if ($activeSession->isExpired()) {
                 $this->attemptNumber = (int) $activeSession->attempt_number;
@@ -453,6 +460,7 @@ class CbtExamInterface extends Component
         }
     }
 
+    #[Renderless]
     public function nextQuestion(): void
     {
         if ($this->currentQuestionIndex < count($this->questions) - 1) {
@@ -467,6 +475,7 @@ class CbtExamInterface extends Component
         }
     }
 
+    #[Renderless]
     public function previousQuestion(): void
     {
         if ($this->currentQuestionIndex > 0) {
@@ -481,6 +490,7 @@ class CbtExamInterface extends Component
         }
     }
 
+    #[Renderless]
     public function goToQuestion($index): void
     {
         if ($index >= 0 && $index < count($this->questions)) {

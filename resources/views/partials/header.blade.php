@@ -54,7 +54,7 @@
         <div class="flex items-center justify-between py-3">
             <a href="{{ route('home') }}" class="group flex items-center gap-3">
                 <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo"
-                    class="h-10 w-10 rounded-full border border-amber-300 object-cover shadow-sm transition group-hover:scale-105 sm:h-11 sm:w-11">
+                    class="h-10 w-10 rounded-full border border-amber-300 bg-white p-1 object-contain shadow-sm transition group-hover:scale-105 sm:h-11 sm:w-11">
                 <div class="min-w-0">
                     <p class="truncate text-sm font-black leading-tight text-slate-900 sm:text-base">
                         {{ $schoolName }}

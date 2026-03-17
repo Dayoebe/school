@@ -1,8 +1,5 @@
 <div x-data="modernCbtExam()"
-     x-on:cbt-answer-selected="recordAnswer($event.detail.questionId, $event.detail.answer)"
      data-cbt-exam-root
-     data-recovery-package-url="{{ route('cbt.offline.package', ['assessment' => $assessment->id]) }}"
-     data-recovery-launch-url="{{ url('/cbt-recovery.html?assessment=' . $assessment->id) }}"
      class="cbt-interface-solid min-h-[100dvh] bg-stone-50 dark:bg-gray-900"
      :class="{ 'exam-mode': examStarted && !examCompleted }">
 
@@ -27,41 +24,6 @@
             @endif
         </div>
     @endif
-
-    <div
-        x-show="offlineBannerVisible()"
-        x-cloak
-        class="mx-auto w-full max-w-5xl px-4 pt-4"
-    >
-        <div class="rounded-2xl border px-4 py-4 text-sm shadow-sm"
-             :class="offlineBannerClasses()">
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                    <div class="font-semibold" x-text="offlineBannerTitle()"></div>
-                    <div class="mt-1" x-text="offlineBannerMessage()"></div>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        type="button"
-                        x-show="isOnline"
-                        x-on:click="prepareOfflineBackup()"
-                        :disabled="offlineBackupRefreshing"
-                        class="rounded-full bg-white/80 px-4 py-2 font-semibold text-slate-900"
-                    >
-                        <span x-show="!offlineBackupRefreshing">Refresh Saved Copy</span>
-                        <span x-show="offlineBackupRefreshing" x-cloak>Refreshing...</span>
-                    </button>
-                    <a
-                        x-show="offlineBackupReady"
-                        :href="offlineLaunchUrl"
-                        class="rounded-full bg-slate-900 px-4 py-2 font-semibold text-white"
-                    >
-                        Open Saved Copy
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
 
     {{-- Pre-Exam Welcome Screen --}}
     @if(!$examStarted)
@@ -272,7 +234,7 @@
                         <button @click.stop="open = !open" 
                                 class="flex items-center space-x-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-xl hover:bg-white/30 transition-colors">
                             <i class="fas fa-list text-xl"></i>
-                            <span class="font-bold">{{ $currentQuestionIndex + 1 }}/{{ count($questions) }}</span>
+                            <span class="font-bold"><span x-text="currentQuestionNumber()"></span>/{{ count($questions) }}</span>
                             <i class="fas fa-chevron-down text-sm transition-transform" :class="{ 'rotate-180': open }"></i>
                         </button>
 
@@ -323,13 +285,12 @@
                                 <div class="grid grid-cols-6 gap-2">
                                     @foreach($questions as $index => $question)
                                     <button type="button"
-                                            onclick="window.cbtExamCall(this, 'goToQuestion', {{ $index }})"
-                                            x-on:click="open = false"
+                                            x-on:click="goToQuestion({{ $index }}, $el); open = false"
                                             class="relative aspect-square flex items-center justify-center rounded-lg font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             :class="{
-                                                'bg-blue-600 text-white scale-110': {{ $currentQuestionIndex }} === {{ $index }},
-                                                'bg-green-500 text-white hover:bg-green-600': {{ $currentQuestionIndex }} !== {{ $index }} && isQuestionAnswered({{ (int) $question['id'] }}),
-                                                'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': {{ $currentQuestionIndex }} !== {{ $index }} && !isQuestionAnswered({{ (int) $question['id'] }})
+                                                'bg-blue-600 text-white scale-110': currentQuestionIndex === {{ $index }},
+                                                'bg-green-500 text-white hover:bg-green-600': currentQuestionIndex !== {{ $index }} && isQuestionAnswered({{ (int) $question['id'] }}),
+                                                'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': currentQuestionIndex !== {{ $index }} && !isQuestionAnswered({{ (int) $question['id'] }})
                                             }">
                                         {{ $index + 1 }}
                                         <i x-show="isQuestionFlagged({{ (int) $question['id'] }})" x-cloak class="fas fa-flag absolute -top-1 -right-1 text-yellow-500 text-xs"></i>
@@ -347,7 +308,7 @@
                         </div>
                         <div>
                             <div class="text-sm font-medium opacity-90">Question Progress</div>
-                            <div class="text-xl font-bold">{{ $currentQuestionIndex + 1 }} / {{ count($questions) }}</div>
+                            <div class="text-xl font-bold"><span x-text="currentQuestionNumber()"></span> / {{ count($questions) }}</div>
                         </div>
                     </button>
                 </div>
@@ -356,7 +317,7 @@
                 <div class="hidden md:flex flex-1 max-w-md mx-8">
                     <div class="w-full bg-white/20 rounded-full h-3 backdrop-blur-sm overflow-hidden">
                         <div class="bg-white h-full rounded-full transition-all duration-500"
-                             style="width: {{ count($questions) > 0 ? round((($currentQuestionIndex + 1) / count($questions)) * 100, 2) : 0 }}%"></div>
+                             :style="{ width: `${questionNavigationPercentage()}%` }"></div>
                     </div>
                 </div>
 
@@ -371,9 +332,9 @@
                     ])
 
                     <button type="button"
-                        x-on:click="toggleFlag({{ $currentQuestionIndex }}, {{ (int) ($questions[$currentQuestionIndex]['id'] ?? 0) }}, $el)"
+                        x-on:click="toggleCurrentFlag($el)"
                         class="p-2 sm:p-3 rounded-xl transition-all"
-                        :class="isQuestionFlagged({{ (int) ($questions[$currentQuestionIndex]['id'] ?? 0) }}) ? 'bg-yellow-500 text-yellow-900' : 'bg-white/20 hover:bg-white/30'">
+                        :class="isQuestionFlagged(currentQuestionId()) ? 'bg-yellow-500 text-yellow-900' : 'bg-white/20 hover:bg-white/30'">
                         <i class="fas fa-flag"></i>
                     </button>
                 </div>
@@ -383,7 +344,7 @@
             <div class="md:hidden px-4 pb-3">
                 <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
                     <div class="bg-white h-full rounded-full transition-all duration-500"
-                         style="width: {{ count($questions) > 0 ? round((($currentQuestionIndex + 1) / count($questions)) * 100, 2) : 0 }}%"></div>
+                         :style="{ width: `${questionNavigationPercentage()}%` }"></div>
                 </div>
             </div>
         </div>
@@ -435,13 +396,12 @@
                     <div class="grid grid-cols-5 gap-3">
                         @foreach($questions as $index => $question)
                         <button type="button"
-                                onclick="window.cbtExamCall(this, 'goToQuestion', {{ $index }})"
-                                x-on:click="sidebarOpen = false"
+                                x-on:click="goToQuestion({{ $index }}, $el); sidebarOpen = false"
                                 class="relative aspect-square flex items-center justify-center rounded-xl font-bold text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 :class="{
-                                    'bg-blue-600 text-white shadow-lg scale-110': {{ $currentQuestionIndex }} === {{ $index }},
-                                    'bg-green-500 text-white hover:bg-green-600': {{ $currentQuestionIndex }} !== {{ $index }} && isQuestionAnswered({{ (int) $question['id'] }}),
-                                    'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': {{ $currentQuestionIndex }} !== {{ $index }} && !isQuestionAnswered({{ (int) $question['id'] }})
+                                    'bg-blue-600 text-white shadow-lg scale-110': currentQuestionIndex === {{ $index }},
+                                    'bg-green-500 text-white hover:bg-green-600': currentQuestionIndex !== {{ $index }} && isQuestionAnswered({{ (int) $question['id'] }}),
+                                    'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-blue-500': currentQuestionIndex !== {{ $index }} && !isQuestionAnswered({{ (int) $question['id'] }})
                                 }">
                             {{ $index + 1 }}
                             <i x-show="isQuestionFlagged({{ (int) $question['id'] }})" x-cloak class="fas fa-flag absolute -top-1 -right-1 text-yellow-500 text-xs"></i>
@@ -467,15 +427,16 @@
             <div class="flex-1 flex flex-col overflow-hidden min-h-0">
                 {{-- Question Content --}}
                 <div class="flex-1 overflow-y-auto p-4 md:p-8 pb-[calc(env(safe-area-inset-bottom)+10rem)] sm:pb-[calc(env(safe-area-inset-bottom)+11rem)] md:pb-8">
-                    @if($this->getCurrentQuestion())
-                    @php $question = $this->getCurrentQuestion(); @endphp
-                    <div class="max-w-4xl mx-auto">
+                    @if(count($questions) > 0)
+                    @foreach($questions as $index => $question)
+                    <template x-if="currentQuestionIndex === {{ $index }}">
+                    <div class="max-w-4xl mx-auto" wire:key="question-panel-{{ $question['id'] }}">
                         {{-- Question Header --}}
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8 mb-6">
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center space-x-3">
                                     <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg">
-                                        {{ $currentQuestionIndex + 1 }}
+                                        {{ $index + 1 }}
                                     </div>
                                     <div>
                                         <div class="text-sm text-gray-500 dark:text-gray-400">Question Type</div>
@@ -536,24 +497,22 @@
                         </div>
 
                         {{-- Answer Options --}}
-                        <div class="space-y-4 mb-6"
-                             x-data="{ selectedAnswer: @js(isset($answers[$question['id']]) && $answers[$question['id']] !== null ? (string) $answers[$question['id']] : null) }">
+                        <div class="space-y-4 mb-6" wire:key="answer-options-{{ $question['id'] }}">
                             @if(($question['question_type'] ?? '') === 'multiple_choice')
                                 @if(is_array($question['options']) && count($question['options']) > 0)
                                     @foreach($question['options'] as $optionIndex => $option)
                                         @if(trim(strip_tags($option)))
                                         <label class="block cursor-pointer group"
-                                               x-on:click="selectedAnswer = '{{ $optionIndex }}'; $dispatch('cbt-answer-selected', { questionId: {{ $question['id'] }}, answer: '{{ $optionIndex }}' }); $wire.saveAnswer({{ $question['id'] }}, '{{ $optionIndex }}')">
+                                               x-on:click="selectAnswer({{ $question['id'] }}, '{{ $optionIndex }}')">
                                             <input type="radio" 
-                                                   x-model="selectedAnswer"
+                                                   :checked="getAnswer({{ $question['id'] }}) === '{{ $optionIndex }}'"
                                                    name="question_{{ $question['id'] }}" 
                                                    value="{{ $optionIndex }}"
-                                                   class="hidden"
-                                                   {{ isset($answers[$question['id']]) && $answers[$question['id']] == $optionIndex ? 'checked' : '' }}>
+                                                   class="hidden">
                                             
                                             <div class="bg-white dark:bg-gray-800 border-2 rounded-2xl p-5 transition-all duration-200 border-gray-200 dark:border-gray-700 group-hover:border-blue-300"
                                                  :class="{ 
-                                                     'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg': selectedAnswer == '{{ $optionIndex }}'
+                                                     'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg': getAnswer({{ $question['id'] }}) === '{{ $optionIndex }}'
                                                  }">
                                                 <div class="flex items-start">
                                                     <div class="flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold mr-4 shadow-lg">
@@ -567,11 +526,11 @@
                                                     <div class="flex-shrink-0 ml-4">
                                                         <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
                                                              :class="{
-                                                                 'border-blue-500 bg-blue-500': selectedAnswer == '{{ $optionIndex }}',
-                                                                 'border-gray-300 dark:border-gray-600': selectedAnswer != '{{ $optionIndex }}'
+                                                                 'border-blue-500 bg-blue-500': getAnswer({{ $question['id'] }}) === '{{ $optionIndex }}',
+                                                                 'border-gray-300 dark:border-gray-600': getAnswer({{ $question['id'] }}) !== '{{ $optionIndex }}'
                                                              }">
                                                             <i class="fas fa-check text-white text-xs transition-opacity"
-                                                               :class="{ 'opacity-100': selectedAnswer == '{{ $optionIndex }}', 'opacity-0': selectedAnswer != '{{ $optionIndex }}' }"></i>
+                                                               :class="{ 'opacity-100': getAnswer({{ $question['id'] }}) === '{{ $optionIndex }}', 'opacity-0': getAnswer({{ $question['id'] }}) !== '{{ $optionIndex }}' }"></i>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -583,17 +542,16 @@
 
                             @elseif(($question['question_type'] ?? '') === 'true_false')
                                 <label class="block cursor-pointer group"
-                                       x-on:click="selectedAnswer = '0'; $dispatch('cbt-answer-selected', { questionId: {{ $question['id'] }}, answer: '0' }); $wire.saveAnswer({{ $question['id'] }}, '0')">
+                                       x-on:click="selectAnswer({{ $question['id'] }}, '0')">
                                     <input type="radio" 
-                                           x-model="selectedAnswer"
+                                           :checked="getAnswer({{ $question['id'] }}) === '0'"
                                            name="question_{{ $question['id'] }}" 
                                            value="0"
-                                           class="hidden"
-                                           {{ isset($answers[$question['id']]) && $answers[$question['id']] == 0 ? 'checked' : '' }}>
+                                           class="hidden">
                                     
                                     <div class="bg-white dark:bg-gray-800 border-2 rounded-2xl p-6 transition-all duration-200 border-gray-200 dark:border-gray-700 group-hover:border-green-300"
                                          :class="{
-                                             'border-green-500 bg-green-50 dark:bg-green-900/20 shadow-lg': selectedAnswer == '0'
+                                             'border-green-500 bg-green-50 dark:bg-green-900/20 shadow-lg': getAnswer({{ $question['id'] }}) === '0'
                                          }">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-4">
@@ -604,28 +562,27 @@
                                             </div>
                                             <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
                                                  :class="{
-                                                     'border-green-500 bg-green-500': selectedAnswer == '0',
-                                                     'border-gray-300 dark:border-gray-600': selectedAnswer != '0'
+                                                     'border-green-500 bg-green-500': getAnswer({{ $question['id'] }}) === '0',
+                                                     'border-gray-300 dark:border-gray-600': getAnswer({{ $question['id'] }}) !== '0'
                                                  }">
                                                 <i class="fas fa-check text-white text-xs transition-opacity"
-                                                   :class="{ 'opacity-100': selectedAnswer == '0', 'opacity-0': selectedAnswer != '0' }"></i>
+                                                   :class="{ 'opacity-100': getAnswer({{ $question['id'] }}) === '0', 'opacity-0': getAnswer({{ $question['id'] }}) !== '0' }"></i>
                                             </div>
                                         </div>
                                     </div>
                                 </label>
 
                                 <label class="block cursor-pointer group"
-                                       x-on:click="selectedAnswer = '1'; $dispatch('cbt-answer-selected', { questionId: {{ $question['id'] }}, answer: '1' }); $wire.saveAnswer({{ $question['id'] }}, '1')">
+                                       x-on:click="selectAnswer({{ $question['id'] }}, '1')">
                                     <input type="radio" 
-                                           x-model="selectedAnswer"
+                                           :checked="getAnswer({{ $question['id'] }}) === '1'"
                                            name="question_{{ $question['id'] }}" 
                                            value="1"
-                                           class="hidden"
-                                           {{ isset($answers[$question['id']]) && $answers[$question['id']] == 1 ? 'checked' : '' }}>
+                                           class="hidden">
                                     
                                     <div class="bg-white dark:bg-gray-800 border-2 rounded-2xl p-6 transition-all duration-200 border-gray-200 dark:border-gray-700 group-hover:border-red-300"
                                          :class="{
-                                             'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-lg': selectedAnswer == '1'
+                                             'border-red-500 bg-red-50 dark:bg-red-900/20 shadow-lg': getAnswer({{ $question['id'] }}) === '1'
                                          }">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-4">
@@ -636,11 +593,11 @@
                                             </div>
                                             <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"
                                                  :class="{
-                                                     'border-red-500 bg-red-500': selectedAnswer == '1',
-                                                     'border-gray-300 dark:border-gray-600': selectedAnswer != '1'
+                                                     'border-red-500 bg-red-500': getAnswer({{ $question['id'] }}) === '1',
+                                                     'border-gray-300 dark:border-gray-600': getAnswer({{ $question['id'] }}) !== '1'
                                                  }">
                                                 <i class="fas fa-check text-white text-xs transition-opacity"
-                                                   :class="{ 'opacity-100': selectedAnswer == '1', 'opacity-0': selectedAnswer != '1' }"></i>
+                                                   :class="{ 'opacity-100': getAnswer({{ $question['id'] }}) === '1', 'opacity-0': getAnswer({{ $question['id'] }}) !== '1' }"></i>
                                             </div>
                                         </div>
                                     </div>
@@ -648,6 +605,8 @@
                             @endif
                         </div>
                     </div>
+                    </template>
+                    @endforeach
                     @endif
                 </div>
 
@@ -675,9 +634,9 @@
                         {{-- Navigation Buttons --}}
                         <div class="flex items-center justify-between gap-3">
                             <button type="button"
-                                    onclick="window.cbtExamCall(this, 'previousQuestion')"
+                                    x-on:click="goToPreviousQuestion($el)"
                                     class="flex items-center space-x-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-semibold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-1 justify-center"
-                                    {{ !$this->canGoPrevious() ? 'disabled' : '' }}>
+                                    :disabled="currentQuestionIndex === 0">
                                 <i class="fas fa-arrow-left"></i>
                                 <span class="hidden sm:inline">Previous</span>
                             </button>
@@ -685,25 +644,26 @@
                             <div class="flex-1 text-center min-w-0 px-2">
                                 <div class="text-xs text-gray-500 dark:text-gray-400">Progress</div>
                                 <div class="text-lg font-bold text-gray-800 dark:text-white whitespace-nowrap">
-                                    {{ round($this->getProgressPercentage(), 1) }}%
+                                    <span x-text="questionNavigationPercentage().toFixed(1)"></span>%
                                 </div>
                             </div>
 
-                            @if($this->isLastQuestion())
                             <button type="button"
+                                    x-show="isLastQuestion()"
+                                    x-cloak
                                     x-on:click="openSubmitModal()"
                                     class="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl font-bold hover:from-green-700 hover:to-emerald-700 transition-all shadow-lg flex-1 justify-center">
                                 <i class="fas fa-paper-plane"></i>
                                 <span class="hidden sm:inline">Submit</span>
                             </button>
-                            @else
                             <button type="button"
-                                    onclick="window.cbtExamCall(this, 'nextQuestion')"
+                                    x-show="!isLastQuestion()"
+                                    x-cloak
+                                    x-on:click="goToNextQuestion($el)"
                                     class="flex items-center space-x-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg flex-1 justify-center">
                                 <span class="hidden sm:inline">Next</span>
                                 <i class="fas fa-arrow-right"></i>
                             </button>
-                            @endif
                         </div>
                     </div>
                 </div>
@@ -846,6 +806,13 @@ function registerCbtExamAlpineComponents() {
                 }
             });
 
+            window.addEventListener('cbt-question-index-sync', (event) => {
+                const nextIndex = Number(event?.detail?.index);
+                if (!Number.isNaN(nextIndex)) {
+                    this.currentQuestionIndex = nextIndex;
+                }
+            });
+
             window.addEventListener('cbt-timer-stop', () => {
                 this.stopInternalTimer();
             });
@@ -982,8 +949,7 @@ function registerCbtExamAlpineComponents() {
         timeRemaining: @js($timeRemaining ?? 0),
         timerInterval: null,
         heartbeatInterval: null,
-        offlineRefreshInterval: null,
-        offlineBackupDebounce: null,
+        navigationRequest: Promise.resolve(),
         heartbeatInFlight: false,
         livewireListenersRegistered: false,
         startExamFeedbackTimeout: null,
@@ -997,33 +963,22 @@ function registerCbtExamAlpineComponents() {
         examStarted: @js($examStarted ?? false),
         examCompleted: @js($examCompleted ?? false),
         questionCount: @js(count($questions ?? [])),
+        currentQuestionIndex: @js((int) ($currentQuestionIndex ?? 0)),
+        questionIds: @js(collect($questions ?? [])->pluck('id')->map(fn ($id) => (int) $id)->values()->all()),
         answerSnapshot: @js($answers ?? []),
         flaggedSnapshot: @js(array_values(array_map('intval', $flaggedQuestions ?? []))),
-        isOnline: navigator.onLine,
-        offlineBackupReady: false,
-        offlineBackupRefreshing: false,
-        offlineBackupMessage: '',
-        offlinePackageUrl: '',
-        offlineLaunchUrl: '',
         mathJaxReady: false,
         mathJaxQueue: [],
         mathJaxTimeout: null,
 
         init() {
-            const root = document.querySelector('[data-cbt-exam-root]');
-
-            this.offlinePackageUrl = root?.dataset?.recoveryPackageUrl || '';
-            this.offlineLaunchUrl = root?.dataset?.recoveryLaunchUrl || '';
             this.answerSnapshot = this.normalizeAnswerSnapshot(this.answerSnapshot);
             this.flaggedSnapshot = this.normalizeFlaggedSnapshot(this.flaggedSnapshot);
-            this.loadOfflineBackupState();
+            this.currentQuestionIndex = this.normalizeQuestionIndex(this.currentQuestionIndex);
             this.initializeMathJax();
             this.setupEventListeners();
             this.setupSecurityListeners();
-
-            if (this.isOnline) {
-                this.prepareOfflineBackup(true);
-            }
+            this.broadcastQuestionIndexSync();
 
             if (this.isExamActive()) {
                 this.startTimer();
@@ -1094,6 +1049,17 @@ function registerCbtExamAlpineComponents() {
                         this.flaggedSnapshot = this.normalizeFlaggedSnapshot(value);
                     });
 
+                    this.$wire.$watch('currentQuestionIndex', (value) => {
+                        const nextIndex = this.normalizeQuestionIndex(value);
+
+                        if (nextIndex === this.currentQuestionIndex) {
+                            return;
+                        }
+
+                        this.currentQuestionIndex = nextIndex;
+                        this.afterQuestionNavigation(false);
+                    });
+
                     this.$wire.$watch('examStarted', (value) => {
                         if (value) {
                             this.applyExamStartedState();
@@ -1115,12 +1081,14 @@ function registerCbtExamAlpineComponents() {
                     this.applyExamCompletedState();
                 });
 
-                Livewire.on('questionChanged', () => {
-                    this.scheduleOfflineBackupRefresh();
-                    clearTimeout(this.mathJaxTimeout);
-                    this.mathJaxTimeout = setTimeout(() => {
-                        this.renderMath();
-                    }, 100);
+                Livewire.on('questionChanged', ({ currentIndex }) => {
+                    const nextIndex = this.normalizeQuestionIndex(currentIndex);
+
+                    if (nextIndex !== this.currentQuestionIndex) {
+                        this.currentQuestionIndex = nextIndex;
+                    }
+
+                    this.afterQuestionNavigation(false);
                 });
 
                 Livewire.on('securityViolation', ({ type, count }) => {
@@ -1144,7 +1112,6 @@ function registerCbtExamAlpineComponents() {
                 });
 
                 Livewire.hook('morph.updated', () => {
-                    this.scheduleOfflineBackupRefresh();
                     clearTimeout(this.mathJaxTimeout);
                     this.mathJaxTimeout = setTimeout(() => {
                         this.renderMath();
@@ -1171,7 +1138,7 @@ function registerCbtExamAlpineComponents() {
                                 preventDefault();
                             }
 
-                            this.offlineBackupMessage = failureMessage;
+                            console.warn(failureMessage);
                             return;
                         }
 
@@ -1293,7 +1260,8 @@ function registerCbtExamAlpineComponents() {
             this.updateStartExamFeedback('success', 'Exam started successfully. Timer is now running.');
             this.examStarted = true;
             this.examCompleted = false;
-            this.prepareOfflineBackup(true);
+            this.currentQuestionIndex = this.normalizeQuestionIndex(this.currentQuestionIndex);
+            this.broadcastQuestionIndexSync();
             this.startTimer();
             this.syncWithServer(true);
         },
@@ -1425,19 +1393,11 @@ function registerCbtExamAlpineComponents() {
                 return 'The server returned an internal error while processing this exam action.';
             }
 
-            if (!this.isOnline && this.offlineBackupReady) {
-                return 'Connection lost. Your latest saved copy is ready on this device.';
-            }
-
-            if (!this.isOnline) {
-                return 'Connection lost. Keep this page open and reconnect so syncing can resume.';
-            }
-
             if (typeof content === 'string' && content.trim() !== '') {
                 return `Exam action failed: ${content.slice(0, 180)}`;
             }
 
-            return 'We could not reach the server for this exam action. Keep this tab open and continue from the saved copy if the page stops responding.';
+            return 'We could not reach the server for this exam action.';
         },
 
         setupSecurityListeners() {
@@ -1481,21 +1441,6 @@ function registerCbtExamAlpineComponents() {
                     this.$wire.call('handleSecurityViolation', 'refresh_attempt', 'keyboard_shortcut');
                 }
             });
-
-            window.addEventListener('online', () => {
-                this.isOnline = true;
-                this.offlineBackupMessage = 'Connection restored. Sync resumed.';
-                this.prepareOfflineBackup(true);
-                window.setTimeout(() => {
-                    if (this.isOnline && this.offlineBackupMessage === 'Connection restored. Sync resumed.') {
-                        this.offlineBackupMessage = '';
-                    }
-                }, 4000);
-            });
-
-            window.addEventListener('offline', () => {
-                this.isOnline = false;
-            });
         },
 
         isExamActive() {
@@ -1525,9 +1470,6 @@ function registerCbtExamAlpineComponents() {
                 this.syncWithServer();
             }, 15000);
 
-            this.offlineRefreshInterval = setInterval(() => {
-                this.prepareOfflineBackup(true);
-            }, 20000);
         },
 
         stopTimer() {
@@ -1539,11 +1481,6 @@ function registerCbtExamAlpineComponents() {
             if (this.heartbeatInterval) {
                 clearInterval(this.heartbeatInterval);
                 this.heartbeatInterval = null;
-            }
-
-            if (this.offlineRefreshInterval) {
-                clearInterval(this.offlineRefreshInterval);
-                this.offlineRefreshInterval = null;
             }
 
             window.dispatchEvent(new CustomEvent('cbt-timer-stop'));
@@ -1567,7 +1504,8 @@ function registerCbtExamAlpineComponents() {
                 }
 
                 if (payload?.reload) {
-                    window.location.reload();
+                    this.stopTimer();
+                    console.warn('The live exam session could not be confirmed.');
                     return;
                 }
 
@@ -1582,13 +1520,6 @@ function registerCbtExamAlpineComponents() {
                 }
             } catch (error) {
                 console.error('Timer sync failed', error);
-                if (!this.isOnline) {
-                    this.offlineBackupMessage = this.offlineBackupReady
-                        ? 'Connection lost. Your latest saved copy is ready on this device.'
-                        : 'Connection lost. Keep this page open and reconnect so syncing can resume.';
-                } else {
-                    this.offlineBackupMessage = 'We could not reach the server. Keep this page open while the connection stabilizes.';
-                }
             } finally {
                 this.heartbeatInFlight = false;
             }
@@ -1611,6 +1542,109 @@ function registerCbtExamAlpineComponents() {
                 return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
             }
             return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        },
+
+        normalizeQuestionIndex(index) {
+            const parsedIndex = Number(index);
+            const safeIndex = Number.isNaN(parsedIndex) ? 0 : Math.trunc(parsedIndex);
+            const maxIndex = Math.max(0, this.questionCount - 1);
+
+            return Math.min(Math.max(0, safeIndex), maxIndex);
+        },
+
+        currentQuestionNumber() {
+            return this.questionCount === 0 ? 0 : this.currentQuestionIndex + 1;
+        },
+
+        questionNavigationPercentage() {
+            if (this.questionCount === 0) {
+                return 0;
+            }
+
+            return Number((((this.currentQuestionIndex + 1) / this.questionCount) * 100).toFixed(2));
+        },
+
+        isLastQuestion() {
+            return this.questionCount > 0 && this.currentQuestionIndex === this.questionCount - 1;
+        },
+
+        currentQuestionId() {
+            return this.questionIds[this.currentQuestionIndex] ?? null;
+        },
+
+        getAnswer(questionId) {
+            const normalizedQuestionId = String(questionId);
+            return this.answerSnapshot[normalizedQuestionId] ?? null;
+        },
+
+        selectAnswer(questionId, answer) {
+            this.recordAnswer(questionId, answer);
+
+            if (this.$wire && typeof this.$wire.call === 'function') {
+                this.$wire.call('saveAnswer', questionId, answer);
+            }
+        },
+
+        afterQuestionNavigation() {
+            this.broadcastQuestionIndexSync();
+
+            clearTimeout(this.mathJaxTimeout);
+            this.mathJaxTimeout = setTimeout(() => {
+                this.renderMath();
+            }, 100);
+        },
+
+        goToQuestion(index, element = null) {
+            const nextIndex = this.normalizeQuestionIndex(index);
+
+            if (nextIndex === this.currentQuestionIndex) {
+                return;
+            }
+
+            const previousIndex = this.currentQuestionIndex;
+            this.currentQuestionIndex = nextIndex;
+            this.afterQuestionNavigation();
+
+            this.navigationRequest = Promise.resolve(this.navigationRequest)
+                .catch(() => {})
+                .then(() => window.cbtExamCall(element || this.$root, 'goToQuestion', nextIndex));
+
+            if (this.navigationRequest && typeof this.navigationRequest.catch === 'function') {
+                this.navigationRequest.catch(() => {
+                    if (this.currentQuestionIndex !== nextIndex) {
+                        return;
+                    }
+
+                    this.currentQuestionIndex = previousIndex;
+                    this.afterQuestionNavigation(false);
+                });
+            }
+        },
+
+        goToNextQuestion(element = null) {
+            this.goToQuestion(this.currentQuestionIndex + 1, element);
+        },
+
+        goToPreviousQuestion(element = null) {
+            this.goToQuestion(this.currentQuestionIndex - 1, element);
+        },
+
+        toggleCurrentFlag(element = null) {
+            const questionId = this.currentQuestionId();
+
+            if (questionId === null) {
+                return;
+            }
+
+            this.toggleFlag(this.currentQuestionIndex, questionId, element);
+        },
+
+        broadcastQuestionIndexSync() {
+            window.dispatchEvent(new CustomEvent('cbt-question-index-sync', {
+                detail: {
+                    index: this.currentQuestionIndex,
+                },
+            }));
         },
 
         normalizeAnswerSnapshot(snapshot) {
@@ -1649,6 +1683,10 @@ function registerCbtExamAlpineComponents() {
         },
 
         isQuestionFlagged(questionId) {
+            if (questionId === null || questionId === '' || typeof questionId === 'undefined') {
+                return false;
+            }
+
             const normalizedQuestionId = Number(questionId);
 
             if (Number.isNaN(normalizedQuestionId)) {
@@ -1703,134 +1741,6 @@ function registerCbtExamAlpineComponents() {
 
         toggleSidebar() {
             this.sidebarOpen = !this.sidebarOpen;
-        },
-
-        offlinePackageKey(assessmentId) {
-            return `elites:cbt:offline-package:v1:${assessmentId}`;
-        },
-
-        loadOfflineBackupState() {
-            const root = document.querySelector('[data-cbt-exam-root]');
-            const packageUrl = root?.dataset?.recoveryPackageUrl || '';
-            const assessmentId = packageUrl.split('/').pop();
-
-            if (!assessmentId) {
-                return;
-            }
-
-            try {
-                this.offlineBackupReady = window.localStorage.getItem(this.offlinePackageKey(assessmentId)) !== null;
-            } catch (error) {
-                this.offlineBackupReady = false;
-            }
-        },
-
-        scheduleOfflineBackupRefresh() {
-            if (!this.isOnline) {
-                return;
-            }
-
-            clearTimeout(this.offlineBackupDebounce);
-            this.offlineBackupDebounce = setTimeout(() => {
-                this.prepareOfflineBackup(true);
-            }, 700);
-        },
-
-        async prepareOfflineBackup(silent = false) {
-            if (!this.isOnline || !this.offlinePackageUrl || this.offlineBackupRefreshing) {
-                return;
-            }
-
-            this.offlineBackupRefreshing = true;
-
-            try {
-                const response = await fetch(this.offlinePackageUrl, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    credentials: 'same-origin',
-                });
-
-                const payload = await response.json().catch(() => ({}));
-
-                if (!response.ok) {
-                    throw new Error(payload.message || 'Could not refresh the saved copy.');
-                }
-
-                window.localStorage.setItem(this.offlinePackageKey(payload.assessment.id), JSON.stringify(payload));
-                this.offlineBackupReady = true;
-
-                if (!silent) {
-                    this.offlineBackupMessage = 'Saved copy updated on this device.';
-                }
-            } catch (error) {
-                if (!silent) {
-                    this.offlineBackupMessage = error.message || 'Could not refresh the saved copy.';
-                }
-            } finally {
-                this.offlineBackupRefreshing = false;
-            }
-        },
-
-        offlineBannerVisible() {
-            return this.offlineBackupRefreshing || this.offlineBackupMessage !== '' || !this.isOnline;
-        },
-
-        offlineBannerTitle() {
-            if (!this.isOnline && this.offlineBackupReady) {
-                return 'Connection lost';
-            }
-
-            if (!this.isOnline) {
-                return 'Connection lost';
-            }
-
-            if (this.offlineBackupRefreshing) {
-                return 'Refreshing saved copy';
-            }
-
-            if (this.offlineBackupReady) {
-                return 'Saved copy ready';
-            }
-
-            return 'Connection status';
-        },
-
-        offlineBannerMessage() {
-            if (this.offlineBackupMessage !== '') {
-                return this.offlineBackupMessage;
-            }
-
-            if (!this.isOnline && this.offlineBackupReady) {
-                return 'Your latest exam copy is saved on this device. Keep this tab open if it still responds. If actions stop responding, open the saved copy and continue.';
-            }
-
-            if (!this.isOnline) {
-                return 'This exam needs the server for normal sync. Reconnect and keep this page open so your work can continue syncing.';
-            }
-
-            if (this.offlineBackupReady) {
-                return 'A saved copy of this exam is ready on this device.';
-            }
-
-            return 'Preparing a saved copy for this exam.';
-        },
-
-        offlineBannerClasses() {
-            if (!this.isOnline && this.offlineBackupReady) {
-                return 'border-amber-200 bg-amber-50 text-amber-950';
-            }
-
-            if (!this.isOnline) {
-                return 'border-red-200 bg-red-50 text-red-900';
-            }
-
-            if (this.offlineBackupReady) {
-                return 'border-emerald-200 bg-emerald-50 text-emerald-900';
-            }
-
-            return 'border-blue-200 bg-blue-50 text-blue-900';
         },
 
         renderMath() {

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 
 class PwaController extends Controller
@@ -70,5 +71,18 @@ class PwaController extends Controller
             ->json($manifest)
             ->header('Content-Type', 'application/manifest+json')
             ->header('Cache-Control', 'no-store, max-age=0');
+    }
+
+    public function serviceWorker(): Response
+    {
+        $path = public_path('service-worker.js');
+
+        abort_unless(is_file($path), 404);
+
+        return response(file_get_contents($path), 200, [
+            'Content-Type' => 'application/javascript; charset=UTF-8',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+            'Service-Worker-Allowed' => '/',
+        ]);
     }
 }

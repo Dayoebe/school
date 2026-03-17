@@ -4,7 +4,7 @@
         class="w-4/6 md:w-3/6 lg:w-full bg-gray-800 dark:bg-gray-900 shadow-md shadow-black border-x border-black overflow-scroll beautify-scrollbar">
         <a href="{{ route('home') }}" class="flex lg:hidden items-center justify-center border-b border-gray-200 p-4">
             <img src="{{ asset(auth()->user()->school->logoURL ?? config('app.logo')) }}" alt="School Logo"
-                class="rounded-full w-14 h-14 border border-gray-200 shadow-md">
+                class="rounded-full w-14 h-14 border border-gray-200 bg-white p-1 object-contain shadow-md">
             <h1 class="text-lg font-semibold mx-3 text-center capitalize">{{ config('app.name') }}</h1>
         </a>
 

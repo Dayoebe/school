@@ -74,7 +74,8 @@
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
                                     @if($school->logo_path)
-                                        <img src="{{ $school->logo_url }}" alt="{{ $school->name }}" class="w-10 h-10 rounded-full mr-3">
+                                        <img src="{{ $school->logo_url }}" alt="{{ $school->name }}"
+                                            class="w-10 h-10 rounded-full mr-3 border border-gray-200 bg-white p-1 object-contain">
                                     @else
                                         <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
                                             <i class="fas fa-school text-blue-600"></i>

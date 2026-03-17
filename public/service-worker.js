@@ -6,8 +6,6 @@ const OFFLINE_URL = './offline.html';
 const MANIFEST_URL = './build/manifest.json';
 const CORE_ASSETS = [
   OFFLINE_URL,
-  './cbt-recovery.html',
-  './offline-cbt.html',
   './',
   './icons/pwa-192x192.png',
   './icons/pwa-512x512.png',

@@ -10,7 +10,7 @@
             <img
                 src="{{ asset(config('app.logo')) }}"
                 alt="{{ config('app.name') }}"
-                class="rounded-full w-20 h-20 border border-gray-200 shadow-sm mx-auto mb-4"
+                class="rounded-full w-20 h-20 border border-gray-200 bg-white p-1 object-contain shadow-sm mx-auto mb-4"
             >
 
             @isset($header)

@@ -4,8 +4,8 @@
         <div class="px-6 py-8">
             <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
                 @if($school->logo_path)
-                    <img src="{{ $school->logo_url }}" alt="{{ $school->name }}" 
-                         class="w-32 h-32 rounded-full border-4 border-white shadow-lg object-cover">
+                    <img src="{{ $school->logo_url }}" alt="{{ $school->name }}"
+                         class="w-32 h-32 rounded-full border-4 border-white bg-white p-2 shadow-lg object-contain">
                 @else
                     <div class="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-white flex items-center justify-center">
                         <i class="fas fa-school text-5xl text-blue-600"></i>

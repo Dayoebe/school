@@ -62,7 +62,7 @@
             <div>
                 <div class="flex items-center gap-3">
                     <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo"
-                        class="h-11 w-11 rounded-full border border-white/20 object-cover">
+                        class="h-11 w-11 rounded-full border border-white/20 bg-white p-1 object-contain">
                     <div>
                         <p class="text-sm font-black text-white">{{ $schoolName }}</p>
                         <p class="text-xs text-rose-300">{{ $schoolLocation }}</p>

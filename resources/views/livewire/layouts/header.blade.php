@@ -6,7 +6,7 @@
         </button>
         <a href="{{ route('home') }}" class="hidden md:flex items-center justify-center" aria-label="Home">
             <img src="{{ asset(auth()->user()->school->logoURL ?? config('app.logo')) }}" alt="School Logo"
-                class="rounded-full w-12 h-12 border border-gray-200 shadow-lg">
+                class="rounded-full w-12 h-12 border border-gray-200 bg-white p-1 object-contain shadow-lg">
             <h1 class="text-lg font-semibold mx-3 text-center capitalize">{{ config('app.name') }}</h1>
         </a>
     </div>

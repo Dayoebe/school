@@ -174,10 +174,10 @@
                                 logo...</div>
                             @if ($themeLogoFile)
                                 <img src="{{ $themeLogoFile->temporaryUrl() }}" alt="Logo preview"
-                                    class="mt-2 h-12 w-12 rounded-full border border-slate-200 object-cover" />
+                                    class="mt-2 h-12 w-12 rounded-full border border-slate-200 bg-white p-1 object-contain" />
                             @elseif (!empty($form['theme_logo_url']))
                                 <img src="{{ $form['theme_logo_url'] }}" alt="Current logo"
-                                    class="mt-2 h-12 w-12 rounded-full border border-slate-200 object-cover" />
+                                    class="mt-2 h-12 w-12 rounded-full border border-slate-200 bg-white p-1 object-contain" />
                             @endif
                         </div>
                         <div>

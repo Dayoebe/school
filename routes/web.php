@@ -46,7 +46,6 @@ use App\Http\Controllers\{
     AuthController,
     DashboardController,
     DatabaseBackupController,
-    CbtOfflineController,
     CbtResultController,
     ProfileController,
     FeeInvoiceController,
@@ -92,6 +91,7 @@ $adminMiddleware = [
 */
 
 Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
+Route::get('/service-worker.js', [PwaController::class, 'serviceWorker'])->name('pwa.service-worker');
 Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
 
@@ -342,13 +342,6 @@ Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Midd
     Route::get('/manage', CbtManagement::class)
         ->middleware('permission:manage cbt')
         ->name('manage');
-
-    Route::get('/offline/packages/{assessment}', [CbtOfflineController::class, 'package'])
-        ->middleware('permission:take cbt exam')
-        ->name('offline.package');
-    Route::post('/offline/sync', [CbtOfflineController::class, 'sync'])
-        ->middleware('permission:take cbt exam')
-        ->name('offline.sync');
 
     Route::get('/results/{assessment}/students/{student}/attempts/{attemptNumber}/print', [CbtResultController::class, 'print'])
         ->middleware('permission:manage cbt')

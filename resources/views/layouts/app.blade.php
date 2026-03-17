@@ -219,7 +219,7 @@
             .logo-wrapper { display: table-cell; vertical-align: middle; width: 5%; }
             .site-identity { display: table-cell; width: 95%; }
             .site-identity * { text-align: center; }
-            .logo { width: 100px; height: 100px; border-radius: 50px; }
+            .logo { width: 100px; height: 100px; border-radius: 50px; background: white; object-fit: contain; padding: 6px; }
             p { padding: 0.45rem; }
             h1, h2, h3, h4, h5, h6 { text-align: center; }
             h1 { font-size: 2rem; }
