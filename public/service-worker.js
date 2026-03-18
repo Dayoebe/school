@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'elites-pwa-v4';
+const CACHE_VERSION = 'elites-pwa-v5';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const PAGE_CACHE = `${CACHE_VERSION}-pages`;
 const ASSET_CACHE = `${CACHE_VERSION}-assets`;
@@ -82,7 +82,22 @@ async function installCoreAssets() {
   const assetsToCache = [...new Set([...CORE_ASSETS, ...manifestAssets])];
   const cache = await caches.open(CORE_CACHE);
 
-  await cache.addAll(assetsToCache);
+  await Promise.allSettled(
+    assetsToCache.map(async (asset) => {
+      try {
+        const request = new Request(asset, { cache: 'reload' });
+        const response = await fetch(request);
+
+        if (!response || !response.ok) {
+          throw new Error(`Unexpected response: ${response ? response.status : 'no response'}`);
+        }
+
+        await cache.put(request, response.clone());
+      } catch (error) {
+        console.warn('[service-worker] Failed to precache asset:', asset, error);
+      }
+    })
+  );
 }
 
 async function cleanupOldCaches() {

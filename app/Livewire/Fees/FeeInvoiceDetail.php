@@ -6,6 +6,7 @@ use App\Models\FeeInvoice;
 use App\Models\Fee;
 use App\Models\FeeCategory;
 use App\Models\FeeInvoiceRecord;
+use App\Traits\ResolvesAccessibleStudents;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 use Brick\Money\Money;
@@ -14,6 +15,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 class FeeInvoiceDetail extends Component
 {
     use AuthorizesRequests;
+    use ResolvesAccessibleStudents;
 
     public FeeInvoice $feeInvoice;
     public $activeTab = 'details';
@@ -40,9 +42,21 @@ class FeeInvoiceDetail extends Component
 
     public function mount($feeInvoiceId)
     {
-        $this->feeInvoice = FeeInvoice::whereHas('user', function ($query) {
+        $query = FeeInvoice::whereHas('user', function ($query) {
             $query->where('school_id', auth()->user()->school_id);
-        })->with([
+        });
+
+        if ($this->isRestrictedStudentPortalViewer()) {
+            $studentUserIds = $this->portalAccessibleStudentUserIds();
+
+            if ($studentUserIds->isEmpty()) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('user_id', $studentUserIds);
+            }
+        }
+
+        $this->feeInvoice = $query->with([
             'user.studentRecord.myClass',
             'user.studentRecord.section',
             'feeInvoiceRecords.fee'
@@ -58,7 +72,10 @@ class FeeInvoiceDetail extends Component
 
     public function loadFeeCategories()
     {
-        $this->feeCategories = FeeCategory::query()->get();
+        $this->feeCategories = FeeCategory::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->orderBy('name')
+            ->get();
         
         if ($this->feeCategories->isNotEmpty() && !$this->selectedFeeCategory) {
             $this->selectedFeeCategory = $this->feeCategories->first()->id;
@@ -253,6 +270,7 @@ class FeeInvoiceDetail extends Component
         }
 
         return FeeCategory::query()
+            ->where('school_id', auth()->user()->school_id)
             ->find($feeCategoryId);
     }
 

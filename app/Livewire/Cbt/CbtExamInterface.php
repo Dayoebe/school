@@ -54,7 +54,7 @@ class CbtExamInterface extends Component
         $this->assessment = $this->assessmentsForCurrentSchool()
             ->with([
                 'questions',
-                'studentLocks',
+                'studentLocks' => fn ($query) => $query->where('user_id', $currentUserId),
                 'studentAnswers' => fn ($query) => $query->where('user_id', $currentUserId),
                 'attemptSessions' => fn ($query) => $query->where('user_id', $currentUserId),
             ])
@@ -201,14 +201,16 @@ class CbtExamInterface extends Component
 
     public function startExam(): void
     {
-        if ($this->isCurrentStudentLocked(true)) {
+        $this->refreshAssessmentState();
+
+        if ($this->isCurrentStudentLocked()) {
             $message = $this->currentStudentLockMessage();
             $this->dispatch('exam-start-feedback', state: 'warning', message: $message);
             session()->flash('warning', $message);
             return;
         }
 
-        if (!$this->isAssessmentPublished(true)) {
+        if (!$this->isAssessmentPublished()) {
             $message = $this->unpublishedAssessmentMessage();
             $this->dispatch('exam-start-feedback', state: 'warning', message: $message);
             session()->flash('warning', $message);
@@ -285,7 +287,9 @@ class CbtExamInterface extends Component
             ];
         }
 
-        if ($this->isCurrentStudentLocked(true)) {
+        $this->refreshAssessmentState(['studentLocks']);
+
+        if ($this->isCurrentStudentLocked()) {
             session()->flash('warning', $this->currentStudentLockMessage());
             $this->skipRender();
 
@@ -296,7 +300,7 @@ class CbtExamInterface extends Component
             ];
         }
 
-        if (!$this->isAssessmentPublished(true)) {
+        if (!$this->isAssessmentPublished()) {
             session()->flash('warning', $this->unpublishedAssessmentMessage());
             $this->skipRender();
 
@@ -381,9 +385,12 @@ class CbtExamInterface extends Component
                         'user_original_answer' => $userOriginalAnswer,
                         'display_to_original_map' => $qData['display_to_original_map'],
                         'original_correct_answers' => $qData['original_correct_answers'],
+                        'question_type' => $qData['question_type'] ?? null,
+                        'question_points' => (float) ($qData['points'] ?? 0),
                     ];
 
                     $questionDurationSeconds = (int) round($this->progressTracking['question_durations'][$questionIndex] ?? 0);
+                    $grading = $this->gradeSubmittedAnswer($qData, $userOriginalAnswer);
 
                     $studentAnswer = StudentAnswer::updateOrCreate(
                         [
@@ -398,16 +405,16 @@ class CbtExamInterface extends Component
                             'submitted_at' => $submittedAt,
                             'question_order' => $this->questionOrder,
                             'exam_data' => $examData,
+                            'is_correct' => $grading['is_correct'],
+                            'points_earned' => $grading['points_earned'],
                         ]
                     );
 
-                    if ($studentAnswer->autoGrade()) {
-                        $studentAnswer->refresh();
-                        if ($studentAnswer->is_correct) {
-                            $correctAnswers++;
-                        }
-                        $totalPoints += $studentAnswer->points_earned ?? 0;
+                    if ($studentAnswer->is_correct) {
+                        $correctAnswers++;
                     }
+
+                    $totalPoints += $studentAnswer->points_earned ?? 0;
                 }
 
                 if ($session) {
@@ -644,11 +651,13 @@ class CbtExamInterface extends Component
 
     protected function createAttemptSession(): AttemptSession
     {
-        if ($this->isCurrentStudentLocked(true)) {
+        $this->refreshAssessmentState();
+
+        if ($this->isCurrentStudentLocked()) {
             throw new \RuntimeException($this->currentStudentLockMessage());
         }
 
-        if (!$this->isAssessmentPublished(true)) {
+        if (!$this->isAssessmentPublished()) {
             throw new \RuntimeException($this->unpublishedAssessmentMessage());
         }
 
@@ -787,6 +796,8 @@ class CbtExamInterface extends Component
             'user_original_answer' => $originalAnswer,
             'display_to_original_map' => $questionData['display_to_original_map'] ?? null,
             'original_correct_answers' => $questionData['original_correct_answers'] ?? [],
+            'question_type' => $questionData['question_type'] ?? null,
+            'question_points' => (float) ($questionData['points'] ?? 0),
         ];
 
         StudentAnswer::updateOrCreate(
@@ -833,6 +844,36 @@ class CbtExamInterface extends Component
         return $displayAnswer;
     }
 
+    protected function gradeSubmittedAnswer(array $questionData, int $userOriginalAnswer): array
+    {
+        $correctAnswers = array_map('intval', $questionData['original_correct_answers'] ?? []);
+        $questionType = $questionData['question_type'] ?? null;
+        $points = (float) ($questionData['points'] ?? 0);
+
+        if ($questionType === 'multiple_choice') {
+            $isCorrect = in_array((int) $userOriginalAnswer, $correctAnswers, true);
+
+            return [
+                'is_correct' => $isCorrect,
+                'points_earned' => $isCorrect ? $points : 0,
+            ];
+        }
+
+        if ($questionType === 'true_false') {
+            $isCorrect = (int) $userOriginalAnswer === (int) ($correctAnswers[0] ?? 0);
+
+            return [
+                'is_correct' => $isCorrect,
+                'points_earned' => $isCorrect ? $points : 0,
+            ];
+        }
+
+        return [
+            'is_correct' => false,
+            'points_earned' => 0,
+        ];
+    }
+
     protected function deterministicHash(string $scope, int $entityId): string
     {
         return hash('sha256', implode('|', [
@@ -856,21 +897,35 @@ class CbtExamInterface extends Component
             ->visibleToUser(auth()->user());
     }
 
-    protected function isAssessmentPublished(bool $refresh = false): bool
+    protected function refreshAssessmentState(array $relations = ['studentLocks', 'studentAnswers', 'attemptSessions']): void
     {
-        if ($refresh && $this->assessment) {
-            $this->assessment->refresh();
+        if (!$this->assessment) {
+            return;
         }
 
+        $currentUserId = (int) Auth::id();
+        $availableRelations = [
+            'studentLocks' => fn ($query) => $query->where('user_id', $currentUserId),
+            'studentAnswers' => fn ($query) => $query->where('user_id', $currentUserId),
+            'attemptSessions' => fn ($query) => $query->where('user_id', $currentUserId),
+        ];
+
+        $relationsToLoad = array_intersect_key($availableRelations, array_flip($relations));
+
+        $this->assessment->refresh();
+
+        if ($relationsToLoad !== []) {
+            $this->assessment->load($relationsToLoad);
+        }
+    }
+
+    protected function isAssessmentPublished(): bool
+    {
         return (bool) $this->assessment?->isExamPublished();
     }
 
-    protected function isCurrentStudentLocked(bool $refresh = false): bool
+    protected function isCurrentStudentLocked(): bool
     {
-        if ($refresh && $this->assessment) {
-            $this->assessment->refresh();
-        }
-
         return (bool) $this->assessment?->isLockedForStudent(Auth::id());
     }
 

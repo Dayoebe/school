@@ -150,7 +150,11 @@ class TeacherResponsibilities extends Component
 
     protected function loadParentPanel(User $user): void
     {
-        $children = $user->children()->with('studentRecord.myClass', 'studentRecord.section')->get();
+        $children = $user->children()
+            ->where('users.school_id', $user->school_id)
+            ->whereNull('users.deleted_at')
+            ->with('studentRecord.myClass', 'studentRecord.section')
+            ->get();
 
         $this->parentPanel = [
             'total_children' => $children->count(),

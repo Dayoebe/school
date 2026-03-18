@@ -3,21 +3,36 @@
 namespace App\Http\Controllers;
 
 use App\Models\FeeInvoice;
+use App\Traits\ResolvesAccessibleStudents;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class FeeInvoiceController extends Controller
 {
+    use ResolvesAccessibleStudents;
+
     public function print(FeeInvoice $fee_invoice)
     {
-        $feeInvoice = $fee_invoice->load([
+        $query = FeeInvoice::query()
+            ->whereKey($fee_invoice->getKey())
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            });
+
+        if ($this->isRestrictedStudentPortalViewer()) {
+            $studentUserIds = $this->portalAccessibleStudentUserIds();
+
+            if ($studentUserIds->isEmpty()) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('user_id', $studentUserIds);
+            }
+        }
+
+        $feeInvoice = $query->with([
             'user.studentRecord.myClass',
             'user.studentRecord.section',
             'feeInvoiceRecords.fee',
-        ]);
-
-        if ($feeInvoice->user->school_id !== auth()->user()->school_id) {
-            abort(403);
-        }
+        ])->firstOrFail();
 
         $pdf = Pdf::loadView('livewire.fees.pages.invoice-print', [
             'feeInvoice' => $feeInvoice,

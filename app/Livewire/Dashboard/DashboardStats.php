@@ -535,7 +535,11 @@ class DashboardStats extends Component
 
     private function loadParentPanel(User $user): void
     {
-        $children = $user->children()->with('studentRecord')->get();
+        $children = $user->children()
+            ->where('users.school_id', $user->school_id)
+            ->whereNull('users.deleted_at')
+            ->with('studentRecord')
+            ->get();
         if ($children->isEmpty()) {
             $this->parentPanel = [
                 'total_children' => 0,

@@ -37,18 +37,27 @@ class StudentAnswer extends Model
     public function autoGrade()
     {
         try {
-            $question = $this->question;
+            $question = $this->relationLoaded('question') ? $this->question : null;
             $userAnswer = $this->answer; // Already in ORIGINAL position
 
-            if (!$question) {
+            $questionType = $question?->question_type ?? data_get($this->exam_data, 'question_type');
+            $points = (float) ($question?->points ?? data_get($this->exam_data, 'question_points', 0));
+            $originalCorrectAnswers = $question?->correct_answers ?? data_get($this->exam_data, 'original_correct_answers', []);
+
+            if ($questionType === null) {
+                $question = $this->question()->select(['id', 'question_type', 'correct_answers', 'points'])->first();
+                $questionType = $question?->question_type;
+                $points = (float) ($question?->points ?? $points);
+                $originalCorrectAnswers = $question?->correct_answers ?? $originalCorrectAnswers;
+            }
+
+            if ($questionType === null) {
                 $this->is_correct = false;
                 $this->points_earned = 0;
                 $this->save();
                 return false;
             }
 
-            // Get original correct answers from database
-            $originalCorrectAnswers = $question->correct_answers;
             if (is_string($originalCorrectAnswers)) {
                 $originalCorrectAnswers = json_decode($originalCorrectAnswers, true) ?? [];
             }
@@ -58,10 +67,10 @@ class StudentAnswer extends Model
             $originalCorrectAnswers = array_map('intval', $originalCorrectAnswers);
 
             // Grade based on question type
-            if ($question->question_type === 'multiple_choice') {
-                $this->gradeMultipleChoice($question, $userAnswer, $originalCorrectAnswers);
-            } elseif ($question->question_type === 'true_false') {
-                $this->gradeTrueFalse($question, $userAnswer, $originalCorrectAnswers);
+            if ($questionType === 'multiple_choice') {
+                $this->gradeMultipleChoice($userAnswer, $originalCorrectAnswers, $points);
+            } elseif ($questionType === 'true_false') {
+                $this->gradeTrueFalse($userAnswer, $originalCorrectAnswers, $points);
             } else {
                 $this->is_correct = false;
                 $this->points_earned = 0;
@@ -86,23 +95,23 @@ class StudentAnswer extends Model
     /**
      * Grade multiple choice - answer is ALREADY mapped to original position
      */
-    protected function gradeMultipleChoice($question, $userAnswer, $originalCorrectAnswers)
+    protected function gradeMultipleChoice($userAnswer, $originalCorrectAnswers, float $points): void
     {
         // Simple comparison - userAnswer is already in original position
         $this->is_correct = in_array((int) $userAnswer, $originalCorrectAnswers);
-        $this->points_earned = $this->is_correct ? $question->points : 0;
+        $this->points_earned = $this->is_correct ? $points : 0;
     }
 
     /**
      * Grade true/false
      */
-    protected function gradeTrueFalse($question, $userAnswer, $originalCorrectAnswers)
+    protected function gradeTrueFalse($userAnswer, $originalCorrectAnswers, float $points): void
     {
         $correctAnswer = (int) ($originalCorrectAnswers[0] ?? 0);
         $userAnswer = (int) $userAnswer;
 
         $this->is_correct = $userAnswer === $correctAnswer;
-        $this->points_earned = $this->is_correct ? $question->points : 0;
+        $this->points_earned = $this->is_correct ? $points : 0;
     }
 
     // Relationships
@@ -124,16 +133,18 @@ class StudentAnswer extends Model
      */
     public function getFormattedAnswerAttribute()
     {
-        if (!$this->question) {
-            return (string) $this->answer;
+        $answer = data_get($this->exam_data, 'user_original_answer', $this->answer);
+        $questionType = $this->relationLoaded('question')
+            ? $this->question?->question_type
+            : data_get($this->exam_data, 'question_type');
+
+        if ($questionType === 'multiple_choice') {
+            $options = ['A', 'B', 'C', 'D', 'E', 'F'];
+            return $options[(int) $answer] ?? 'Unknown';
+        } elseif ($questionType === 'true_false') {
+            return (int) $answer === 0 ? 'True' : 'False';
         }
 
-        if ($this->question->question_type === 'multiple_choice') {
-            $options = ['A', 'B', 'C', 'D', 'E', 'F'];
-            return $options[$this->answer] ?? 'Unknown';
-        } elseif ($this->question->question_type === 'true_false') {
-            return $this->answer == 0 ? 'True' : 'False';
-        }
-        return $this->answer;
+        return (string) $answer;
     }
 }
