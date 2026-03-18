@@ -51,10 +51,12 @@
             <div class="flex-1 min-w-0">
                 <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-themed-primary truncate flex items-center">
                     <i class="fas fa-chart-bar mr-2 text-accent-themed-primary"></i>
-                    <span class="hidden sm:inline">My CBT Results</span>
+                    <span class="hidden sm:inline">{{ $isParentViewer ? 'Child CBT Results' : 'My CBT Results' }}</span>
                     <span class="sm:hidden">Results</span>
                 </h1>
-                <p class="text-xs sm:text-sm text-themed-secondary mt-1">View your assessment performance</p>
+                <p class="text-xs sm:text-sm text-themed-secondary mt-1">
+                    {{ $isParentViewer ? 'View CBT performance only for students linked to your parent account.' : 'View your assessment performance' }}
+                </p>
             </div>
             <button x-show="showDetails" 
                     wire:click="closeDetails" 
@@ -65,6 +67,48 @@
             </button>
         </div>
     </div>
+
+    @if($isParentViewer)
+        <div class="mb-4 sm:mb-6 rounded-xl border border-themed-primary bg-themed-secondary p-4 shadow-sm">
+            @if($availableStudents !== [])
+                <div class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-end">
+                    <div>
+                        <label class="mb-2 block text-sm font-semibold text-themed-primary">Child</label>
+                        <select wire:model.live="selectedStudentId"
+                                class="w-full rounded-lg border border-themed-primary bg-themed-primary px-4 py-3 text-themed-primary shadow-sm focus:border-accent-themed-primary focus:ring-2 focus:ring-accent-themed-primary/20">
+                            @foreach($availableStudents as $student)
+                                <option value="{{ $student['id'] }}">
+                                    {{ $student['name'] }} | {{ $student['class_name'] }} | {{ $student['section_name'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    @if($selectedStudentProfile)
+                        <div class="grid gap-3 sm:grid-cols-3">
+                            <div class="rounded-lg bg-themed-primary px-4 py-3">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-themed-secondary">Admission</p>
+                                <p class="mt-2 text-sm font-semibold text-themed-primary">{{ $selectedStudentProfile['admission_number'] }}</p>
+                            </div>
+                            <div class="rounded-lg bg-themed-primary px-4 py-3">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-themed-secondary">Class</p>
+                                <p class="mt-2 text-sm font-semibold text-themed-primary">{{ $selectedStudentProfile['class_name'] }}</p>
+                            </div>
+                            <div class="rounded-lg bg-themed-primary px-4 py-3">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-themed-secondary">Section</p>
+                                <p class="mt-2 text-sm font-semibold text-themed-primary">{{ $selectedStudentProfile['section_name'] }}</p>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @else
+                <div class="rounded-lg border border-dashed border-themed-primary bg-themed-primary px-4 py-5">
+                    <p class="text-base font-semibold text-themed-primary">No linked students found.</p>
+                    <p class="mt-1 text-sm text-themed-secondary">Only children linked to this parent account can appear here.</p>
+                </div>
+            @endif
+        </div>
+    @endif
 
     <!-- Results List View -->
     <div x-show="!showDetails" 
@@ -212,12 +256,24 @@
                 <div class="w-20 h-20 sm:w-24 sm:h-24 bg-themed-tertiary rounded-full flex items-center justify-center mb-4 sm:mb-6 animate__animated animate__bounceIn">
                     <i class="fas fa-clipboard-list text-4xl sm:text-5xl text-accent-themed-primary"></i>
                 </div>
-                <h3 class="text-lg sm:text-xl font-semibold text-themed-primary mb-2">No Results Yet</h3>
-                <p class="text-sm sm:text-base text-themed-secondary mb-6 text-center px-4">You haven't taken any CBT assessments yet.</p>
-                <a href="{{ route('cbt.exams') }}" 
-                   class="bg-accent-themed-primary hover:bg-accent-themed-secondary text-white px-6 py-3 rounded-lg transition-all transform hover:scale-105 inline-flex items-center shadow-md text-sm sm:text-base">
-                    <i class="fas fa-pencil-alt mr-2"></i>Take CBT Exam
-                </a>
+                <h3 class="text-lg sm:text-xl font-semibold text-themed-primary mb-2">
+                    {{ $isParentViewer && $availableStudents === [] ? 'No Linked Students' : 'No Results Yet' }}
+                </h3>
+                <p class="text-sm sm:text-base text-themed-secondary mb-6 text-center px-4">
+                    @if($isParentViewer && $availableStudents === [])
+                        No student records are linked to this parent account yet.
+                    @elseif($isParentViewer)
+                        {{ $selectedStudentProfile['name'] ?? 'This child' }} has not submitted any CBT assessments yet.
+                    @else
+                        You haven't taken any CBT assessments yet.
+                    @endif
+                </p>
+                @if(!$isParentViewer)
+                    <a href="{{ route('cbt.exams') }}" 
+                       class="bg-accent-themed-primary hover:bg-accent-themed-secondary text-white px-6 py-3 rounded-lg transition-all transform hover:scale-105 inline-flex items-center shadow-md text-sm sm:text-base">
+                        <i class="fas fa-pencil-alt mr-2"></i>Take CBT Exam
+                    </a>
+                @endif
             </div>
         @endif
     </div>
@@ -234,6 +290,11 @@
                 <h2 class="text-xl sm:text-2xl font-bold mb-2">{{ $selectedAssessment->title }}</h2>
                 @if($selectedAssessment->description)
                     <p class="opacity-90 text-sm sm:text-base">{{ $selectedAssessment->description }}</p>
+                @endif
+                @if($isParentViewer && $selectedStudentProfile)
+                    <p class="mt-3 text-sm font-medium text-white/85">
+                        Student: {{ $selectedStudentProfile['name'] }} | {{ $selectedStudentProfile['class_name'] }} | {{ $selectedStudentProfile['section_name'] }}
+                    </p>
                 @endif
             </div>
 

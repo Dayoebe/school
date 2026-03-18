@@ -4,7 +4,7 @@ namespace App\Livewire\Cbt;
 
 use Livewire\Component;
 use App\Models\Assessment\Assessment;
-use App\Models\Assessment\StudentAnswer;
+use App\Traits\ResolvesAccessibleStudents;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\WithPagination;
@@ -14,42 +14,84 @@ use Livewire\Attributes\Layout;
 class CbtViewer extends Component
 {
     use WithPagination;
+    use ResolvesAccessibleStudents;
 
     public $selectedAssessment = null;
     public $selectedAttempt = null;
     public $viewDetails = false;
+    public $selectedStudentId = '';
+    public array $availableStudents = [];
+
+    public function mount()
+    {
+        if ($this->isParentStudentPortalViewer()) {
+            $this->loadAvailableStudents();
+            $this->selectedStudentId = (string) ($this->availableStudents[0]['id'] ?? '');
+            return;
+        }
+
+        if ($this->isStudentStudentPortalViewer()) {
+            $this->selectedStudentId = (string) Auth::id();
+        }
+    }
+
+    public function updatedSelectedStudentId()
+    {
+        $this->closeDetails();
+        $this->resetPage();
+    }
 
     public function render()
     {
         $canViewUnpublished = $this->canViewUnpublishedResults();
+        $isParentViewer = $this->isParentStudentPortalViewer();
+        $selectedStudentProfile = $this->selectedStudentProfile();
+        $targetStudentId = $this->currentTargetStudentId();
 
-        // Get only class-appropriate CBT assessments where the user has attempted
-        $userAssessments = $this->assessmentsForCurrentSchool()
-            ->when(!$canViewUnpublished, fn ($query) => $query->whereNotNull('results_published_at'))
-            ->whereHas('studentAnswers', function($query) {
-                $query->where('user_id', Auth::id())
-                      ->whereNotNull('submitted_at');
-            })
-            ->with(['studentAnswers' => function($query) {
-                $query->where('user_id', Auth::id())
-                      ->whereNotNull('submitted_at')
-                      ->with('question');
-            }, 'questions'])
+        $userAssessments = Assessment::query()
+            ->whereRaw('1 = 0')
             ->paginate(10);
 
-        return view('livewire.cbt.cbt-viewer', compact('userAssessments'));
+        if ($targetStudentId !== null) {
+            $userAssessments = $this->assessmentsForCurrentSchool($targetStudentId)
+                ->when(!$canViewUnpublished, fn ($query) => $query->whereNotNull('results_published_at'))
+                ->with([
+                    'course:id,name',
+                    'studentAnswers' => function($query) use ($targetStudentId) {
+                        $query->where('user_id', $targetStudentId)
+                            ->whereNotNull('submitted_at')
+                            ->with('question');
+                    },
+                    'questions'
+                ])
+                ->paginate(10);
+        }
+
+        return view('livewire.cbt.cbt-viewer', compact(
+            'userAssessments',
+            'isParentViewer',
+            'selectedStudentProfile'
+        ));
     }
 
     public function viewAssessmentDetails($assessmentId)
     {
-        $this->selectedAssessment = $this->assessmentsForCurrentSchool()
+        $targetStudentId = $this->currentTargetStudentId();
+
+        if ($targetStudentId === null) {
+            session()->flash('error', 'No linked student is available for CBT results.');
+            return;
+        }
+
+        $this->selectedAssessment = $this->assessmentsForCurrentSchool($targetStudentId)
             ->when(!$this->canViewUnpublishedResults(), fn ($query) => $query->whereNotNull('results_published_at'))
             ->with([
-            'studentAnswers' => function($query) {
-                $query->where('user_id', Auth::id())
-                      ->whereNotNull('submitted_at')
-                      ->with('question')
-                      ->orderBy('attempt_number', 'desc');
+            'course:id,name',
+            'studentAnswers' => function($query) use ($targetStudentId) {
+                $query->where('user_id', $targetStudentId)
+                    ->whereNotNull('submitted_at')
+                    ->with('question')
+                    ->orderBy('attempt_number', 'desc');
             },
             'questions'
         ])->find($assessmentId);
@@ -64,7 +106,14 @@ class CbtViewer extends Component
 
     public function viewAttemptDetails($attemptNumber)
     {
-        $this->selectedAttempt = $this->selectedAssessment->getStudentResults(Auth::id(), $attemptNumber);
+        $targetStudentId = $this->currentTargetStudentId();
+
+        if ($targetStudentId === null || !$this->selectedAssessment) {
+            session()->flash('error', 'No linked student is available for CBT results.');
+            return;
+        }
+
+        $this->selectedAttempt = $this->selectedAssessment->getStudentResults($targetStudentId, $attemptNumber);
 
         if (!$this->selectedAttempt) {
             session()->flash('error', 'No results found for this attempt.');
@@ -83,8 +132,14 @@ class CbtViewer extends Component
      */
     public function getAttemptsForAssessment($assessment)
     {
+        $targetStudentId = $this->currentTargetStudentId();
+
+        if ($targetStudentId === null) {
+            return collect();
+        }
+
         $attempts = $assessment->studentAnswers
-            ->where('user_id', Auth::id())
+            ->where('user_id', $targetStudentId)
             ->whereNotNull('submitted_at')
             ->groupBy('attempt_number')
             ->map(function($answers, $attemptNumber) use ($assessment) {
@@ -116,15 +171,72 @@ class CbtViewer extends Component
         return $attempts;
     }
 
-    protected function assessmentsForCurrentSchool(): Builder
+    protected function assessmentsForCurrentSchool(int $studentId): Builder
     {
         return Assessment::query()
             ->standaloneCBT()
-            ->visibleToUser(auth()->user());
+            ->forSchool(auth()->user()?->school_id)
+            ->whereHas('studentAnswers', function (Builder $query) use ($studentId) {
+                $query->where('user_id', $studentId)
+                    ->whereNotNull('submitted_at');
+            });
     }
 
     protected function canViewUnpublishedResults(): bool
     {
         return (bool) auth()->user()?->can('manage cbt');
+    }
+
+    protected function currentTargetStudentId(): ?int
+    {
+        if ($this->isStudentStudentPortalViewer()) {
+            return Auth::id() ? (int) Auth::id() : null;
+        }
+
+        if (!$this->isParentStudentPortalViewer()) {
+            return null;
+        }
+
+        $studentId = (int) $this->selectedStudentId;
+
+        if ($studentId <= 0) {
+            return null;
+        }
+
+        $isAccessible = collect($this->availableStudents)
+            ->contains(fn (array $student): bool => (int) $student['id'] === $studentId);
+
+        return $isAccessible ? $studentId : null;
+    }
+
+    protected function loadAvailableStudents(): void
+    {
+        $this->availableStudents = $this->portalAccessibleStudentsQuery()
+            ->with(['studentRecord.myClass', 'studentRecord.section'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($student): array {
+                $record = $student->studentRecord;
+
+                return [
+                    'id' => (int) $student->id,
+                    'name' => (string) $student->name,
+                    'admission_number' => (string) ($record?->admission_number ?: 'N/A'),
+                    'class_name' => (string) ($record?->myClass?->name ?? 'Not assigned'),
+                    'section_name' => (string) ($record?->section?->name ?? 'Not assigned'),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    protected function selectedStudentProfile(): ?array
+    {
+        if (!$this->isParentStudentPortalViewer()) {
+            return null;
+        }
+
+        return collect($this->availableStudents)
+            ->first(fn (array $student): bool => (int) $student['id'] === (int) $this->selectedStudentId);
     }
 }
