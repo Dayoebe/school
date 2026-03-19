@@ -71,7 +71,6 @@
            MATHJAX STYLES - NON-INTERACTIVE
            ================================================ */
         mjx-container {
-            all: revert !important;
             pointer-events: none !important;
         }
         

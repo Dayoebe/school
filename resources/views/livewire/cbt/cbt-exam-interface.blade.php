@@ -980,6 +980,10 @@ function registerCbtExamAlpineComponents() {
             this.setupSecurityListeners();
             this.broadcastQuestionIndexSync();
 
+            setTimeout(() => {
+                this.renderMath();
+            }, 100);
+
             if (this.isExamActive()) {
                 this.startTimer();
                 this.syncWithServer(true);
@@ -987,7 +991,7 @@ function registerCbtExamAlpineComponents() {
         },
 
         initializeMathJax() {
-            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+            if (this.isMathJaxReady()) {
                 this.mathJaxReady = true;
                 this.processMathJaxQueue();
                 return;
@@ -996,7 +1000,48 @@ function registerCbtExamAlpineComponents() {
             document.addEventListener('mathjax-loaded', () => {
                 this.mathJaxReady = true;
                 this.processMathJaxQueue();
-            });
+            }, { once: true });
+        },
+
+        isMathJaxReady() {
+            return typeof MathJax !== 'undefined' && typeof MathJax.typesetPromise === 'function';
+        },
+
+        normalizeMathElements(elements) {
+            const nodes = Array.isArray(elements)
+                ? elements
+                : Array.from(elements || []);
+
+            return Array.from(new Set(
+                nodes.filter((element) => element instanceof Element && element.isConnected)
+            ));
+        },
+
+        queueMathElements(elements) {
+            const nodes = this.normalizeMathElements(elements);
+
+            if (!nodes.length) {
+                return;
+            }
+
+            this.mathJaxQueue = this.normalizeMathElements([
+                ...this.mathJaxQueue,
+                ...nodes,
+            ]);
+        },
+
+        typesetMathElements(elements) {
+            const nodes = this.normalizeMathElements(elements);
+
+            if (!nodes.length || !this.isMathJaxReady()) {
+                return;
+            }
+
+            if (typeof MathJax.typesetClear === 'function') {
+                MathJax.typesetClear(nodes);
+            }
+
+            MathJax.typesetPromise(nodes).catch(err => console.error('MathJax error:', err));
         },
 
         processMathJaxQueue() {
@@ -1004,13 +1049,9 @@ function registerCbtExamAlpineComponents() {
                 return;
             }
 
-            if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-                MathJax.typesetPromise(this.mathJaxQueue)
-                    .then(() => {
-                        this.mathJaxQueue = [];
-                    })
-                    .catch(err => console.error('MathJax error:', err));
-            }
+            const nodes = this.normalizeMathElements(this.mathJaxQueue);
+            this.mathJaxQueue = [];
+            this.typesetMathElements(nodes);
         },
 
         renderMathInElement(element) {
@@ -1018,14 +1059,12 @@ function registerCbtExamAlpineComponents() {
                 return;
             }
 
-            if (this.mathJaxReady && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-                MathJax.typesetPromise([element]).catch(err => {
-                    console.error('MathJax element error:', err);
-                });
+            if (!this.mathJaxReady) {
+                this.queueMathElements([element]);
                 return;
             }
 
-            this.mathJaxQueue.push(element);
+            this.typesetMathElements([element]);
         },
 
         setupEventListeners() {
@@ -1744,15 +1783,19 @@ function registerCbtExamAlpineComponents() {
         },
 
         renderMath() {
-            if (!this.mathJaxReady) {
+            const root = this.$root instanceof Element ? this.$root : document;
+            const mathElements = this.normalizeMathElements(root.querySelectorAll('.math-content'));
+
+            if (!mathElements.length) {
                 return;
             }
 
-            const mathElements = document.querySelectorAll('.math-content');
-            if (mathElements.length > 0 && typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-                MathJax.typesetPromise(Array.from(mathElements))
-                    .catch(err => console.error('MathJax error:', err));
+            if (!this.mathJaxReady) {
+                this.queueMathElements(mathElements);
+                return;
             }
+
+            this.typesetMathElements(mathElements);
         }
     });
 
@@ -1805,7 +1848,15 @@ window.cbtExamCall = function(element, method, ...args) {
 
 // Global helper for rendering math in specific elements
 window.renderMathInElement = function(element) {
-    if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+    if (!(element instanceof Element)) {
+        return;
+    }
+
+    if (typeof MathJax !== 'undefined' && typeof MathJax.typesetPromise === 'function') {
+        if (typeof MathJax.typesetClear === 'function') {
+            MathJax.typesetClear([element]);
+        }
+
         MathJax.typesetPromise([element]).catch(err => {
             console.error('MathJax error:', err);
         });
