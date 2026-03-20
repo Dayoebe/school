@@ -16,6 +16,7 @@
             ['name' => 'Actions', 'type' => 'dropdown' , 'links' => [
                 ['href' => 'exams.edit', 'text' => 'edit', 'icon' => 'fas fa-cog', 'can' => 'update exam'],
                 ['href' => 'exam-slots.index', 'text' => 'Manage/View exam slots', 'icon' => 'fas fa-cog',  'can' => 'read exam slot'],
+                ['href' => 'exam-papers.index', 'text' => 'Manage exam papers', 'icon' => 'fas fa-file-lines', 'can' => 'read exam paper'],
                 ['href' => 'exam-slots.create', 'text' => 'Create exam slots', 'Create exam slot', 'icon' => 'fas fa-key',  'can' => 'create exam slot'],
             ]],
             ['type' => 'delete', 'name' => 'Delete', 'action' => 'exams.destroy', 'can' => 'delete exam']

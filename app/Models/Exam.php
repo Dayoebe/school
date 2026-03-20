@@ -28,10 +28,10 @@ class Exam extends Model
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'start_date'        => 'date:Y-m-d',
-        'stop_date'         => 'date:Y-m-d',
-        'active'            => 'boolean',
-        'publish_result'    => 'boolean',
+        'start_date' => 'date:Y-m-d',
+        'stop_date' => 'date:Y-m-d',
+        'active' => 'boolean',
+        'publish_result' => 'boolean',
     ];
 
     public function semester(): BelongsTo
@@ -42,6 +42,11 @@ class Exam extends Model
     public function examSlots(): HasMany
     {
         return $this->hasMany(ExamSlot::class);
+    }
+
+    public function papers(): HasMany
+    {
+        return $this->hasMany(ExamPaper::class);
     }
 
     /**
@@ -61,7 +66,6 @@ class Exam extends Model
 
     /**
      * Calculate total marks gotten by student in semester across all exams in a subject.
-     *
      *
      * @return int
      */

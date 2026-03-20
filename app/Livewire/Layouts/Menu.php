@@ -459,7 +459,7 @@ class Menu extends Component
                 'type' => 'menu-item',
                 'text' => 'Exams',
                 'icon' => 'fas fa-file-signature',
-                'permissions' => ['read exam', 'read exam record'],
+                'permissions' => ['read exam', 'read exam record', 'check result', 'view exam paper'],
                 'submenu' => array_values(array_filter([
                     [
                         'type' => 'menu-item',
@@ -478,6 +478,13 @@ class Menu extends Component
                         'text' => 'Result Checker',
                         'route' => 'exams.result-checker',
                         'permissions' => ['check result'],
+                    ],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Exam Papers',
+                        'route' => 'exam-papers.viewer',
+                        'roles' => ['student', 'parent'],
+                        'permissions' => ['view exam paper'],
                     ],
                     [
                         'type' => 'menu-item',

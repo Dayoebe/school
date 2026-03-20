@@ -56,7 +56,9 @@ use App\Http\Controllers\{
     ExamRecordController,
     ExamSlotController,
     GradeSystemController,
-    LockUserAccountController
+    LockUserAccountController,
+    ExamPaperController,
+    ExamPaperPortalController
 };
 
 /*
@@ -662,7 +664,39 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
                     Route::resource('exams/{exam}/manage/exam-slots', ExamSlotController::class)
                         ->only(['destroy'])
                         ->middleware('permission:delete exam slot');
+
+                    Route::get('exams/{exam}/papers', [ExamPaperController::class, 'index'])
+                        ->middleware('permission:read exam paper')
+                        ->name('exam-papers.index');
+                    Route::get('exams/{exam}/papers/create', [ExamPaperController::class, 'create'])
+                        ->middleware('permission:create exam paper')
+                        ->name('exam-papers.create');
+                    Route::post('exams/{exam}/papers', [ExamPaperController::class, 'store'])
+                        ->middleware('permission:create exam paper')
+                        ->name('exam-papers.store');
+                    Route::get('exams/{exam}/papers/{examPaper}/edit', [ExamPaperController::class, 'edit'])
+                        ->middleware('permission:update exam paper')
+                        ->name('exam-papers.edit');
+                    Route::put('exams/{exam}/papers/{examPaper}', [ExamPaperController::class, 'update'])
+                        ->middleware('permission:update exam paper')
+                        ->name('exam-papers.update');
+                    Route::delete('exams/{exam}/papers/{examPaper}', [ExamPaperController::class, 'destroy'])
+                        ->middleware('permission:delete exam paper')
+                        ->name('exam-papers.destroy');
+                    Route::post('exams/{exam}/papers/{examPaper}/publish', [ExamPaperController::class, 'togglePublish'])
+                        ->middleware('permission:publish exam paper')
+                        ->name('exam-papers.publish');
+                    Route::post('exams/{exam}/papers/{examPaper}/seal', [ExamPaperController::class, 'toggleSeal'])
+                        ->middleware('permission:seal exam paper')
+                        ->name('exam-papers.seal');
                 });
+
+                Route::get('exam-papers', [ExamPaperPortalController::class, 'index'])
+                    ->middleware('permission:view exam paper')
+                    ->name('exam-papers.viewer');
+                Route::get('exam-papers/{examPaper}/print', [ExamPaperController::class, 'print'])
+                    ->middleware('permission:read exam paper|view exam paper')
+                    ->name('exam-papers.print');
 
                 // Exam Reports
                 Route::get('exams/tabulation-sheet', [ExamController::class, 'examTabulation'])
