@@ -733,6 +733,8 @@
     @if($selectedAssessment && $showQuestionModal)
         @php($questionsLocked = $selectedAssessment->is_locked)
         <div
+            x-data
+            x-init="$nextTick(() => window.renderCbtManagementMath?.($el))"
             class="fixed inset-0 bg-gray-600 bg-opacity-50 dark:bg-gray-900 dark:bg-opacity-75 overflow-y-auto h-full w-full z-50">
             <div
                 class="relative top-10 mx-auto p-5 border w-11/12 max-w-7xl shadow-lg rounded-lg bg-themed-secondary border-themed-primary animate-fade-in-up">
@@ -974,20 +976,20 @@
                                                 @if($question->explanation)
                                                     <div class="mb-2 text-sm text-themed-secondary">
                                                         <strong>Instruction:</strong>
-                                                        <span class="math-content">{!! Str::limit($question->explanation, 80) !!}</span>
+                                                        <span class="math-content cbt-math-clamp cbt-math-clamp-2">{!! $question->explanation !!}</span>
                                                     </div>
                                                 @endif
                                                 <h6 class="font-semibold text-themed-primary mb-1">
                                                     Q{{ $loop->iteration }}.
                                                     <span
-                                                        class="math-content">{!! Str::limit($question->question_text, 100) !!}</span>
+                                                        class="math-content cbt-math-clamp cbt-math-clamp-3">{!! $question->question_text !!}</span>
                                                 </h6>
                                                 @if($question->options && count($question->options) > 0)
                                                     <div class="mt-2 ml-4 space-y-1">
                                                         @foreach($question->options as $index => $option)
                                                             <div class="text-sm text-themed-secondary flex items-start">
                                                                 <span class="font-medium mr-2">{{ chr(65 + $index) }}.</span>
-                                                                <span class="math-content flex-1">{!! Str::limit($option, 50) !!}</span>
+                                                                <span class="math-content cbt-math-clamp cbt-math-clamp-2 flex-1">{!! $option !!}</span>
                                                                 @if(in_array($index, $question->correct_answers ?? []))
                                                                     <i class="fas fa-check text-green-600 ml-2"></i>
                                                                 @endif
@@ -1054,7 +1056,9 @@
 
     <!-- Edit Question Modal -->
     @if($showEditQuestionModal && $editingQuestion)
-        <div class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4"
+            x-data
+            x-init="$nextTick(() => window.renderCbtManagementMath?.($el))">
             <div class="bg-themed-secondary rounded-lg max-w-4xl w-full max-h-screen overflow-y-auto">
                 <div class="p-6 border-b border-themed-secondary sticky top-0 bg-themed-secondary z-10">
                     <h3 class="text-xl font-bold text-themed-primary">Edit Question</h3>
@@ -1489,15 +1493,93 @@
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <script>
-        // Wait for MathJax to be ready
-        function waitForMathJax() {
-            return new Promise((resolve) => {
-                if (typeof MathJax !== 'undefined' && typeof MathJax.typesetPromise !== 'undefined') {
+        function configureCbtMathJax() {
+            window.MathJax = window.MathJax || {
+                tex: {
+                    inlineMath: [['$', '$'], ['\\(', '\\)']],
+                    displayMath: [['$$', '$$'], ['\\[', '\\]']]
+                },
+                svg: {
+                    fontCache: 'global'
+                },
+                startup: {
+                    pageReady: function () {
+                        return MathJax.startup.defaultPageReady().then(function () {
+                            document.dispatchEvent(new Event('mathjax-loaded'));
+                        });
+                    }
+                },
+                options: {
+                    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                    renderActions: {
+                        addMenu: []
+                    }
+                }
+            };
+        }
+
+        function ensureMathJax() {
+            configureCbtMathJax();
+
+            if (typeof MathJax !== 'undefined' && typeof MathJax.typesetPromise !== 'undefined') {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve, reject) => {
+                const existingScript = document.getElementById('cbt-mathjax-script');
+                let resolved = false;
+
+                const handleReady = () => {
+                    if (resolved) {
+                        return;
+                    }
+
+                    resolved = true;
                     resolve();
-                } else {
-                    document.addEventListener('mathjax-loaded', resolve);
+                };
+
+                document.addEventListener('mathjax-loaded', handleReady, { once: true });
+
+                const script = existingScript || Object.assign(document.createElement('script'), {
+                    id: 'cbt-mathjax-script',
+                    src: 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js',
+                    async: true,
+                });
+
+                script.addEventListener('error', () => {
+                    if (resolved) {
+                        return;
+                    }
+
+                    resolved = true;
+                    reject(new Error('MathJax failed to load.'));
+                }, { once: true });
+
+                if (!existingScript) {
+                    document.head.appendChild(script);
                 }
             });
+        }
+
+        // Wait for MathJax to be ready
+        function waitForMathJax() {
+            return ensureMathJax();
+        }
+
+        function normalizeMathElements(elements) {
+            if (!elements) {
+                return [];
+            }
+
+            const nodes = elements instanceof Element
+                ? [elements]
+                : Array.isArray(elements)
+                    ? elements
+                    : Array.from(elements || []);
+
+            return Array.from(new Set(
+                nodes.filter((element) => element instanceof Element && element.isConnected)
+            ));
         }
 
         function renderMath(elements) {
@@ -1505,9 +1587,7 @@
                 return;
             }
 
-            const nodes = Array.isArray(elements)
-                ? elements.filter(Boolean)
-                : Array.from(elements || []).filter(Boolean);
+            const nodes = normalizeMathElements(elements);
 
             if (!nodes.length) {
                 return;
@@ -1522,16 +1602,34 @@
             });
         }
 
+        window.renderCbtManagementMath = function(root = document) {
+            const scope = root instanceof Element ? root : document;
+            const mathElements = [];
+
+            if (scope instanceof Element && scope.matches('.math-content')) {
+                mathElements.push(scope);
+            }
+
+            mathElements.push(...scope.querySelectorAll('.math-content'));
+
+            renderMath(mathElements);
+        };
+
         // Initialize MathJax integration
         async function initMathJax() {
             setupLivePreviews();
 
             await waitForMathJax();
-            renderMath(document.querySelectorAll('.math-content'));
+            window.renderCbtManagementMath(document);
         }
 
         // Set up live preview for question and explanation inputs
         function setupLivePreviews() {
+            if (window.__cbtManagementLivePreviewsInitialized) {
+                return;
+            }
+
+            window.__cbtManagementLivePreviewsInitialized = true;
             let questionTimeout, explanationTimeout;
 
             // Update preview function
@@ -1619,6 +1717,34 @@
             });
         }
 
+        function bootCbtManagementPage() {
+            initMathJax().catch((error) => {
+                console.error('MathJax initialization failed:', error);
+            });
+            initSortable();
+        }
+
+        function registerCbtManagementLivewireHooks() {
+            if (!window.Livewire || window.__cbtManagementLivewireHooksRegistered) {
+                return;
+            }
+
+            window.__cbtManagementLivewireHooksRegistered = true;
+
+            Livewire.hook('morph.updated', ({ el, component }) => {
+                // Reinitialize sortable after DOM updates
+                initSortable();
+
+                // Re-render MathJax
+                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+                    const mathElements = normalizeMathElements(el.querySelectorAll('.math-content'));
+                    if (mathElements.length > 0) {
+                        renderMath(mathElements);
+                    }
+                }
+            });
+        }
+
         // Initialize Sortable for question reordering
         function initSortable() {
             const questionsList = document.getElementById('questions-sortable');
@@ -1641,30 +1767,18 @@
         }
 
         // Livewire hooks
-        document.addEventListener('livewire:init', () => {
-            Livewire.hook('morph.updated', ({ el, component }) => {
-                // Reinitialize sortable after DOM updates
-                initSortable();
-
-                // Re-render MathJax
-                if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-                    const mathElements = el.querySelectorAll('.math-content');
-                    if (mathElements.length > 0) {
-                        renderMath(mathElements);
-                    }
-                }
-            });
-        });
+        document.addEventListener('livewire:init', registerCbtManagementLivewireHooks, { once: true });
+        document.addEventListener('livewire:navigated', bootCbtManagementPage);
 
         // Initialize on page load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => {
-                initMathJax();
-                initSortable();
+                bootCbtManagementPage();
+                registerCbtManagementLivewireHooks();
             });
         } else {
-            initMathJax();
-            initSortable();
+            bootCbtManagementPage();
+            registerCbtManagementLivewireHooks();
         }
     </script>
 
@@ -1777,6 +1891,20 @@
         .math-content mjx-container[display="true"] {
             display: block !important;
             margin: 1em 0;
+        }
+
+        .cbt-math-clamp {
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+        }
+
+        .cbt-math-clamp-2 {
+            -webkit-line-clamp: 2;
+        }
+
+        .cbt-math-clamp-3 {
+            -webkit-line-clamp: 3;
         }
 
         /* Option preview containers */
