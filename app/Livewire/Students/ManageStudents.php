@@ -135,7 +135,12 @@ class ManageStudents extends Component
         $this->mode = $mode;
         $this->studentId = $studentId;
         $this->resetValidation();
-        
+
+        if ($mode === 'list') {
+            $this->resetForm();
+            return;
+        }
+
         if ($mode === 'edit' && $studentId) {
             $this->loadStudentForEdit();
         } elseif ($mode === 'create') {
@@ -152,7 +157,8 @@ class ManageStudents extends Component
             ->findOrFail($this->studentId);
 
         $this->authorize('update', [$student, 'student']);
-        
+        $this->password = '';
+
         $this->fill([
             'name' => $student->name,
             'email' => $student->email,
@@ -276,6 +282,7 @@ class ManageStudents extends Component
         $this->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $this->studentId,
+            'password' => 'nullable|string|min:8',
             'my_class_id' => 'required|exists:my_classes,id',
             'gender' => 'required|in:male,female',
             'birthday' => 'nullable|date|before:today',
@@ -308,7 +315,7 @@ class ManageStudents extends Component
         }
 
         DB::transaction(function () use ($student) {
-            $student->update([
+            $studentData = [
                 'name' => $this->name,
                 'email' => $this->email,
                 'gender' => $this->gender,
@@ -320,11 +327,13 @@ class ManageStudents extends Component
                 'nationality' => $this->nationality,
                 'state' => $this->state,
                 'city' => $this->city,
-            ]);
+            ];
 
-            if ($this->password) {
-                $student->update(['password' => bcrypt($this->password)]);
+            if (filled($this->password)) {
+                $studentData['password'] = trim($this->password);
             }
+
+            $student->update($studentData);
 
             if ($student->studentRecord) {
                 $oldClassId = $student->studentRecord->my_class_id;
