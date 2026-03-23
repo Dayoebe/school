@@ -6,44 +6,40 @@
         @if (!auth()->user()->hasRole('student'))
             <x-display-validation-errors/>
             <x-loading-spinner/>
-            {{-- form for selecting class and section to display --}}
-            <form wire:submit="checkResult('{{$academicYear}}','{{$semester}}', '{{$student}}')" class="">
+            <form wire:submit.prevent="checkResult" class="">
                 <div class="md:grid grid-cols-3 gap-4 items-end">
-                    <x-select id="academic-year" name="academic-year" label="Academic Year of exam"   wire:model.live="academicYear" group-class=" ">
+                    <x-select id="academic-year" name="academic-year" label="Academic Year of exam" wire:model.live="academicYear" group-class=" ">
                         @isset($academicYears)
                             @foreach ($academicYears as $item)
-                            <option value="{{$item['id']}}"> {{$item->name
-                                }}</option>
+                                <option value="{{$item['id']}}">{{$item->name}}</option>
                             @endforeach
                         @endisset
                     </x-select>
-                    <x-select id="semester" name="semester" label="Term of exam"   wire:model.live="semester" group-class="">
+                    <x-select id="semester" name="semester" label="Term of exam" wire:model.live="semester" group-class="">
                         <option value="">Entire Academic Year</option>
                         @isset($semesters)
                             @foreach ($semesters as $item)
-                                <option value="{{$item['id']}}" >{{$item['name']}}</option>
+                                <option value="{{$item['id']}}">{{$item['name']}}</option>
                             @endforeach
                         @endisset
                     </x-select>
-                    {{--fields are not available to any role not in list--}}
-                    @hasanyrole('super-admin|admin|teacher')
-                        <x-select id="class" name="class" label="Current Class"   wire:model.live="class" group-class="">
+                    @hasanyrole('super-admin|super_admin|principal|admin|teacher')
+                        <x-select id="class" name="class" label="Current Class" wire:model.live="class" group-class="">
                             @isset($classes)
-                            @foreach ($classes as $item)
-                            <option value="{{$item['id']}}">{{$item['name']}}</option>
-                            @endforeach
-                            @endisset
-                            
-                        </x-select>
-                        <x-select id="section" name="section" label="Current Section" fgroup-class="col-md-2" wire:model.live="section" group-class="">
-                            @isset($sections)
-                                @foreach ($sections as $item)
+                                @foreach ($classes as $item)
                                     <option value="{{$item['id']}}">{{$item['name']}}</option>
                                 @endforeach
                             @endisset
                         </x-select>
+                        @if(isset($sections) && $sections->isNotEmpty())
+                            <x-select id="section" name="section" label="Current Section" fgroup-class="col-md-2" wire:model.live="section" group-class="">
+                                @foreach ($sections as $item)
+                                    <option value="{{$item['id']}}">{{$item['name']}}</option>
+                                @endforeach
+                            </x-select>
+                        @endif
                     @endhasanyrole
-                    <x-select id="student" name="student" label="Student"  wire:model.live="student" group-class="">
+                    <x-select id="student" name="student" label="Student" wire:model.live="student" group-class="">
                         @isset($students)
                             @foreach ($students as $item)
                                 <option value="{{$item['id']}}">{{$item['name']}}</option>
@@ -51,7 +47,7 @@
                         @endisset
                     </x-select>
                 </div>
-                    
+
                 <x-button label="Check result" theme="primary" type="submit" class="w-full md:w-3/12"/>
             </form>
         @endif
@@ -74,16 +70,16 @@
                                     <th class="p-4 border">{{$subject->name}}</th>
                                     @foreach ($exams as $exam)
                                         <td class="p-4 border">
-                                            {{$examRecords->whereIn('exam_slot_id', $exam->examSlots?->pluck('id'))->where('subject_id' , $subject->id)->pluck('student_marks')->sum()}} 
+                                            {{$examRecords->whereIn('exam_slot_id', $exam->examSlots?->pluck('id'))->where('subject_id', $subject->id)->pluck('student_marks')->sum()}}
                                         </td>
                                     @endforeach
                                     <td class="p-4 border text-green-500 text-left">
-                                        {{$examRecords->where('subject_id' , $subject->id)->pluck('student_marks')->sum()}} 
+                                        {{$examRecords->where('subject_id', $subject->id)->pluck('student_marks')->sum()}}
                                     </td>
                                     @php
                                         $totalAttainable = $exams->pluck('totalAttainableMarksInASubject')->sum();
                                         $percentage = $totalAttainable > 0
-                                            ? (($examRecords->where('subject_id' , $subject->id)->pluck('student_marks')->sum() / $totalAttainable) * 100)
+                                            ? (($examRecords->where('subject_id', $subject->id)->pluck('student_marks')->sum() / $totalAttainable) * 100)
                                             : 0;
                                         $grade = null;
 
@@ -106,15 +102,15 @@
                     </table>
                 </div>
                 <div x-data="{'showBreakdown' : false}" class="my-5">
-                    <x-button label="Show Full Breakdown" @click="showBreakdown = !showBreakdown" >
+                    <x-button label="Show Full Breakdown" @click="showBreakdown = !showBreakdown">
                         <i :class="{'fas fa-angle-up' : showBreakdown == false, 'fas fa-angle-down' : showBreakdown == true,}"></i>
                     </x-button>
                     <div x-show="showBreakdown" x-transition style="display: none">
                         @foreach ($exams as $exam)
-                        @if (!$exam->examSlots->isEmpty())
-                            <h3 class="md:text-xl font-bold text-center my-2">{{$studentName}}'s result in {{$exam->name}}</h3>
+                            @if (!$exam->examSlots->isEmpty())
+                                <h3 class="md:text-xl font-bold text-center my-2">{{$studentName}}'s result in {{$exam->name}}</h3>
                                 <div class="overflow-scroll beautify-scrollbar">
-                                    <table class="w-full " style="white-space: nowrap">
+                                    <table class="w-full" style="white-space: nowrap">
                                         <tr>
                                             <th class="text-blue-500 border p-4">Subject</th>
                                             @foreach ($exam->examSlots as $examSlot)
@@ -122,29 +118,29 @@
                                             @endforeach
                                             <th class="text-green-500 border p-4">Total ({{$exam->examSlots->pluck('total_marks')->sum()}})</th>
                                         </tr>
-        
-                                        @foreach ($subjects as $subject)                                
+
+                                        @foreach ($subjects as $subject)
                                             <tr>
                                                 <th class="text-blue-600 border p-4">{{$subject->name}}</th>
                                                 @foreach ($exam->examSlots as $examSlot)
                                                     <td class="text-center border p-4">
-                                                            {{$examRecords->where('subject_id' , $subject->id)->where('exam_slot_id' , $examSlot->id)->first()->student_marks ?? "No record"}} 
+                                                        {{$examRecords->where('subject_id', $subject->id)->where('exam_slot_id', $examSlot->id)->first()->student_marks ?? 'No record'}}
                                                     </td>
                                                 @endforeach
-                                                <th class="border p-4 text-green-500">{{$examRecords->where('subject_id' , $subject->id)->whereIn('exam_slot_id', $exam->examSlots->pluck('id'))->sum('student_marks')}}</th>
+                                                <th class="border p-4 text-green-500">{{$examRecords->where('subject_id', $subject->id)->whereIn('exam_slot_id', $exam->examSlots->pluck('id'))->sum('student_marks')}}</th>
                                             </tr>
                                         @endforeach
                                     </table>
                                 </div>
-        
+
                                 <p class="my-3">Total marks obtained: {{$examRecords->whereIn('exam_slot_id', $exam->examSlots->pluck('id'))->sum('student_marks')}} / {{$exam->examSlots->pluck('total_marks')->sum() * $subjects->count()}}</p>
-                        @endif   
+                            @endif
                         @endforeach
                     </div>
                 </div>
             @endisset
         @elseif (isset($status))
-            <P>{{$status}}</P>
+            <p>{{$status}}</p>
         @endif
-    </div> 
+    </div>
 </div>

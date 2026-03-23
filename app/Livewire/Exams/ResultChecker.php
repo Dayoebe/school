@@ -13,204 +13,224 @@ use Livewire\Component;
 class ResultChecker extends Component
 {
     public $section;
-
     public $sections;
-
     public $classes;
-
     public $class;
-
     public $students;
-
     public $student;
-
     public $academicYears;
-
     public $academicYear;
-
     public $semesters;
-
     public $semester;
-
     public $exams;
-
     public $examRecords;
-
     public $subjects;
-
-    public $preparedResults;
-
+    public $preparedResults = false;
     public $status;
-
     public $studentName;
-
     public $selectedClass;
 
-    //rules
     public $rules = [
-        'academicYear' => 'integer|exists:academic_years,id',
-        'semester'     => 'required|integer|exists:semesters_id',
+        'academicYear' => 'nullable|integer|exists:academic_years,id',
+        'semester' => 'nullable|integer|exists:semesters,id',
+        'class' => 'nullable|integer|exists:my_classes,id',
+        'section' => 'nullable|integer|exists:sections,id',
+        'student' => 'nullable|integer|exists:users,id',
     ];
 
-    public function mount()
+    public function mount(): void
     {
         $school = auth()->user()->school;
-        $this->academicYears = $school->academicYears;
-        $this->academicYear = $school->academicYear?->id;
+
+        $this->academicYears = $school?->academicYears ?? collect();
+        $this->semesters = collect();
+        $this->classes = collect();
+        $this->sections = collect();
+        $this->students = collect();
+        $this->exams = collect();
+        $this->examRecords = collect();
+        $this->subjects = collect();
+
+        $this->academicYear = $school?->academicYear?->id;
 
         if ($this->academicYear) {
             $this->updatedAcademicYear();
         }
 
-        if (auth()->user()->hasAnyRole(['super-admin', 'admin', 'teacher'])) {
+        if ($this->isStaffViewer()) {
             $this->classes = $school
                 ->myClasses()
                 ->with(['classGroup', 'sections', 'subjects'])
                 ->orderBy('name')
                 ->get();
 
-            if ($this->classes->isEmpty()) {
-                return;
+            if ($this->classes->isNotEmpty()) {
+                $this->class = $this->classes->first()->id;
+                $this->updatedClass();
             }
-            $this->class = $this->classes[0]->id;
-            $this->updatedClass();
-        } elseif (auth()->user()->hasRole('student')) {
-            if ($school->academicYear) {
-                $this->checkResult($school->academicYear, $school->semester, auth()->user());
-            }
-        } elseif (auth()->user()->hasRole('parent')) {
-            //get parent's children
-            $this->students = auth()->user()->parentRecord->Students;
-            //set student if the fetched records aren't empty
-            $this->students->count() ? $this->student = $this->students[0]->id : $this->student = null;
+
+            return;
+        }
+
+        if (auth()->user()->hasRole('student')) {
+            $this->student = auth()->id();
+            $this->checkResult();
+
+            return;
+        }
+
+        if (auth()->user()->hasRole('parent')) {
+            $this->students = auth()->user()
+                ->children()
+                ->where('users.school_id', auth()->user()->school_id)
+                ->with(['studentRecord.myClass', 'studentRecord.section'])
+                ->orderBy('users.name')
+                ->get();
+
+            $this->student = $this->students->first()?->id;
         }
     }
 
-    //updated academic year
-    public function updatedAcademicYear()
+    public function updatedAcademicYear(): void
     {
-        $academicYear = AcademicYear::find($this->academicYear);
-        if (!$academicYear) {
-            $this->semesters = collect();
-            $this->semester = null;
-            return;
-        }
-        //get semesters in academic year
-        $this->semesters = $academicYear->semesters;
+        $this->semesters = collect();
         $this->semester = null;
 
-        if ($this->semesters->isEmpty()) {
+        $academicYear = $this->resolveAcademicYear();
+
+        if (!$academicYear) {
             return;
         }
 
-        $this->semester = ($this->semesters->find(auth()->user()->school->semester_id) ?? $this->semesters[0])->id;
+        $this->semesters = $academicYear->semesters()->orderBy('id')->get();
+        $preferredSemesterId = auth()->user()->school?->semester_id;
+
+        $this->semester = $this->semesters->firstWhere('id', $preferredSemesterId)?->id
+            ?? $this->semesters->first()?->id;
+
+        if ($this->class) {
+            $this->updatedClass();
+        }
     }
 
-    public function updatedClass()
+    public function updatedClass(): void
     {
-        //get instance of class
-        $class = MyClass::with('sections')->find($this->class);
-        if (!$class) {
-            $this->sections = collect();
-            $this->students = null;
-            $this->section = null;
+        $this->sections = collect();
+        $this->students = collect();
+        $this->section = null;
+        $this->student = null;
+
+        if (!$this->class) {
             return;
         }
 
-        //get sections in class
+        $class = MyClass::with('sections')->find($this->class);
+
+        if (!$class) {
+            return;
+        }
+
         $this->sections = $class->sections;
 
-        //set section if the fetched records aren't empty
         if ($this->sections->isEmpty()) {
-            $this->students = null;
+            $this->students = $class->studentsForAcademicYear($this->academicYear);
+            $this->student = $this->students->first()?->id;
 
             return;
         }
-        $this->section = $this->sections[0]->id;
 
+        $this->section = $this->sections->first()->id;
         $this->updatedSection();
     }
 
-    public function updatedSection()
+    public function updatedSection(): void
     {
-        //get instance of section
-        $section = Section::find($this->section);
-        if (!$section) {
-            $this->students = collect();
-            $this->student = null;
+        $this->students = collect();
+        $this->student = null;
+
+        if (!$this->section) {
             return;
         }
 
-        //get students in section
-        $this->students = $section->studentsForAcademicYear($this->academicYear);
+        $section = Section::find($this->section);
 
-        //set student if the fetched records aren't empty
-        $this->students->count() ? $this->student = $this->students[0]->id : $this->student = null;
+        if (!$section) {
+            return;
+        }
+
+        $this->students = $section->studentsForAcademicYear($this->academicYear);
+        $this->student = $this->students->first()?->id;
     }
 
-    public function checkResult(AcademicYear $academicYear, $semester, User $student)
+    public function checkResult(): void
     {
-        $semester = $this->semesters->find($semester);
+        $this->resetResultState();
 
-        // make sure user student isn't another role
-        if (!$student->hasRole('student')) {
-            abort(404, 'Student not found.');
+        $academicYear = $this->resolveAcademicYear();
+        $student = $this->resolveStudent();
+        $semester = $this->resolveSemester();
+
+        if (!$academicYear) {
+            $this->status = 'Select a valid academic year.';
+
+            return;
         }
-        //set name that would be used in view
+
+        if (!$student) {
+            $this->status = 'Select a valid student.';
+
+            return;
+        }
+
         $this->studentName = $student->name;
-        // fetch all exams, subjects and exam records for user in semester
 
-        if ($semester != null && $semester->exists()) {
-            $this->exams = $semester->exams()->where('publish_result', true)->get()->load('examSlots');
-            //fetch all students exam records in semester
-            $examSlotIds = $this->exams
-                ->flatMap(fn($exam) => $exam->examSlots->pluck('id'))
-                ->unique()
-                ->values();
-            $this->examRecords = $examSlotIds->isEmpty()
-                ? collect()
-                : ExamRecord::where('user_id', $student->id)->whereIn('exam_slot_id', $examSlotIds)->get();
-        } else {
-            $this->exams = $academicYear->exams()->where('publish_result', true)->get()->load('examSlots');
-            $examSlotIds = $this->exams
-                ->flatMap(fn($exam) => $exam->examSlots->pluck('id'))
-                ->unique()
-                ->values();
-            $this->examRecords = $examSlotIds->isEmpty()
-                ? collect()
-                : ExamRecord::where('user_id', $student->id)->whereIn('exam_slot_id', $examSlotIds)->get();
-        }
+        $examQuery = $semester
+            ? $semester->exams()->where('publish_result', true)
+            : $academicYear->exams()->where('publish_result', true);
+
+        $this->exams = $examQuery->get()->load('examSlots');
+
+        $examSlotIds = $this->exams
+            ->flatMap(fn ($exam) => $exam->examSlots->pluck('id'))
+            ->unique()
+            ->values();
+
+        $this->examRecords = $examSlotIds->isEmpty()
+            ? collect()
+            : ExamRecord::query()
+                ->where('user_id', $student->id)
+                ->whereIn('exam_slot_id', $examSlotIds)
+                ->get();
 
         if ($this->exams->isEmpty()) {
-            $this->status = 'There are no exams with published results for now';
+            $this->status = 'There are no exams with published results for now.';
 
-            return $this->preparedResults = false;
+            return;
         }
 
         $studentRecord = $student->studentRecord;
+
         if (!$studentRecord) {
-            $this->status = 'No records this academic year, make sure user has been promoted this year or has not been graduated';
-            $this->preparedResults = false;
+            $this->status = 'No records this academic year. Make sure the student has been promoted this year and is not graduated.';
 
             return;
         }
 
         $pivotRecord = DB::table('academic_year_student_record')
             ->where('student_record_id', $studentRecord->id)
-            ->where('academic_year_id', $this->academicYear)
+            ->where('academic_year_id', $academicYear->id)
             ->first();
 
         if (!$pivotRecord) {
-            $this->status = 'No records this academic year, make sure user has been promoted this year or has not been graduated';
-            $this->preparedResults = false;
+            $this->status = 'No records this academic year. Make sure the student has been promoted this year and is not graduated.';
 
             return;
         }
 
         $this->selectedClass = MyClass::with(['subjects', 'classGroup'])->find($pivotRecord->my_class_id);
+
         if (!$this->selectedClass) {
-            $this->status = 'Class record not found for this academic year';
-            $this->preparedResults = false;
+            $this->status = 'Class record not found for this academic year.';
 
             return;
         }
@@ -218,13 +238,80 @@ class ResultChecker extends Component
         $this->subjects = $this->selectedClass->subjects;
 
         if ($this->subjects->isEmpty()) {
-            $this->status = 'Subjects not present';
-            $this->preparedResults = false;
+            $this->status = 'Subjects not present.';
 
             return;
         }
 
         $this->preparedResults = true;
+        $this->status = null;
+    }
+
+    protected function resetResultState(): void
+    {
+        $this->preparedResults = false;
+        $this->status = null;
+        $this->studentName = null;
+        $this->selectedClass = null;
+        $this->exams = collect();
+        $this->examRecords = collect();
+        $this->subjects = collect();
+    }
+
+    protected function resolveAcademicYear(): ?AcademicYear
+    {
+        if (!$this->academicYear) {
+            return null;
+        }
+
+        return $this->academicYears->firstWhere('id', (int) $this->academicYear)
+            ?? AcademicYear::query()
+                ->where('school_id', auth()->user()->school_id)
+                ->find((int) $this->academicYear);
+    }
+
+    protected function resolveSemester()
+    {
+        if (!$this->semester) {
+            return null;
+        }
+
+        return $this->semesters->firstWhere('id', (int) $this->semester)
+            ?? $this->resolveAcademicYear()?->semesters()->find((int) $this->semester);
+    }
+
+    protected function resolveStudent(): ?User
+    {
+        if (!$this->student) {
+            return null;
+        }
+
+        $studentId = (int) $this->student;
+        $query = User::query()
+            ->role('student')
+            ->where('school_id', auth()->user()->school_id)
+            ->with('studentRecord');
+
+        if (auth()->user()->hasRole('student')) {
+            return $studentId === (int) auth()->id() ? $query->find($studentId) : null;
+        }
+
+        if (auth()->user()->hasRole('parent')) {
+            $isAccessible = auth()->user()
+                ->children()
+                ->where('users.id', $studentId)
+                ->where('users.school_id', auth()->user()->school_id)
+                ->exists();
+
+            return $isAccessible ? $query->find($studentId) : null;
+        }
+
+        return $query->find($studentId);
+    }
+
+    protected function isStaffViewer(): bool
+    {
+        return auth()->user()->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin', 'teacher']);
     }
 
     public function render()

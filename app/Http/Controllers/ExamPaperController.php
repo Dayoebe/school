@@ -6,6 +6,8 @@ use App\Http\Requests\StoreExamPaperRequest;
 use App\Http\Requests\UpdateExamPaperRequest;
 use App\Models\Exam;
 use App\Models\ExamPaper;
+use App\Models\Semester;
+use App\Models\Subject;
 use App\Traits\ResolvesAccessibleStudents;
 use App\Traits\RestrictsTeacherExamPaperManagement;
 use Illuminate\Database\Eloquent\Builder;
@@ -53,35 +55,59 @@ class ExamPaperController extends Controller
         ]);
     }
 
+    public function createForCurrentTerm(): View|RedirectResponse
+    {
+        $this->authorize('create', ExamPaper::class);
+
+        $semester = $this->currentSchoolSemester();
+
+        if (!$semester) {
+            return redirect()
+                ->route('exams.index')
+                ->with('danger', 'Set the active academic session and term before uploading an exam.');
+        }
+
+        $exam = $this->resolveCurrentTermUploadExam($semester, true);
+        [$classes, $subjects] = $this->formOptions();
+
+        return view('livewire.exams.pages.create', [
+            'exam' => $exam,
+            'classes' => $classes,
+            'subjects' => $subjects,
+            'semester' => $semester,
+        ]);
+    }
+
     public function store(StoreExamPaperRequest $request, Exam $exam): RedirectResponse
     {
         $this->authorize('create', ExamPaper::class);
         $this->ensureExamInCurrentSchool($exam);
 
-        $data = $request->validated();
-        $classId = (int) $data['my_class_id'];
-        $subjectId = (int) $data['subject_id'];
+        $paper = $this->persistExamPaper($request, $exam);
 
-        $this->ensureCurrentUserCanManagePaperScope($classId, $subjectId);
-        $this->ensurePaperPayload($data['typed_content'] ?? null, $request->file('attachment'));
-        $this->ensureUniquePaperPerExam($exam, $classId, $subjectId);
+        return redirect()
+            ->route('exam-papers.index', $paper->exam_id)
+            ->with('success', 'Exam paper uploaded successfully.');
+    }
 
-        $attachment = $this->storeAttachment($request);
+    public function storeForCurrentTerm(StoreExamPaperRequest $request): RedirectResponse
+    {
+        $this->authorize('create', ExamPaper::class);
 
-        ExamPaper::create([
-            'exam_id' => $exam->id,
-            'my_class_id' => $classId,
-            'subject_id' => $subjectId,
-            'title' => $data['title'],
-            'instructions' => $data['instructions'] ?? null,
-            'typed_content' => $data['typed_content'] ?? null,
-            'uploaded_by' => auth()->id(),
-            ...$attachment,
-        ]);
+        $semester = $this->currentSchoolSemester();
+
+        if (!$semester) {
+            return redirect()
+                ->route('exams.index')
+                ->with('danger', 'Set the active academic session and term before uploading an exam.');
+        }
+
+        $exam = $this->resolveCurrentTermUploadExam($semester, true);
+        $this->persistExamPaper($request, $exam);
 
         return redirect()
             ->route('exam-papers.index', $exam)
-            ->with('success', 'Exam paper uploaded successfully.');
+            ->with('success', 'Exam uploaded successfully for the current term.');
     }
 
     public function edit(Exam $exam, ExamPaper $examPaper): View
@@ -118,7 +144,7 @@ class ExamPaperController extends Controller
         $examPaper->update([
             'my_class_id' => $classId,
             'subject_id' => $subjectId,
-            'title' => $data['title'],
+            'title' => $this->resolvePaperTitle($data['title'] ?? null, $subjectId, $exam),
             'instructions' => $data['instructions'] ?? null,
             'typed_content' => $data['typed_content'] ?? null,
             ...$attachment,
@@ -211,7 +237,7 @@ class ExamPaperController extends Controller
 
     protected function examPapersForManagement(Exam $exam): Builder
     {
-        $query = $exam->papers();
+        $query = ExamPaper::query()->where('exam_id', $exam->id);
 
         if (!$this->isRestrictedTeacherExamPaperManager()) {
             return $query;
@@ -282,7 +308,7 @@ class ExamPaperController extends Controller
         }
 
         throw ValidationException::withMessages([
-            'subject_id' => 'An exam paper already exists for this exam, class, and subject.',
+            'subject_id' => 'An exam paper already exists for this class and subject in the current term.',
         ]);
     }
 
@@ -375,5 +401,85 @@ class ExamPaperController extends Controller
                 ->exists());
 
         abort_unless($canView, 403);
+    }
+
+    protected function currentSchoolSemester(): ?Semester
+    {
+        return auth()->user()?->school?->semester?->loadMissing('academicYear');
+    }
+
+    protected function resolveCurrentTermUploadExam(?Semester $semester = null, bool $createIfMissing = false): ?Exam
+    {
+        $semester = $semester ?: $this->currentSchoolSemester();
+
+        if (!$semester) {
+            return null;
+        }
+
+        $query = Exam::query()
+            ->where('semester_id', $semester->id)
+            ->uploadArchives();
+
+        if (!$createIfMissing) {
+            return $query->first();
+        }
+
+        return $query->firstOrCreate(
+            [
+                'semester_id' => $semester->id,
+                'description' => Exam::uploadArchiveDescription($semester),
+            ],
+            [
+                'name' => Exam::uploadArchiveName($semester),
+                'start_date' => now()->toDateString(),
+                'stop_date' => now()->toDateString(),
+                'active' => false,
+                'publish_result' => false,
+            ]
+        );
+    }
+
+    protected function persistExamPaper(Request $request, Exam $exam): ExamPaper
+    {
+        $data = $request->validated();
+        $classId = (int) $data['my_class_id'];
+        $subjectId = (int) $data['subject_id'];
+
+        $this->ensureCurrentUserCanManagePaperScope($classId, $subjectId);
+        $this->ensurePaperPayload($data['typed_content'] ?? null, $request->file('attachment'));
+        $this->ensureUniquePaperPerExam($exam, $classId, $subjectId);
+
+        $attachment = $this->storeAttachment($request);
+
+        return ExamPaper::create([
+            'exam_id' => $exam->id,
+            'my_class_id' => $classId,
+            'subject_id' => $subjectId,
+            'title' => $this->resolvePaperTitle($data['title'] ?? null, $subjectId, $exam),
+            'instructions' => $data['instructions'] ?? null,
+            'typed_content' => $data['typed_content'] ?? null,
+            'uploaded_by' => auth()->id(),
+            ...$attachment,
+        ]);
+    }
+
+    protected function resolvePaperTitle(?string $title, int $subjectId, Exam $exam): string
+    {
+        $title = trim((string) $title);
+
+        if ($title !== '') {
+            return $title;
+        }
+
+        $subject = Subject::query()->find($subjectId);
+        $term = $exam->semester?->name;
+        $session = $exam->semester?->academicYear?->name;
+
+        return trim(collect([
+            $subject?->name,
+            $term,
+            $session,
+            'Exam',
+        ])->filter()->implode(' '));
     }
 }

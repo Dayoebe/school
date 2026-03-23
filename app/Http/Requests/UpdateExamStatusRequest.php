@@ -6,7 +6,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateExamStatusRequest extends FormRequest
 {
-    protected function prepareForValidation()
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    protected function prepareForValidation(): void
     {
         if ($this->status == 'active' || $this->status == 1 || $this->status == 'on') {
             $this->merge(['status' => true]);
@@ -15,12 +20,7 @@ class UpdateExamStatusRequest extends FormRequest
         }
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, mixed>
-     */
-    public function rules()
+    public function rules(): array
     {
         return [
             'status' => 'boolean',

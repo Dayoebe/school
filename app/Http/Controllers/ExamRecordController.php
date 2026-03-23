@@ -9,6 +9,7 @@ use App\Models\ExamSlot;
 use App\Models\Section;
 use App\Models\Subject;
 use App\Models\User;
+use App\Traits\RestrictsTeacherExamPaperManagement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,8 @@ use Illuminate\View\View;
 
 class ExamRecordController extends Controller
 {
+    use RestrictsTeacherExamPaperManagement;
+
     public function __construct()
     {
         $this->authorizeResource(ExamRecord::class, 'exam_record');
@@ -45,33 +48,36 @@ class ExamRecordController extends Controller
     {
         $data = $request->except('_token');
         $schoolId = $this->currentSchoolId();
+
         if (!$schoolId) {
             abort(403, 'No school context found for this account.');
         }
 
-        $subject = Subject::query()->findOrFail($data['subject_id']);
-        $section = Section::whereHas('myClass.classGroup', function ($query) use ($schoolId) {
-            $query->where('school_id', $schoolId);
-        })->findOrFail($data['section_id']);
-        $student = User::where('school_id', $schoolId)->findOrFail($data['user_id']);
+        $subject = Subject::query()
+            ->where('school_id', $schoolId)
+            ->findOrFail($data['subject_id']);
 
-        if ((int) optional($student->studentRecord)->section_id !== (int) $section->id) {
-            throw ValidationException::withMessages([
-                'user_id' => 'Selected student does not belong to the selected section.',
-            ]);
-        }
+        $section = Section::query()
+            ->whereHas('myClass.classGroup', function ($query) use ($schoolId) {
+                $query->where('school_id', $schoolId);
+            })
+            ->with('myClass')
+            ->findOrFail($data['section_id']);
+
+        $student = User::query()
+            ->where('school_id', $schoolId)
+            ->with('studentRecord')
+            ->findOrFail($data['user_id']);
+
+        $classId = (int) $section->my_class_id;
+
+        $this->ensureCurrentUserCanManageExamRecordScope($classId, (int) $subject->id);
+        $this->ensureStudentBelongsToSection($student, $section);
 
         if (!$this->subjectAllowedInSectionClass($subject, $section, $schoolId)) {
             throw ValidationException::withMessages([
                 'subject_id' => 'Selected subject is not assigned to the selected section class.',
             ]);
-        }
-
-        if (
-            auth()->user()->hasRole('teacher')
-            && $subject->teachers()->where('users.id', auth()->id())->doesntExist()
-        ) {
-            abort(403, 'Creating exam record for this subject is unauthorised.');
         }
 
         DB::transaction(function () use ($data) {
@@ -156,5 +162,47 @@ class ExamRecordController extends Controller
             ->where('subject_id', $subject->id)
             ->where('my_class_id', $section->my_class_id)
             ->exists();
+    }
+
+    protected function ensureCurrentUserCanManageExamRecordScope(int $classId, int $subjectId): void
+    {
+        abort_unless(
+            $this->currentUserCanManageExamPaperClass($classId),
+            403,
+            'Creating exam record for this class is unauthorised.'
+        );
+
+        abort_unless(
+            $this->currentUserCanManageExamPaperSubject($subjectId, $classId),
+            403,
+            'Creating exam record for this subject is unauthorised.'
+        );
+    }
+
+    protected function ensureStudentBelongsToSection(User $student, Section $section): void
+    {
+        $studentRecordId = $student->studentRecord?->id;
+        $academicYearId = auth()->user()?->school?->academic_year_id;
+
+        if ($studentRecordId && $academicYearId) {
+            $assignedToSection = DB::table('academic_year_student_record')
+                ->where('student_record_id', $studentRecordId)
+                ->where('academic_year_id', $academicYearId)
+                ->where('my_class_id', $section->my_class_id)
+                ->where('section_id', $section->id)
+                ->exists();
+
+            if ($assignedToSection) {
+                return;
+            }
+        }
+
+        if ((int) $student->studentRecord?->section_id === (int) $section->id) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'user_id' => 'Selected student does not belong to the selected section.',
+        ]);
     }
 }

@@ -1,24 +1,33 @@
 @extends('layouts.app', ['breadcrumbs' => [
     ['href' => route('dashboard'), 'text' => 'Dashboard'],
     ['href' => route('exams.index'), 'text' => 'Exams'],
-    ['href' => route('exam-papers.index', $exam), 'text' => 'Exam Papers', 'active'],
+    ['href' => route('exam-papers.index', $exam), 'text' => $exam->isUploadArchive() ? 'Uploaded Exams' : 'Exam Papers', 'active'],
 ]])
 
-@section('title', __('Exam Papers'))
-@section('page_heading', __('Exam Papers'))
+@section('title', __($exam->isUploadArchive() ? 'Uploaded Exams' : 'Exam Papers'))
+@section('page_heading', __($exam->isUploadArchive() ? 'Uploaded Exams' : 'Exam Papers'))
 
 @section('content')
+    @php
+        $isUploadArchive = $exam->isUploadArchive();
+        $examHeading = $isUploadArchive ? (($exam->semester?->name ?? 'Current Term') . ' Uploaded Exams') : $exam->name;
+    @endphp
+
     <div class="card mb-4">
         <div class="card-body">
             <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h2 class="text-xl font-semibold text-gray-900">{{ $exam->name }}</h2>
+                    <h2 class="text-xl font-semibold text-gray-900">{{ $examHeading }}</h2>
                     <p class="text-sm text-gray-600">Term: {{ $exam->semester?->name ?? 'N/A' }} | Session: {{ $exam->semester?->academicYear?->name ?? 'N/A' }}</p>
-                    <p class="text-sm text-gray-600">Window: {{ $exam->start_date }} to {{ $exam->stop_date }}</p>
+                    @if ($isUploadArchive)
+                        <p class="text-sm text-gray-600">Current-term archive for printable class subject uploads.</p>
+                    @else
+                        <p class="text-sm text-gray-600">Window: {{ $exam->start_date }} to {{ $exam->stop_date }}</p>
+                    @endif
                 </div>
                 @can('create', App\Models\ExamPaper::class)
                     <a href="{{ route('exam-papers.create', $exam) }}" class="btn btn-primary">
-                        Upload Paper
+                        Upload Exam
                     </a>
                 @endcan
             </div>
@@ -27,7 +36,7 @@
 
     <div class="card">
         <div class="card-header">
-            <h3 class="card-title">Uploaded Papers</h3>
+            <h3 class="card-title">{{ $isUploadArchive ? 'Uploaded Exams' : 'Uploaded Papers' }}</h3>
         </div>
         <div class="card-body overflow-auto">
             @if(session('success'))
@@ -38,7 +47,7 @@
 
             @if($papers->isEmpty())
                 <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-gray-600">
-                    No exam papers have been uploaded for this exam yet.
+                    {{ $isUploadArchive ? 'No exams have been uploaded for the active term yet.' : 'No exam papers have been uploaded for this exam yet.' }}
                 </div>
             @else
                 <table class="min-w-full divide-y divide-gray-200 text-sm">

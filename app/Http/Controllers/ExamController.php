@@ -6,6 +6,7 @@ use App\Http\Requests\StoreExamRequest;
 use App\Http\Requests\UpdateExamRequest;
 use App\Http\Requests\UpdateExamStatusRequest;
 use App\Models\Exam;
+use App\Models\Semester;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
@@ -30,7 +31,14 @@ class ExamController extends Controller
      */
     public function create(): View
     {
-        return view('livewire.exams.pages.create');
+        $school = auth()->user()?->school;
+        $activeSemesterId = $school?->semester?->id;
+        $semesters = Semester::query()
+            ->when($school?->academic_year_id, fn ($query, $academicYearId) => $query->where('academic_year_id', $academicYearId))
+            ->orderBy('id')
+            ->get(['id', 'name']);
+
+        return view('livewire.exams.create-exam-form', compact('semesters', 'activeSemesterId'));
     }
 
     /**
@@ -47,7 +55,9 @@ class ExamController extends Controller
             'stop_date' => $data['stop_date'],
         ]);
 
-        return redirect()->route('exam-slots.create', $exam)->with('success', 'Exam created successfully, Now, create exam slots for the exam');
+        return redirect()
+            ->route('exams.edit', $exam)
+            ->with('success', 'Exam setup created successfully. You can now manage slots or upload the paper from the exam page.');
     }
 
     /**

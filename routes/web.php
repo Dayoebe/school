@@ -86,6 +86,8 @@ $adminMiddleware = [
     'App\Http\Middleware\PreventGraduatedStudent'
 ];
 
+Route::pattern('exam', '[0-9]+');
+
 /*
 |--------------------------------------------------------------------------
 | PUBLIC ROUTES
@@ -628,9 +630,18 @@ Route::middleware($adminMiddleware)->prefix('dashboard')->group(function () {
                 Route::resource('exams', ExamController::class)
                     ->only(['index', 'show'])
                     ->middleware('permission:read exam');
-                Route::resource('exams', ExamController::class)
-                    ->only(['create', 'store'])
-                    ->middleware('permission:create exam');
+                Route::get('exams/create', [ExamPaperController::class, 'createForCurrentTerm'])
+                    ->middleware('permission:create exam paper')
+                    ->name('exams.create');
+                Route::post('exams/upload', [ExamPaperController::class, 'storeForCurrentTerm'])
+                    ->middleware('permission:create exam paper')
+                    ->name('exams.store');
+                Route::get('exams/setup/create', [ExamController::class, 'create'])
+                    ->middleware('permission:create exam')
+                    ->name('exams.setup.create');
+                Route::post('exams/setup', [ExamController::class, 'store'])
+                    ->middleware('permission:create exam')
+                    ->name('exams.setup.store');
                 Route::resource('exams', ExamController::class)
                     ->only(['edit', 'update'])
                     ->middleware('permission:update exam');

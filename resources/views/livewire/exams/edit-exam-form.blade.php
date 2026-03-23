@@ -1,6 +1,26 @@
 <div class="card">
-    <div class="card-header">
-        <h3 class="card-title">Edit exam {{$exam->id}}</h3>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h3 class="card-title mb-0">Manage exam {{$exam->id}}</h3>
+        <div class="d-flex flex-wrap gap-2">
+            @can('read exam slot')
+                <a href="{{ route('exam-slots.index', $exam) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-calendar-alt"></i>
+                    Manage slots
+                </a>
+            @endcan
+            @can('read exam paper')
+                <a href="{{ route('exam-papers.index', $exam) }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-file-lines"></i>
+                    Uploaded exams
+                </a>
+            @endcan
+            @can('create exam paper')
+                <a href="{{ route('exam-papers.create', $exam) }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-upload"></i>
+                    Upload exam
+                </a>
+            @endcan
+        </div>
     </div>
     <div class="card-body">
         <form action="{{route('exams.update',$exam)}}" autocomplete="off" method="POST" class="md:w-1/2">

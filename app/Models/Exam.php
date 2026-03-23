@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Exam extends Model
 {
     use HasFactory;
+
+    public const UPLOAD_ARCHIVE_MARKER = '[system-exam-upload-archive]';
 
     protected $fillable = [
         'name',
@@ -21,11 +24,6 @@ class Exam extends Model
         'publish_result',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'start_date' => 'date:Y-m-d',
@@ -49,11 +47,40 @@ class Exam extends Model
         return $this->hasMany(ExamPaper::class);
     }
 
-    /**
-     * Calculate total marks attainable in each subjects for an exam.
-     *
-     * @return int|string
-     */
+    public function scopeUploadArchives(Builder $query): Builder
+    {
+        return $query->where('description', 'like', '%' . self::UPLOAD_ARCHIVE_MARKER . '%');
+    }
+
+    public function scopeWithoutUploadArchives(Builder $query): Builder
+    {
+        return $query->where(function (Builder $archiveQuery) {
+            $archiveQuery
+                ->whereNull('description')
+                ->orWhere('description', 'not like', '%' . self::UPLOAD_ARCHIVE_MARKER . '%');
+        });
+    }
+
+    public function isUploadArchive(): bool
+    {
+        return str_contains((string) $this->description, self::UPLOAD_ARCHIVE_MARKER);
+    }
+
+    public static function uploadArchiveName(Semester $semester): string
+    {
+        return trim(sprintf('%s Exam Uploads', $semester->name));
+    }
+
+    public static function uploadArchiveDescription(Semester $semester): string
+    {
+        return trim(sprintf(
+            '%s Auto-generated upload archive for %s %s',
+            self::UPLOAD_ARCHIVE_MARKER,
+            $semester->name,
+            $semester->academicYear?->name ?? 'current session'
+        ));
+    }
+
     public function getTotalAttainableMarksInASubjectAttribute()
     {
         $totalMarks = 0;
@@ -64,11 +91,6 @@ class Exam extends Model
         return $totalMarks;
     }
 
-    /**
-     * Calculate total marks gotten by student in semester across all exams in a subject.
-     *
-     * @return int
-     */
     public function calculateStudentTotalMarkInSubjectForSemester(Semester $semester, User $user, Subject $subject)
     {
         return $this->examRecordService->getAllUserExamRecordInSemesterForSubject($semester, $user->id, $subject->id)->pluck('student_marks')->sum();

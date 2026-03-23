@@ -16,7 +16,7 @@ class UpdateExamPaperRequest extends FormRequest
         return [
             'my_class_id' => 'required|integer|exists:my_classes,id',
             'subject_id' => 'required|integer|exists:subjects,id',
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'instructions' => 'nullable|string|max:5000',
             'typed_content' => 'nullable|string|max:200000',
             'attachment' => 'nullable|file|mimes:jpeg,jpg,png,webp,pdf|max:15360',

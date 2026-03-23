@@ -24,6 +24,13 @@ trait RestrictsTeacherPortalAccess
         return [
             'dashboard',
             'dashboard.responsibilities',
+            'exams.index',
+            'exams.create',
+            'exams.store',
+            'exam-slots.*',
+            'exam-records.*',
+            'exam-papers.*',
+            'exams.result-checker',
             'results.index',
             'result',
             'result.upload.individual',
