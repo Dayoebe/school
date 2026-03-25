@@ -6,6 +6,8 @@ use App\Models\Assessment\Assessment;
 use App\Models\Assessment\AssessmentStudentLock;
 use App\Models\Assessment\Question;
 use App\Models\Assessment\StudentAnswer;
+use App\Models\MyClass;
+use App\Models\Subject;
 use App\Models\User;
 use App\Traits\RestrictsTeacherCbtManagement;
 use Illuminate\Database\Eloquent\Builder;
@@ -133,7 +135,7 @@ class CbtManagement extends Component
     {
         $classId = $value ? (int) $value : null;
 
-        if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
+        if (!$classId || !$this->currentUserCanFilterAssessmentClass($classId)) {
             $this->filterCourseId = '';
             $this->filterLessonId = '';
             $this->resetPage();
@@ -142,7 +144,7 @@ class CbtManagement extends Component
 
         if (
             $this->filterLessonId
-            && !$this->currentUserCanManageCbtSubject($this->filterLessonId, $classId)
+            && !$this->currentUserCanFilterAssessmentSubject($this->filterLessonId, $classId)
         ) {
             $this->filterLessonId = '';
         }
@@ -159,7 +161,7 @@ class CbtManagement extends Component
             $subjectId
             && (
                 !$classId
-                || !$this->currentUserCanManageCbtSubject($subjectId, $classId)
+                || !$this->currentUserCanFilterAssessmentSubject($subjectId, $classId)
             )
         ) {
             $this->filterLessonId = '';
@@ -190,11 +192,25 @@ class CbtManagement extends Component
 
     public function render()
     {
+        $viewer = auth()->user();
         $assessments = $this->assessmentLibraryQuery()
-            ->with(['questions', 'course', 'lesson'])
+            ->with(['questions', 'course.teachers:id,name', 'lesson'])
             ->paginate(10);
 
+        $assessments->setCollection(
+            $assessments->getCollection()->map(function (Assessment $assessment) use ($viewer) {
+                $assessment->setAttribute('can_manage_content', $this->viewerCanManageAssessmentContent($assessment, $viewer));
+                $assessment->setAttribute('can_print_summary', $this->viewerCanPrintAssessmentSummary($assessment, $viewer));
+
+                return $assessment;
+            })
+        );
+
         $classes = $this->classesForCurrentSchool()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $libraryClasses = $this->libraryClassesForCurrentSchool()
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -209,6 +225,7 @@ class CbtManagement extends Component
         return view('livewire.cbt.cbt-management', compact(
             'assessments',
             'classes',
+            'libraryClasses',
             'subjects',
             'filterSubjects',
             'isRestrictedTeacherManager',
@@ -1145,7 +1162,7 @@ class CbtManagement extends Component
 
     protected function assessmentLibraryQuery(): Builder
     {
-        $query = $this->assessmentsForCurrentSchool()
+        $query = $this->assessmentLibraryAccessibleQuery()
             ->leftJoin('my_classes', 'my_classes.id', '=', 'assessments.course_id')
             ->leftJoin('subjects', 'subjects.id', '=', 'assessments.lesson_id')
             ->select('assessments.*')
@@ -1228,9 +1245,20 @@ class CbtManagement extends Component
     protected function availableSubjectsForFilterClass(): Collection
     {
         $classId = $this->filterCourseId ? (int) $this->filterCourseId : null;
+        $viewer = auth()->user();
 
-        if (!$classId || !$this->currentUserCanManageCbtClass($classId)) {
+        if (!$classId || !$this->currentUserCanFilterAssessmentClass($classId)) {
             return collect();
+        }
+
+        if (!$this->isRestrictedTeacherCbtManager($viewer)) {
+            return $this->subjectsForLibraryClassQuery($classId)
+                ->get(['subjects.id', 'subjects.name', 'subjects.short_name']);
+        }
+
+        if ($this->restrictedTeacherClassTeacherClassIds($viewer)->contains($classId)) {
+            return $this->subjectsForLibraryClassQuery($classId)
+                ->get(['subjects.id', 'subjects.name', 'subjects.short_name']);
         }
 
         return $this->accessibleCbtSubjectsQuery($classId)
@@ -1242,6 +1270,175 @@ class CbtManagement extends Component
         return auth()->user()?->hasAnyRole(['super-admin', 'super_admin']) === true;
     }
 
+    protected function currentUserCanFilterAssessmentClass(int|string|null $classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        return $this->libraryClassesForCurrentSchool()
+            ->where('my_classes.id', (int) $classId)
+            ->exists();
+    }
+
+    protected function currentUserCanFilterAssessmentSubject(int|string|null $subjectId, int|string|null $classId): bool
+    {
+        if (!$subjectId || !$classId) {
+            return false;
+        }
+
+        return $this->availableSubjectsForFilterClass()
+            ->contains(fn ($subject) => (int) $subject->id === (int) $subjectId);
+    }
+
+    protected function viewerCanManageAssessmentContent(Assessment $assessment, ?User $viewer): bool
+    {
+        if (!$viewer) {
+            return false;
+        }
+
+        if (!$this->isRestrictedTeacherCbtManager($viewer)) {
+            return true;
+        }
+
+        if (!$assessment->course_id || !$assessment->lesson_id) {
+            return false;
+        }
+
+        return $this->currentUserCanManageCbtClass($assessment->course_id, $viewer)
+            && $this->currentUserCanManageCbtSubject($assessment->lesson_id, $assessment->course_id, $viewer);
+    }
+
+    protected function viewerCanPrintAssessmentSummary(Assessment $assessment, ?User $viewer): bool
+    {
+        if (!$viewer || !$assessment->course) {
+            return false;
+        }
+
+        if ($viewer->hasAnyRole(['super-admin', 'super_admin'])) {
+            return true;
+        }
+
+        return $assessment->course->relationLoaded('teachers')
+            ? $assessment->course->teachers->contains(fn (User $teacher) => (int) $teacher->id === (int) $viewer->id)
+            : $assessment->course->hasTeacher($viewer->id);
+    }
+
+    protected function libraryClassesForCurrentSchool(): Builder
+    {
+        $viewer = auth()->user();
+        $query = MyClass::query();
+
+        if (!$viewer?->school_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->whereHas('classGroup', function (Builder $classGroupQuery) use ($viewer) {
+            $classGroupQuery->where('school_id', $viewer->school_id);
+        });
+
+        if (!$this->isRestrictedTeacherCbtManager($viewer)) {
+            return $query;
+        }
+
+        $classIds = $this->accessibleCbtClassIds($viewer)
+            ->merge($this->restrictedTeacherClassTeacherClassIds($viewer))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($classIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('my_classes.id', $classIds);
+    }
+
+    protected function subjectsForLibraryClassQuery(int $classId): Builder
+    {
+        $schoolId = $this->currentSchoolId();
+        $query = Subject::query();
+
+        if (!$schoolId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('subjects.school_id', $schoolId)
+            ->where(function (Builder $classScope) use ($classId) {
+                $classScope->where('subjects.my_class_id', $classId)
+                    ->orWhereHas('classes', function (Builder $classQuery) use ($classId) {
+                        $classQuery->where('my_classes.id', $classId);
+                    })
+                    ->orWhereIn('subjects.id', function ($subQuery) use ($classId) {
+                        $subQuery->from('student_subject')
+                            ->where('my_class_id', $classId)
+                            ->select('subject_id');
+                    });
+            })
+            ->orderBy('subjects.name')
+            ->distinct();
+    }
+
+    protected function assessmentLibraryAccessibleQuery(): Builder
+    {
+        $viewer = auth()->user();
+        $query = Assessment::query()->standaloneCBT();
+
+        if (!$viewer?->school_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->forSchool($viewer->school_id);
+
+        if (!$this->isRestrictedTeacherCbtManager($viewer)) {
+            return $query;
+        }
+
+        $managedClassIds = $this->accessibleCbtClassIds($viewer)
+            ->filter()
+            ->unique()
+            ->values();
+        $classTeacherClassIds = $this->restrictedTeacherClassTeacherClassIds($viewer)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($managedClassIds->isEmpty() && $classTeacherClassIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $assessmentQuery) use ($viewer, $managedClassIds, $classTeacherClassIds) {
+            if ($managedClassIds->isNotEmpty()) {
+                $assessmentQuery->where(function (Builder $managedAssessmentQuery) use ($viewer, $managedClassIds) {
+                    $managedAssessmentQuery->whereIn('assessments.course_id', $managedClassIds)
+                        ->whereNotNull('assessments.lesson_id')
+                        ->whereExists(function ($subQuery) use ($viewer) {
+                            $subQuery->select(DB::raw(1))
+                                ->from('subject_teacher as st')
+                                ->whereColumn('st.subject_id', 'assessments.lesson_id')
+                                ->where('st.user_id', $viewer->id)
+                                ->where('st.school_id', $viewer->school_id)
+                                ->where(function ($assignmentQuery) {
+                                    $assignmentQuery->where('st.is_general', true)
+                                        ->orWhereColumn('st.my_class_id', 'assessments.course_id');
+                                });
+                        });
+                });
+            }
+
+            $classOnlyIds = $classTeacherClassIds
+                ->diff($managedClassIds)
+                ->values();
+
+            if ($classOnlyIds->isNotEmpty()) {
+                if ($managedClassIds->isNotEmpty()) {
+                    $assessmentQuery->orWhereIn('assessments.course_id', $classOnlyIds);
+                } else {
+                    $assessmentQuery->whereIn('assessments.course_id', $classOnlyIds);
+                }
+            }
+        });
+    }
     protected function currentUserCanAdministerCbtParticipants(): bool
     {
         return auth()->user()?->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']) === true;

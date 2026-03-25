@@ -200,7 +200,7 @@
                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                     >
                         <option value="">All classes</option>
-                        @foreach($classes as $class)
+                        @foreach($libraryClasses as $class)
                             <option value="{{ $class->id }}">{{ $class->name }}</option>
                         @endforeach
                     </select>
@@ -354,6 +354,9 @@
                                 <i class="fas fa-circle-info mt-0.5 text-slate-400"></i>
                                 <p>
                                     Use <span class="font-semibold text-slate-800">Participants</span> to control eligibility, <span class="font-semibold text-slate-800">Questions</span> to manage the paper, and publication controls to decide when students can write and when they can see results.
+                                    @if($assessment->can_print_summary && !$assessment->can_manage_content)
+                                        <span class="mt-2 block text-slate-700">You currently have print access for this class only. Question editing and publication controls remain restricted.</span>
+                                    @endif
                                 </p>
                             </div>
                         </div>
@@ -366,7 +369,7 @@
                                 </button>
                             @endif
 
-                            @if(!$assessment->is_locked || $canLockAssessments)
+                            @if($assessment->can_manage_content && (!$assessment->is_locked || $canLockAssessments))
                                 <button type="button" wire:click.prevent="manageQuestions({{ $assessment->id }})"
                                     class="inline-flex items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-100">
                                     <i class="fas fa-question-circle mr-2"></i>{{ $assessment->is_locked ? 'View Questions' : 'Add Questions' }}
@@ -407,10 +410,28 @@
                                 @endif
                             @endif
 
-                            <button wire:click="editAssessment({{ $assessment->id }})"
-                                class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100">
-                                <i class="fas fa-edit mr-2"></i>Edit
-                            </button>
+                            @if($assessment->can_print_summary)
+                                <a href="{{ route('cbt.results.print.class', ['assessment' => $assessment->id]) }}"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="inline-flex items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100">
+                                    <i class="fas fa-print mr-2"></i>Print Class Results
+                                </a>
+
+                                <a href="{{ route('cbt.results.print.subject', ['assessment' => $assessment->id]) }}"
+                                    target="_blank"
+                                    rel="noopener"
+                                    class="inline-flex items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-medium text-cyan-700 transition-colors hover:bg-cyan-100">
+                                    <i class="fas fa-file-lines mr-2"></i>Print Subject Results
+                                </a>
+                            @endif
+
+                            @if($assessment->can_manage_content)
+                                <button wire:click="editAssessment({{ $assessment->id }})"
+                                    class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100">
+                                    <i class="fas fa-edit mr-2"></i>Edit
+                                </button>
+                            @endif
 
                             @if($canDeleteAssessments)
                                 <button wire:click="deleteAssessment({{ $assessment->id }})"
@@ -474,7 +495,7 @@
                         <label for="course_id" class="block text-xs sm:text-sm font-medium text-themed-primary mb-2">Class</label>
                         <select wire:model.live="course_id" class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
                             <option value="">Select class</option>
-                            @foreach($classes as $class)
+                            @foreach($libraryClasses as $class)
                                 <option value="{{ $class->id }}">{{ $class->name }}</option>
                             @endforeach
                         </select>
@@ -595,7 +616,7 @@
                         <select wire:model.live="course_id"
                             class="w-full px-2 sm:px-3 py-2 text-sm sm:text-base border border-themed-secondary rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-themed-primary focus:border-accent-themed-primary bg-themed-primary text-themed-primary placeholder-themed-tertiary">
                             <option value="">Select class</option>
-                            @foreach($classes as $class)
+                            @foreach($libraryClasses as $class)
                                 <option value="{{ $class->id }}">{{ $class->name }}</option>
                             @endforeach
                         </select>

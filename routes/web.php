@@ -347,6 +347,12 @@ Route::middleware(['auth', 'verified', 'restrict.teacher.portal', 'App\Http\Midd
         ->middleware('permission:manage cbt')
         ->name('manage');
 
+    Route::get('/results/{assessment}/print/class', [CbtResultController::class, 'printClassResults'])
+        ->middleware('permission:manage cbt')
+        ->name('results.print.class');
+    Route::get('/results/{assessment}/print/subject', [CbtResultController::class, 'printSubjectResults'])
+        ->middleware('permission:manage cbt')
+        ->name('results.print.subject');
     Route::get('/results/{assessment}/students/{student}/attempts/{attemptNumber}/print', [CbtResultController::class, 'print'])
         ->middleware('permission:manage cbt')
         ->name('results.print');
