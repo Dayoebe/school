@@ -200,45 +200,52 @@ class IndividualUpload extends Component
 
             $this->loadedClassId = (int) $classId;
 
-            // Start with subjects directly assigned to this student.
+            $studentSectionId = $yearRecord->section_id ?: $this->selectedSection ?: $this->studentRecord->section_id;
+
+            $allowedSubjects = $this->accessibleResultUploadSubjectsQuery($classId, $this->academicYearId)
+                ->with(['classes:id', 'sections:id'])
+                ->get();
+
+            $classWideSubjectIds = $allowedSubjects
+                ->filter(function (Subject $subject) use ($classId, $studentSectionId) {
+                    $belongsToClass = (int) $subject->my_class_id === (int) $classId
+                        || $subject->classes->contains('id', (int) $classId);
+
+                    if (!$belongsToClass) {
+                        return false;
+                    }
+
+                    if ($subject->is_general) {
+                        return true;
+                    }
+
+                    return $studentSectionId
+                        ? $subject->sections->contains('id', (int) $studentSectionId)
+                        : false;
+                })
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values();
+
+            if ($classWideSubjectIds->isNotEmpty()) {
+                $this->ensureSubjectAssignmentsForLoadedStudent($classWideSubjectIds, $classId, $studentSectionId);
+            }
+
             $studentSubjectIds = $this->studentRecord->studentSubjects()
                 ->select('subjects.id')
                 ->where('subjects.school_id', auth()->user()->school_id)
-                ->pluck('subjects.id');
+                ->pluck('subjects.id')
+                ->map(fn ($id) => (int) $id);
 
-            $allowedSubjectIds = $this->accessibleResultUploadSubjectsQuery($classId, $this->academicYearId)
-                ->pluck('subjects.id');
+            $visibleSubjectIds = $studentSubjectIds
+                ->merge($classWideSubjectIds)
+                ->unique()
+                ->values();
 
-            // Prefer subjects tied to the selected/derived class.
-            $this->subjects = Subject::whereIn('subjects.id', $studentSubjectIds)
-                ->whereIn('subjects.id', $allowedSubjectIds)
-                ->where('subjects.school_id', auth()->user()->school_id)
-                ->where(function ($query) use ($classId) {
-                    $query->where('subjects.my_class_id', $classId)
-                        ->orWhereHas('classes', function ($classQuery) use ($classId) {
-                            $classQuery->where('my_classes.id', $classId);
-                        })
-                        ->orWhereExists(function ($subQuery) use ($classId) {
-                            $subQuery->select(DB::raw(1))
-                                ->from('student_subject as ss')
-                                ->whereColumn('ss.subject_id', 'subjects.id')
-                                ->where('ss.student_record_id', $this->selectedStudent)
-                                ->where('ss.my_class_id', $classId);
-                        });
-                })
-                ->orderBy('subjects.name')
-                ->distinct()
-                ->get();
-
-            // Fallback: if class mappings are incomplete, still use student's assigned subjects.
-            if ($this->subjects->isEmpty() && $studentSubjectIds->isNotEmpty() && $allowedSubjectIds->isNotEmpty()) {
-                $this->subjects = Subject::whereIn('subjects.id', $studentSubjectIds)
-                    ->whereIn('subjects.id', $allowedSubjectIds)
-                    ->where('subjects.school_id', auth()->user()->school_id)
-                    ->orderBy('subjects.name')
-                    ->distinct()
-                    ->get();
-            }
+            $this->subjects = $allowedSubjects
+                ->whereIn('id', $visibleSubjectIds)
+                ->sortBy('name')
+                ->values();
     
             // Load existing results
             $existingResults = Result::where('student_record_id', $this->selectedStudent)
@@ -619,6 +626,88 @@ class IndividualUpload extends Component
             ->exists();
     }
 
+    protected function ensureSubjectAssignmentsForLoadedStudent($subjectIds, int $classId, $sectionId = null): void
+    {
+        foreach ($subjectIds as $subjectId) {
+            DB::table('student_subject')->updateOrInsert(
+                [
+                    'student_record_id' => $this->selectedStudent,
+                    'subject_id' => $subjectId,
+                ],
+                [
+                    'my_class_id' => $classId,
+                    'section_id' => $sectionId,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+    }
+
+    protected function resolveSelectedClassStudentRecordIds()
+    {
+        $studentIds = collect();
+
+        if ($this->academicYearId) {
+            $studentIds = DB::table('academic_year_student_record')
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('my_class_id', $this->selectedClass)
+                ->when($this->selectedSection, fn ($q) => $q->where('section_id', $this->selectedSection))
+                ->pluck('student_record_id')
+                ->map(fn ($id) => (int) $id);
+        }
+
+        $fallbackStudentIds = StudentRecord::where('my_class_id', $this->selectedClass)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->when($this->selectedSection, fn ($q) => $q->where('section_id', $this->selectedSection))
+            ->withActiveUser()
+            ->pluck('student_records.id')
+            ->map(fn ($id) => (int) $id);
+
+        $missingAcademicYearRecordIds = $fallbackStudentIds->diff($studentIds)->values();
+
+        if ($missingAcademicYearRecordIds->isNotEmpty()) {
+            $this->syncMissingAcademicYearRecords($missingAcademicYearRecordIds);
+        }
+
+        return $studentIds
+            ->merge($fallbackStudentIds)
+            ->unique()
+            ->values();
+    }
+
+    protected function syncMissingAcademicYearRecords($studentRecordIds): void
+    {
+        if (!$this->academicYearId || !$this->selectedClass || $studentRecordIds->isEmpty()) {
+            return;
+        }
+
+        $sectionByStudent = StudentRecord::whereIn('id', $studentRecordIds)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->pluck('section_id', 'id');
+
+        foreach ($studentRecordIds as $studentId) {
+            DB::table('academic_year_student_record')->updateOrInsert(
+                [
+                    'student_record_id' => $studentId,
+                    'academic_year_id' => $this->academicYearId,
+                ],
+                [
+                    'my_class_id' => $this->selectedClass,
+                    'section_id' => $this->selectedSection ?: ($sectionByStudent[$studentId] ?? null),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
+    }
+
     public function render()
     {
         $isRestrictedTeacherResultUploader = $this->isRestrictedTeacherResultUploader();
@@ -643,37 +732,14 @@ class IndividualUpload extends Component
         $students = collect();
 
         if ($this->selectedClass && $this->currentUserCanUploadResultClass($this->selectedClass, $this->academicYearId)) {
-            // Prefer academic-year specific class/section, fallback to current student_records assignment.
-            if ($this->academicYearId) {
-                $query = DB::table('academic_year_student_record')
-                    ->where('academic_year_id', $this->academicYearId)
-                    ->where('my_class_id', $this->selectedClass);
+            $studentIds = $this->resolveSelectedClassStudentRecordIds();
 
-                if ($this->selectedSection) {
-                    $query->where('section_id', $this->selectedSection);
-                }
-
-                $studentIds = $query->pluck('student_record_id');
-
-                if ($studentIds->isNotEmpty()) {
-                    $students = StudentRecord::whereIn('student_records.id', $studentIds)
-                        ->whereHas('user', function ($query) {
-                            $query->where('school_id', auth()->user()->school_id)
-                                ->whereNull('deleted_at');
-                        })
-                        ->withActiveUser()
-                        ->orderByName()
-                        ->get();
-                }
-            }
-
-            if ($students->isEmpty()) {
-                $students = StudentRecord::where('my_class_id', $this->selectedClass)
+            if ($studentIds->isNotEmpty()) {
+                $students = StudentRecord::whereIn('student_records.id', $studentIds)
                     ->whereHas('user', function ($query) {
                         $query->where('school_id', auth()->user()->school_id)
                             ->whereNull('deleted_at');
                     })
-                    ->when($this->selectedSection, fn ($q) => $q->where('section_id', $this->selectedSection))
                     ->withActiveUser()
                     ->orderByName()
                     ->get();

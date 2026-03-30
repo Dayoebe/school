@@ -128,28 +128,7 @@ class BulkUpload extends Component
             return;
         }
 
-        // Get students for this academic year
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClass)
-            ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-            ->pluck('student_record_id');
-
-        // Fallback for students not yet promoted/mapped in academic_year_student_record.
-        if ($studentRecordIds->isEmpty()) {
-            $studentRecordIds = StudentRecord::where('my_class_id', $this->selectedClass)
-                ->whereHas('user', function ($query) {
-                    $query->where('school_id', auth()->user()->school_id)
-                        ->whereNull('deleted_at');
-                })
-                ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-                ->withActiveUser()
-                ->pluck('student_records.id');
-
-            if ($studentRecordIds->isNotEmpty()) {
-                $this->syncAcademicYearRecords($studentRecordIds);
-            }
-        }
+        $studentRecordIds = $this->resolveSelectedClassStudentRecordIds();
 
         if ($studentRecordIds->isEmpty()) {
             $this->dispatch('error', 'No students found for this class in current academic year');
@@ -157,9 +136,13 @@ class BulkUpload extends Component
             return;
         }
 
-        // Load students enrolled in this subject with eager loading to prevent N+1
-        $this->students = StudentRecord::whereIn('student_records.id', $studentRecordIds)
-            ->whereHas('studentSubjects', fn($q) => $q->where('subject_id', $this->selectedSubject))
+        $classWideSubject = $this->selectedSubjectAppliesToEntireClass();
+
+        if ($classWideSubject) {
+            $this->ensureSubjectAssignmentsForStudentRecords($studentRecordIds);
+        }
+
+        $studentsQuery = StudentRecord::whereIn('student_records.id', $studentRecordIds)
             ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
             ->with([
                 'user' => function($query) {
@@ -172,8 +155,13 @@ class BulkUpload extends Component
                     $query->where('subject_id', $this->selectedSubject);
                 }
             ])
-            ->orderByName()
-            ->get();
+            ->orderByName();
+
+        if (!$classWideSubject) {
+            $studentsQuery->whereHas('studentSubjects', fn($q) => $q->where('subject_id', $this->selectedSubject));
+        }
+
+        $this->students = $studentsQuery->get();
 
         if ($this->students->isEmpty()) {
             $this->dispatch('error', 'No students enrolled in this subject');
@@ -525,6 +513,89 @@ class BulkUpload extends Component
         );
 
         return true;
+    }
+
+    protected function resolveSelectedClassStudentRecordIds()
+    {
+        $studentRecordIds = collect();
+
+        if ($this->academicYearId) {
+            $studentRecordIds = DB::table('academic_year_student_record')
+                ->where('academic_year_id', $this->academicYearId)
+                ->where('my_class_id', $this->selectedClass)
+                ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
+                ->pluck('student_record_id')
+                ->map(fn ($id) => (int) $id);
+        }
+
+        $fallbackStudentRecordIds = StudentRecord::where('my_class_id', $this->selectedClass)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
+            ->withActiveUser()
+            ->pluck('student_records.id')
+            ->map(fn ($id) => (int) $id);
+
+        $mergedStudentRecordIds = $studentRecordIds
+            ->merge($fallbackStudentRecordIds)
+            ->unique()
+            ->values();
+
+        $missingAcademicYearRecordIds = $fallbackStudentRecordIds->diff($studentRecordIds)->values();
+
+        if ($missingAcademicYearRecordIds->isNotEmpty()) {
+            $this->syncAcademicYearRecords($missingAcademicYearRecordIds);
+        }
+
+        return $mergedStudentRecordIds;
+    }
+
+    protected function selectedSubjectAppliesToEntireClass(): bool
+    {
+        if (!$this->selectedSubject || !$this->selectedClass) {
+            return false;
+        }
+
+        $subject = Subject::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->with('classes:id')
+            ->find($this->selectedSubject);
+
+        if (!$subject) {
+            return false;
+        }
+
+        $belongsToClass = (int) $subject->my_class_id === (int) $this->selectedClass
+            || $subject->classes->contains('id', (int) $this->selectedClass);
+
+        return $belongsToClass && (bool) $subject->is_general;
+    }
+
+    protected function ensureSubjectAssignmentsForStudentRecords($studentRecordIds): void
+    {
+        $students = StudentRecord::whereIn('id', $studentRecordIds)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->get(['id', 'section_id']);
+
+        foreach ($students as $student) {
+            DB::table('student_subject')->updateOrInsert(
+                [
+                    'student_record_id' => $student->id,
+                    'subject_id' => $this->selectedSubject,
+                ],
+                [
+                    'my_class_id' => $this->selectedClass,
+                    'section_id' => $this->selectedSection ?: $student->section_id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
+        }
     }
 
     protected function syncAcademicYearRecords($studentRecordIds): void
