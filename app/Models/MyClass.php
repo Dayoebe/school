@@ -222,10 +222,18 @@ class MyClass extends Model
             return 0;
         }
 
-        return DB::table('academic_year_student_record')
-            ->where('my_class_id', $this->id)
-            ->where('academic_year_id', $academicYearId)
-            ->count();
+        $schoolId = $this->classGroup?->school_id ?? $this->classGroup()->value('school_id');
+
+        return DB::table('academic_year_student_record as aysr')
+            ->join('student_records as sr', 'sr.id', '=', 'aysr.student_record_id')
+            ->join('users as u', 'u.id', '=', 'sr.user_id')
+            ->where('aysr.my_class_id', $this->id)
+            ->where('aysr.academic_year_id', $academicYearId)
+            ->where('sr.is_graduated', false)
+            ->whereNull('u.deleted_at')
+            ->when($schoolId, fn ($query) => $query->where('u.school_id', $schoolId))
+            ->distinct()
+            ->count('aysr.student_record_id');
     }
 
     /**

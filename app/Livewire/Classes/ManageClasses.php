@@ -448,6 +448,7 @@ class ManageClasses extends Component
         }
 
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
+        $movedCount = 0;
 
         foreach ($this->selectedStudents as $studentRecordId) {
             $student = $this->getStudentRecordForCurrentSchool($studentRecordId);
@@ -472,15 +473,14 @@ class ManageClasses extends Component
                     'section_id' => $targetSectionId,
                 ]);
 
-            StudentRecord::where('id', $studentRecordId)->update([
+            $student->update([
                 'my_class_id' => $targetClass->id,
                 'section_id' => $targetSectionId,
             ]);
-
-            $student->assignSubjectsAutomatically();
+            $movedCount++;
         }
 
-        session()->flash('success', count($this->selectedStudents) . ' students moved successfully!');
+        session()->flash('success', $movedCount . ' students moved successfully!');
         $this->reset(['selectedStudents', 'selectAll', 'targetClassId', 'targetSectionId']);
         $this->showView($this->selectedClass->id);
     }
@@ -733,6 +733,7 @@ class ManageClasses extends Component
 
         return ClassGroup::query()
             ->where('id', $classGroupId)
+            ->where('school_id', auth()->user()->school_id)
             ->exists();
     }
 
@@ -769,7 +770,9 @@ class ManageClasses extends Component
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%"))
             ->paginate(12);
     
-        $classGroups = ClassGroup::query()->get();
+        $classGroups = ClassGroup::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->get();
         
         $students = null;
         if ($this->view === 'view') {

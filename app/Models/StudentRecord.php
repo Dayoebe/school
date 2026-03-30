@@ -168,19 +168,40 @@ class StudentRecord extends Model
 
     public function assignSubjectsAutomatically()
     {
-        $subjects = Subject::where('my_class_id', $this->my_class_id)
-            ->with('sections')
-            ->when($this->section_id, function($query) {
-                $query->where(function($q) {
-                    $q->where('is_general', true)
-                      ->orWhereHas('sections', function($q) {
-                          $q->where('sections.id', $this->section_id);
-                      });
-                });
-            })
-            ->get();
+        if (!$this->my_class_id) {
+            $this->studentSubjects()->detach();
+            return;
+        }
 
-        $this->studentSubjects()->sync($subjects->pluck('id'));
+        $class = MyClass::query()->with('subjects')->find($this->my_class_id);
+        $subjectIds = $class?->subjects?->pluck('id') ?? collect();
+
+        if ($subjectIds->isEmpty()) {
+            $subjectIds = Subject::query()
+                ->where('my_class_id', $this->my_class_id)
+                ->with('sections')
+                ->when($this->section_id, function ($query) {
+                    $query->where(function ($q) {
+                        $q->where('is_general', true)
+                            ->orWhereHas('sections', function ($sectionQuery) {
+                                $sectionQuery->where('sections.id', $this->section_id);
+                            });
+                    });
+                })
+                ->pluck('id');
+        }
+
+        $this->studentSubjects()->sync(
+            $subjectIds
+                ->unique()
+                ->mapWithKeys(fn ($subjectId) => [
+                    $subjectId => [
+                        'my_class_id' => $this->my_class_id,
+                        'section_id' => $this->section_id,
+                    ],
+                ])
+                ->all()
+        );
     }
 
     public function getClassForAcademicYear($academicYearId)

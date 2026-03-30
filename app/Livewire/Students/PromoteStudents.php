@@ -55,6 +55,7 @@ class PromoteStudents extends Component
         })->with('sections')->orderBy('name')->get();
 
         $this->academicYears = AcademicYear::query()
+            ->where('school_id', auth()->user()->school_id)
             ->orderBy('start_year', 'desc')
             ->get();
 
@@ -122,6 +123,16 @@ class PromoteStudents extends Component
         $this->newSections = $class ? $class->sections : collect();
     }
 
+    private function studentUsersQuery()
+    {
+        return User::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->whereNull('deleted_at')
+            ->with([
+                'studentRecord' => fn ($query) => $query->withoutGlobalScope('notGraduated'),
+            ]);
+    }
+
     public function loadStudents()
     {
         $this->students = [];
@@ -148,9 +159,13 @@ class PromoteStudents extends Component
             return;
         }
 
-        $fromYear = AcademicYear::query()->find($this->fromAcademicYear);
+        $fromYear = AcademicYear::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->find($this->fromAcademicYear);
         $toYear = $this->toAcademicYear
-            ? AcademicYear::query()->find($this->toAcademicYear)
+            ? AcademicYear::query()
+                ->where('school_id', auth()->user()->school_id)
+                ->find($this->toAcademicYear)
             : null;
 
         if (!$fromYear) {
@@ -230,13 +245,11 @@ class PromoteStudents extends Component
             ];
         }
 
-        $users = User::role('student')->whereIn('id', function ($q) use ($studentRecordIds) {
-            $q->select('user_id')
-                ->from('student_records')
-                ->whereIn('id', $studentRecordIds);
-        })
-            ->where('school_id', auth()->user()->school_id)
-            ->with('studentRecord')
+        $users = $this->studentUsersQuery()
+            ->whereHas('studentRecord', function ($query) use ($studentRecordIds) {
+                $query->whereIn('id', $studentRecordIds)
+                    ->where('is_graduated', false);
+            })
             ->get();
 
         $pivotMap = $pivotRecords->keyBy('student_record_id');
@@ -304,7 +317,7 @@ class PromoteStudents extends Component
         if ($this->searchStudent) {
             $filtered = $filtered->filter(function($student) {
                 return stripos($student['name'], $this->searchStudent) !== false ||
-                       stripos($student['email'], $this->searchStudent) !== false ||
+                       stripos($student['email'] ?? '', $this->searchStudent) !== false ||
                        stripos($student['admission_number'], $this->searchStudent) !== false;
             });
         }
@@ -342,8 +355,12 @@ class PromoteStudents extends Component
             return;
         }
 
-        $fromYear = AcademicYear::query()->find($this->fromAcademicYear);
-        $toYear = AcademicYear::query()->find($this->toAcademicYear);
+        $fromYear = AcademicYear::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->find($this->fromAcademicYear);
+        $toYear = AcademicYear::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->find($this->toAcademicYear);
 
         if (!$fromYear || !$toYear) {
             session()->flash('error', 'Invalid academic year selected.');
@@ -370,10 +387,8 @@ class PromoteStudents extends Component
         }
 
         DB::transaction(function () use ($fromYear, $toYear, $selectedStudents, &$successCount, &$promotedStudents) {
-            $students = User::role('student')
-                ->where('school_id', auth()->user()->school_id)
+            $students = $this->studentUsersQuery()
                 ->whereIn('id', $selectedStudents)
-                ->with('studentRecord')
                 ->get()
                 ->keyBy('id');
 
@@ -444,6 +459,7 @@ class PromoteStudents extends Component
     public function loadPromotions()
     {
         $this->promotions = Promotion::query()
+            ->where('school_id', auth()->user()->school_id)
             ->with(['oldClass', 'newClass', 'oldSection', 'newSection', 'academicYear'])
             ->latest()
             ->get();
@@ -451,7 +467,9 @@ class PromoteStudents extends Component
 
     public function resetPromotion($promotionId)
     {
-        $promotion = Promotion::query()->findOrFail($promotionId);
+        $promotion = Promotion::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->findOrFail($promotionId);
 
         $currentAcademicYearId = auth()->user()->school->academic_year_id;
 
@@ -462,10 +480,8 @@ class PromoteStudents extends Component
                 throw new \Exception('Invalid promotion data.');
             }
 
-            $students = User::role('student')
-                ->where('school_id', auth()->user()->school_id)
+            $students = $this->studentUsersQuery()
                 ->whereIn('id', $studentIds)
-                ->with('studentRecord')
                 ->get()
                 ->keyBy('id');
 
@@ -514,13 +530,16 @@ class PromoteStudents extends Component
     public function viewPromotion($promotionId)
     {
         $this->selectedPromotion = Promotion::query()
+            ->where('school_id', auth()->user()->school_id)
             ->with(['oldClass', 'newClass', 'oldSection', 'newSection', 'academicYear'])
             ->findOrFail($promotionId);
 
-        $this->promotionStudents = User::role('student')
-            ->where('school_id', auth()->user()->school_id)
-            ->whereIn('id', $this->selectedPromotion->students)
-            ->with('studentRecord')
+        $studentIds = is_array($this->selectedPromotion->students)
+            ? $this->selectedPromotion->students
+            : (json_decode($this->selectedPromotion->students, true) ?: []);
+
+        $this->promotionStudents = $this->studentUsersQuery()
+            ->whereIn('id', $studentIds)
             ->get();
         $this->currentView = 'view';
     }

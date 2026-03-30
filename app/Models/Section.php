@@ -88,12 +88,25 @@ class Section extends Model
     public function studentsCount($academicYearId = null): int
     {
         if (!$academicYearId) {
-            $academicYearId = auth()->user()->school->academic_year_id;
+            $academicYearId = auth()->user()?->school->academic_year_id;
         }
 
-        return \DB::table('academic_year_student_record')
-            ->where('section_id', $this->id)
-            ->where('academic_year_id', $academicYearId)
-            ->count();
+        if (!$academicYearId) {
+            return 0;
+        }
+
+        $schoolId = $this->myClass?->classGroup?->school_id
+            ?? $this->myClass()->with('classGroup')->first()?->classGroup?->school_id;
+
+        return \DB::table('academic_year_student_record as aysr')
+            ->join('student_records as sr', 'sr.id', '=', 'aysr.student_record_id')
+            ->join('users as u', 'u.id', '=', 'sr.user_id')
+            ->where('aysr.section_id', $this->id)
+            ->where('aysr.academic_year_id', $academicYearId)
+            ->where('sr.is_graduated', false)
+            ->whereNull('u.deleted_at')
+            ->when($schoolId, fn ($query) => $query->where('u.school_id', $schoolId))
+            ->distinct()
+            ->count('aysr.student_record_id');
     }
 }
