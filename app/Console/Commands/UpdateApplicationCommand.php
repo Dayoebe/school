@@ -100,7 +100,9 @@ class UpdateApplicationCommand extends Command
 
     public function runUpdateCommands()
     {
-        shell_exec('composer install');
+        shell_exec('composer install --optimize-autoloader');
+        shell_exec('composer dump-autoload -o');
+        $this->call('optimize:clear');
 
         $this->call('migrate');
 
@@ -116,7 +118,7 @@ class UpdateApplicationCommand extends Command
         $this->call('optimize');
         $this->call('view:cache');
         $this->call('event:cache');
-        shell_exec('composer install --optimize-autoloader ');
+        shell_exec('composer dump-autoload -o');
     }
 
     private function splitVersionNumber($versionNumber)
