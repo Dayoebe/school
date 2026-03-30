@@ -39,6 +39,12 @@
         </div>
     </div>
 
+    @if($resultPeriodNotice)
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm text-amber-900 shadow-sm">
+            {{ $resultPeriodNotice }}
+        </div>
+    @endif
+
     <!-- Class Results Table -->
     @if($classResults->isNotEmpty())
         <div class="bg-white rounded-2xl shadow-xl overflow-hidden">

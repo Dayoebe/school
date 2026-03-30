@@ -28,6 +28,7 @@ class StudentResults extends Component
     public $results = [];
     public $studentPosition;
     public $totalStudents;
+    public $resultPeriodNotice = null;
 
     protected $paginationTheme = 'tailwind';
 
@@ -37,6 +38,7 @@ class StudentResults extends Component
 
         $this->academicYearId = $school?->academic_year_id;
         $this->semesterId = $school?->semester_id;
+        $this->resultPeriodNotice = null;
 
         if ($this->isRestrictedTeacherResultViewer() && !$this->currentUserCanAccessClassOnlyResultTools()) {
             abort(403);
@@ -66,6 +68,7 @@ class StudentResults extends Component
             'results',
             'studentPosition',
             'totalStudents',
+            'resultPeriodNotice',
         ]);
 
         if ($activeStudentId) {
@@ -109,6 +112,10 @@ class StudentResults extends Component
             ->where('semester_id', $this->semesterId)
             ->with('subject')
             ->get();
+
+        $this->resultPeriodNotice = $resultsCollection->isEmpty()
+            ? $this->buildResultPeriodNotice(collect([$this->studentRecord->id]))
+            : null;
 
         $this->results = [];
         foreach ($resultsCollection as $result) {
@@ -194,10 +201,48 @@ class StudentResults extends Component
         };
     }
 
+    protected function buildResultPeriodNotice($studentRecordIds): ?string
+    {
+        if (!$this->academicYearId || !$this->semesterId || collect($studentRecordIds)->isEmpty()) {
+            return null;
+        }
+
+        $availableSemesterIds = Result::query()
+            ->whereIn('student_record_id', collect($studentRecordIds))
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('semester_id', '!=', $this->semesterId)
+            ->distinct()
+            ->pluck('semester_id');
+
+        if ($availableSemesterIds->isEmpty()) {
+            return null;
+        }
+
+        $currentSemesterName = \App\Models\Semester::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $this->semesterId)
+            ->value('name') ?? 'the active term';
+
+        $availableTerms = \App\Models\Semester::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $availableSemesterIds)
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(fn ($name) => trim($name))
+            ->values();
+
+        if ($availableTerms->isEmpty()) {
+            return null;
+        }
+
+        return 'No uploaded results were found for ' . trim($currentSemesterName) .
+            '. Results exist for ' . $availableTerms->join(', ') . '.';
+    }
+
     public function backToList()
     {
         $this->viewingStudent = false;
-        $this->reset(['studentRecord', 'subjects', 'results']);
+        $this->reset(['studentRecord', 'subjects', 'results', 'resultPeriodNotice']);
     }
 
     public function render()

@@ -20,6 +20,7 @@ class SubjectResults extends Component
     public $subjects; // REMOVE = []
     public $subjectResults; // REMOVE = []
     public $subjectStats; // REMOVE = []
+    public $resultPeriodNotice = null;
 
     public function mount()
     {
@@ -30,6 +31,7 @@ class SubjectResults extends Component
         $this->subjects = collect(); // ADD THIS
         $this->subjectResults = collect(); // ADD THIS
         $this->subjectStats = []; // Keep as array for stats
+        $this->resultPeriodNotice = null;
 
         abort_unless(
             $this->canBrowseAllStudentResults() || $this->currentUserCanAccessSubjectResultTools(),
@@ -44,6 +46,7 @@ class SubjectResults extends Component
         $this->semesterId = $data['semesterId'];
         $this->reset(['selectedClass', 'selectedSubject']);
         $this->subjectResults = collect(); // CHANGE from [] to collect()
+        $this->resultPeriodNotice = null;
     }
 
     public function updatedSelectedClass()
@@ -70,6 +73,7 @@ class SubjectResults extends Component
             ->get();
         $this->reset(['selectedSubject']);
         $this->subjectResults = collect(); // CHANGE from [] to collect()
+        $this->resultPeriodNotice = null;
     }
 
     public function loadResults()
@@ -111,6 +115,7 @@ class SubjectResults extends Component
         if ($studentRecordIds->isEmpty()) {
             $this->dispatch('error', 'No students found for this class');
             $this->subjectResults = collect(); // CHANGE from [] to collect()
+            $this->resultPeriodNotice = null;
             return;
         }
 
@@ -143,6 +148,10 @@ class SubjectResults extends Component
                     : 0,
                 'grade_distribution' => $this->calculateGradeDistribution($results),
             ];
+            $this->resultPeriodNotice = null;
+        } else {
+            $this->subjectStats = [];
+            $this->resultPeriodNotice = $this->buildResultPeriodNotice($studentRecordIds);
         }
 
         // Sort by score descending
@@ -193,6 +202,45 @@ class SubjectResults extends Component
             $score >= 40 => 'E8',
             default => 'F9',
         };
+    }
+
+    protected function buildResultPeriodNotice($studentRecordIds): ?string
+    {
+        if (!$this->academicYearId || !$this->semesterId || !$this->selectedSubject || collect($studentRecordIds)->isEmpty()) {
+            return null;
+        }
+
+        $availableSemesterIds = Result::query()
+            ->whereIn('student_record_id', collect($studentRecordIds))
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('subject_id', $this->selectedSubject)
+            ->where('semester_id', '!=', $this->semesterId)
+            ->distinct()
+            ->pluck('semester_id');
+
+        if ($availableSemesterIds->isEmpty()) {
+            return null;
+        }
+
+        $currentSemesterName = \App\Models\Semester::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $this->semesterId)
+            ->value('name') ?? 'the active term';
+
+        $availableTerms = \App\Models\Semester::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $availableSemesterIds)
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(fn ($name) => trim($name))
+            ->values();
+
+        if ($availableTerms->isEmpty()) {
+            return null;
+        }
+
+        return 'No uploaded subject results were found for ' . trim($currentSemesterName) .
+            '. Results exist for ' . $availableTerms->join(', ') . '.';
     }
 
     public function render()

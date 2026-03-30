@@ -50,9 +50,7 @@ class ResultController extends Controller
         }
 
         if ($classId) {
-            $subjects = $this->subjectsForCurrentSchool()
-                ->where('my_class_id', $classId)
-                ->get();
+            $subjects = $this->classSubjectsForCurrentSchool($classId)->get();
         }
 
         if ($academicYearId && $semesterId && $classId) {
@@ -117,10 +115,10 @@ class ResultController extends Controller
 
             } else {
                 // CLASS VIEW MODE
-                $studentRecordIds = DB::table('academic_year_student_record')
-                    ->where('academic_year_id', $academicYear->id)
-                    ->where('my_class_id', $class->id)
-                    ->pluck('student_record_id');
+                $studentRecordIds = $this->studentRecordIdsForAcademicYearClass(
+                    $academicYear->id,
+                    $class->id
+                );
 
                 $students = $this->studentRecordsForCurrentSchool()->with([
                     'user' => function ($query) {
@@ -243,9 +241,7 @@ class ResultController extends Controller
     public function getSubjects(Request $request)
     {
         $classId = $request->input('class_id');
-        $subjects = $this->subjectsForCurrentSchool()
-            ->where('my_class_id', $classId)
-            ->get();
+        $subjects = $this->classSubjectsForCurrentSchool($classId)->get();
         return response()->json($subjects);
     }
 
@@ -297,6 +293,8 @@ class ResultController extends Controller
 
         abort_unless($this->currentUserCanViewClassTeacherClass($classId), 403);
 
+        $studentRecordIds = $this->studentRecordIdsForAcademicYearClass($academicYearId, $classId);
+
         // Fetch all students for the class with their related data in one go
         $students = $this->studentRecordsForCurrentSchool()->with([
             'user' => function ($query) {
@@ -310,7 +308,7 @@ class ResultController extends Controller
                     ->with('subject');
             }
         ])
-            ->where('my_class_id', $classId)
+            ->whereIn('student_records.id', $studentRecordIds)
             ->where('is_graduated', false) // Exclude graduated students
             ->whereHas('user', function ($q) { // Ensure user is not soft-deleted
                 $q->whereNull('deleted_at')
@@ -319,10 +317,7 @@ class ResultController extends Controller
             ->get();
 
         // Fetch all subjects for the class
-        $allSubjects = $this->subjectsForCurrentSchool()
-            ->where('my_class_id', $classId)
-            ->orderBy('name')
-            ->get();
+        $allSubjects = $this->classSubjectsForCurrentSchool($classId)->get();
 
         // Fetch all results for the class for the given academic year and semester
         $allClassResults = Result::with('subject')
@@ -410,14 +405,19 @@ class ResultController extends Controller
             'semester' => $semester,
             'class' => $class,
             'studentsData' => $studentsData,
+            'classResultAvailabilityNotice' => $allClassResults->isEmpty()
+                ? $this->buildResultAvailabilityNotice($students->pluck('id'), $academicYearId, $semesterId)
+                : null,
         ]);
     }
 
     // This method calculates annual position (across all semesters in an academic year)
     private function calculateStudentPosition($studentId, $academicYearId, $classId)
     {
+        $studentRecordIds = $this->studentRecordIdsForAcademicYearClass($academicYearId, $classId);
+
         $studentRecords = $this->studentRecordsForCurrentSchool()
-            ->where('my_class_id', $classId)
+            ->whereIn('student_records.id', $studentRecordIds)
             ->get(['id', 'user_id']);
 
         $rankings = Result::whereIn('student_record_id', $studentRecords->pluck('id'))
@@ -444,6 +444,8 @@ class ResultController extends Controller
     // New method for semester-specific position calculation
     private function calculateSemesterStudentPosition($studentId, $academicYearId, $semesterId, $myClassId)
     {
+        $studentRecordIds = $this->studentRecordIdsForAcademicYearClass($academicYearId, $myClassId);
+
         // Fetch all students in the class for the given academic year and semester
         $classStudents = $this->studentRecordsForCurrentSchool()->with([
             'user',
@@ -452,7 +454,7 @@ class ResultController extends Controller
                     ->where('semester_id', $semesterId);
             }
         ])
-            ->where('my_class_id', $myClassId)
+            ->whereIn('student_records.id', $studentRecordIds)
             ->where('is_graduated', false)
             ->whereHas('user', function ($q) {
                 $q->whereNull('deleted_at')
@@ -522,6 +524,9 @@ class ResultController extends Controller
             throw new \InvalidArgumentException('Academic year and semester are required to prepare report data.');
         }
     
+        $classIdForPeriod = $this->classIdForStudentInAcademicYear($studentRecord, $academicYearId)
+            ?? $studentRecord->my_class_id;
+
         // Filter results for the current academic year and semester
         $rawResults = $studentResults ?? $studentRecord->results->filter(function ($result) use ($academicYearId, $semesterId) {
             return $result->academic_year_id == $academicYearId &&
@@ -540,12 +545,12 @@ class ResultController extends Controller
     
         // Determine subject stats if not pre-calculated (i.e., for single print)
         if (empty($subjectOverallStats)) {
+            $classStudentRecordIds = $this->studentRecordIdsForAcademicYearClass($academicYearId, $classIdForPeriod);
+
             $allClassResultsForStats = Result::with('subject')
                 ->where('academic_year_id', $academicYearId)
                 ->where('semester_id', $semesterId)
-                ->whereIn('student_record_id', $this->studentRecordsForCurrentSchool()
-                    ->where('my_class_id', $studentRecord->myClass->id)
-                    ->pluck('id'))
+                ->whereIn('student_record_id', $classStudentRecordIds)
                 ->get();
     
             foreach ($allClassResultsForStats->groupBy('subject_id') as $subjectId => $resultsCollection) {
@@ -582,7 +587,7 @@ class ResultController extends Controller
         $termSettings = TermSettings::getForTermAndClass(
             $academicYearId,
             $semesterId,
-            $studentRecord->my_class_id
+            $classIdForPeriod
         );
     
         // Use term report or create if not exists
@@ -604,6 +609,8 @@ class ResultController extends Controller
     
         // Determine total students and class position if not pre-calculated (i.e., for single print)
         if ($totalStudents === 0 || $classPosition === 'N/A') {
+            $classStudentRecordIds = $this->studentRecordIdsForAcademicYearClass($academicYearId, $classIdForPeriod);
+
             $classStudents = $this->studentRecordsForCurrentSchool()->with([
                 'user',
                 'results' => function ($query) use ($academicYearId, $semesterId) {
@@ -611,7 +618,7 @@ class ResultController extends Controller
                         ->where('semester_id', $semesterId);
                 }
             ])
-                ->where('my_class_id', $studentRecord->myClass->id)
+                ->whereIn('student_records.id', $classStudentRecordIds)
                 ->where('is_graduated', false)
                 ->whereHas('user', function ($q) {
                     $q->whereNull('deleted_at')
@@ -737,6 +744,9 @@ class ResultController extends Controller
             'dynamicPrincipalComment' => $dynamicPrincipalComment,
             'finalTeacherComment' => $finalTeacherComment,
             'finalPrincipalComment' => $finalPrincipalComment,
+            'resultAvailabilityNotice' => $rawResults->isEmpty()
+                ? $this->buildResultAvailabilityNotice(collect([$studentRecord->id]), $academicYearId, $semesterId)
+                : null,
         ];
     }
     public function generatePdf($studentId)
@@ -804,10 +814,7 @@ class ResultController extends Controller
             ->where('academic_year_id', $academicYear->id)
             ->get();
         // Get students who were in this class during this academic year
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $academicYear->id)
-            ->where('my_class_id', $class->id)
-            ->pluck('student_record_id');
+        $studentRecordIds = $this->studentRecordIdsForAcademicYearClass($academicYear->id, $class->id);
 
         if ($studentRecordIds->isEmpty()) {
             return view('livewire.result.pages.annual-class-result', [
@@ -847,10 +854,7 @@ class ResultController extends Controller
             ->orderBy('users.name')
             ->select('student_records.*')
             ->get();
-        $subjects = $this->subjectsForCurrentSchool()
-            ->where('my_class_id', $class->id)
-            ->orderBy('name')
-            ->get();
+        $subjects = $this->classSubjectsForCurrentSchool($class->id)->get();
         $stats = [
             'total_students' => $students->count(),
             'subjects_count' => $subjects->count(),
@@ -1026,10 +1030,10 @@ class ResultController extends Controller
         $semesters = $this->semestersForCurrentSchool()
             ->where('academic_year_id', $academicYear->id)
             ->get();
-        $subjects = $this->subjectsForCurrentSchool()
-            ->where('my_class_id', $studentRecord->my_class_id)
-            ->orderBy('name')
-            ->get();
+        $classIdForYear = $this->classIdForStudentInAcademicYear($studentRecord, $academicYear->id)
+            ?? $studentRecord->my_class_id;
+
+        $subjects = $this->classSubjectsForCurrentSchool($classIdForYear)->get();
         $results = Result::with('subject')
             ->where('student_record_id', $studentRecord->id)
             ->where('academic_year_id', $academicYear->id)
@@ -1052,7 +1056,7 @@ class ResultController extends Controller
             $grandTotal += $subjectTotal;
         }
         $averagePercentage = $maxPossibleTotal > 0 ? round(($grandTotal / $maxPossibleTotal) * 100, 2) : 0;
-        $classPosition = $this->calculateStudentPosition($studentId, $academicYear->id, $studentRecord->my_class_id);
+        $classPosition = $this->calculateStudentPosition($studentId, $academicYear->id, $classIdForYear);
         return view('livewire.result.pages.student-annual-result', [
             'studentRecord' => $studentRecord,
             'academicYear' => $academicYear, 
@@ -1062,9 +1066,7 @@ class ResultController extends Controller
             'grandTotal' => $grandTotal,
             'averagePercentage' => $averagePercentage,
             'classPosition' => $classPosition,
-            'totalStudents' => $this->studentRecordsForCurrentSchool()
-                ->where('my_class_id', $studentRecord->my_class_id)
-                ->count()
+            'totalStudents' => $this->studentRecordIdsForAcademicYearClass($academicYear->id, $classIdForYear)->count()
         ]);
     }
     public function exportAnnualResult(Request $request)
@@ -1118,6 +1120,24 @@ public function exportAnnualPdf(Request $request)
             });
     }
 
+    protected function classSubjectsForCurrentSchool($classId)
+    {
+        return $this->subjectsForCurrentSchool()
+            ->where(function ($query) use ($classId) {
+                $query->where('subjects.my_class_id', $classId)
+                    ->orWhereHas('classes', function ($classQuery) use ($classId) {
+                        $classQuery->where('my_classes.id', $classId);
+                    })
+                    ->orWhereIn('subjects.id', function ($subQuery) use ($classId) {
+                        $subQuery->from('student_subject')
+                            ->where('my_class_id', $classId)
+                            ->select('subject_id');
+                    });
+            })
+            ->orderBy('subjects.name')
+            ->distinct();
+    }
+
     protected function subjectsForCurrentSchool()
     {
         return Subject::query()
@@ -1130,6 +1150,61 @@ public function exportAnnualPdf(Request $request)
             ->whereHas('user', function ($query) {
                 $query->where('school_id', $this->currentSchoolId());
             });
+    }
+
+    protected function studentRecordIdsForAcademicYearClass($academicYearId, $classId, $sectionId = null)
+    {
+        return DB::table('academic_year_student_record')
+            ->where('academic_year_id', $academicYearId)
+            ->where('my_class_id', $classId)
+            ->when($sectionId, fn ($query) => $query->where('section_id', $sectionId))
+            ->pluck('student_record_id');
+    }
+
+    protected function classIdForStudentInAcademicYear(StudentRecord $studentRecord, $academicYearId): ?int
+    {
+        $classId = DB::table('academic_year_student_record')
+            ->where('student_record_id', $studentRecord->id)
+            ->where('academic_year_id', $academicYearId)
+            ->value('my_class_id');
+
+        return $classId ? (int) $classId : null;
+    }
+
+    protected function buildResultAvailabilityNotice($studentRecordIds, $academicYearId, $semesterId, $subjectId = null): ?string
+    {
+        $studentRecordIds = collect($studentRecordIds)->filter()->values();
+
+        if (!$academicYearId || !$semesterId || $studentRecordIds->isEmpty()) {
+            return null;
+        }
+
+        $availableSemesterIds = Result::query()
+            ->whereIn('student_record_id', $studentRecordIds)
+            ->where('academic_year_id', $academicYearId)
+            ->when($subjectId, fn ($query) => $query->where('subject_id', $subjectId))
+            ->where('semester_id', '!=', $semesterId)
+            ->distinct()
+            ->pluck('semester_id');
+
+        if ($availableSemesterIds->isEmpty()) {
+            return null;
+        }
+
+        $currentSemesterName = trim(optional($this->findSemesterForCurrentSchool($semesterId))->name ?? 'the active term');
+        $availableTerms = $this->semestersForCurrentSchool()
+            ->whereIn('id', $availableSemesterIds)
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(fn ($name) => trim($name))
+            ->values();
+
+        if ($availableTerms->isEmpty()) {
+            return null;
+        }
+
+        return 'No uploaded results were found for ' . $currentSemesterName .
+            '. Results exist for ' . $availableTerms->join(', ') . '.';
     }
 
     protected function findAcademicYearForCurrentSchool($academicYearId): ?AcademicYear

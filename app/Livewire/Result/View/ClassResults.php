@@ -18,6 +18,7 @@ class ClassResults extends Component
     public $selectedSection;
     public $classResults; // REMOVE = []
     public $subjects; // REMOVE = []
+    public $resultPeriodNotice = null;
 
     public function mount()
     {
@@ -27,6 +28,7 @@ class ClassResults extends Component
         $this->semesterId = $school?->semester_id;
         $this->classResults = collect(); // ADD THIS
         $this->subjects = collect(); // ADD THIS
+        $this->resultPeriodNotice = null;
 
         abort_unless(
             $this->canBrowseAllStudentResults() || $this->currentUserCanAccessClassOnlyResultTools(),
@@ -41,6 +43,7 @@ class ClassResults extends Component
         $this->semesterId = $data['semesterId'];
         $this->reset(['selectedClass', 'selectedSection']);
         $this->classResults = collect(); // CHANGE from [] to collect()
+        $this->resultPeriodNotice = null;
     }
 
     public function loadResults()
@@ -89,14 +92,12 @@ class ClassResults extends Component
         if ($studentRecordIds->isEmpty()) {
             $this->dispatch('error', 'No students found for this class in current academic year');
             $this->classResults = collect();
+            $this->resultPeriodNotice = null;
             return;
         }
     
         // Get subjects for this class
-        $this->subjects = Subject::query()
-            ->where('my_class_id', $this->selectedClass)
-            ->orderBy('name')
-            ->get();
+        $this->subjects = $this->classSubjectsQuery((int) $this->selectedClass)->get();
     
         // Load students with their results (filter out soft-deleted users)
         $students = StudentRecord::whereIn('student_records.id', $studentRecordIds) // CHANGE HERE
@@ -144,6 +145,12 @@ class ClassResults extends Component
     
         // Filter out any students without users
         $students = $students->filter(fn($student) => $student->user);
+
+        if ($students->flatMap->results->isEmpty()) {
+            $this->resultPeriodNotice = $this->buildResultPeriodNotice($studentRecordIds);
+        } else {
+            $this->resultPeriodNotice = null;
+        }
     
         // Calculate positions
         $rankedStudents = $students->sortByDesc('total_score')->values();
@@ -163,6 +170,63 @@ class ClassResults extends Component
         }
     
         $this->classResults = $students->sortBy('position');
+    }
+
+    protected function classSubjectsQuery(int $classId)
+    {
+        return Subject::query()
+            ->where('subjects.school_id', auth()->user()->school_id)
+            ->where(function ($query) use ($classId) {
+                $query->where('subjects.my_class_id', $classId)
+                    ->orWhereHas('classes', function ($classQuery) use ($classId) {
+                        $classQuery->where('my_classes.id', $classId);
+                    })
+                    ->orWhereIn('subjects.id', function ($subQuery) use ($classId) {
+                        $subQuery->from('student_subject')
+                            ->where('my_class_id', $classId)
+                            ->select('subject_id');
+                    });
+            })
+            ->orderBy('subjects.name')
+            ->distinct();
+    }
+
+    protected function buildResultPeriodNotice($studentRecordIds): ?string
+    {
+        if (!$this->academicYearId || !$this->semesterId || collect($studentRecordIds)->isEmpty()) {
+            return null;
+        }
+
+        $availableSemesterIds = Result::query()
+            ->whereIn('student_record_id', collect($studentRecordIds))
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('semester_id', '!=', $this->semesterId)
+            ->distinct()
+            ->pluck('semester_id');
+
+        if ($availableSemesterIds->isEmpty()) {
+            return null;
+        }
+
+        $currentSemesterName = \App\Models\Semester::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->where('id', $this->semesterId)
+            ->value('name') ?? 'the active term';
+
+        $availableTerms = \App\Models\Semester::query()
+            ->where('school_id', auth()->user()->school_id)
+            ->whereIn('id', $availableSemesterIds)
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(fn ($name) => trim($name))
+            ->values();
+
+        if ($availableTerms->isEmpty()) {
+            return null;
+        }
+
+        return 'No uploaded results were found for ' . trim($currentSemesterName) .
+            '. Results exist for ' . $availableTerms->join(', ') . '.';
     }
     protected function calculateGrade($score)
     {

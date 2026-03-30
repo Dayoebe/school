@@ -160,6 +160,11 @@
                     </p>
                 </div>
             </div>
+            @if(!empty($resultAvailabilityNotice))
+                <div class="mb-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    {{ $resultAvailabilityNotice }}
+                </div>
+            @endif
             <div class="grid grid-cols-3 gap-4 mb-1 text-sm compact-section">
                 <div class="space-y-1">
                     <div><span class="font-bold uppercase">Name:</span> {{ strtoupper($studentRecord->user->name) }}

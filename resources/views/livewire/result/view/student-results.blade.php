@@ -15,6 +15,12 @@
         </div>
     </div>
 
+    @if($resultPeriodNotice)
+        <div class="rounded-[1.75rem] border border-amber-200 bg-amber-50 px-6 py-4 text-sm text-amber-900 shadow-sm">
+            {{ $resultPeriodNotice }}
+        </div>
+    @endif
+
     @if(!$viewingStudent)
         @if($canBrowseAllStudents)
             <div class="rounded-[1.75rem] border border-orange-200 bg-orange-50 p-6 shadow-sm">

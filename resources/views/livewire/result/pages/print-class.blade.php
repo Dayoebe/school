@@ -161,6 +161,12 @@
         </button>
     </div>
 
+    @if(!empty($classResultAvailabilityNotice))
+        <div class="no-print mx-4 mt-4 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+            {{ $classResultAvailabilityNotice }}
+        </div>
+    @endif
+
     @foreach ($studentsData as $data)
         <div class="page-break">
             <div class="print-container mx-auto print-border">

@@ -40,6 +40,12 @@
         </div>
     </div>
 
+    @if($resultPeriodNotice)
+        <div class="rounded-2xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm text-amber-900 shadow-sm">
+            {{ $resultPeriodNotice }}
+        </div>
+    @endif
+
     <!-- Subject Statistics -->
     @if(!empty($subjectStats))
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
