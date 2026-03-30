@@ -254,25 +254,15 @@ class ResultController extends Controller
         $academicYearId = $request->academicYearId ?? $request->input('academicYearId');
         $semesterId = $request->semesterId ?? $request->input('semesterId');
         
-        // 🔥 ADD DEFAULT VALUES IF NOT PROVIDED
         if (!$academicYearId || !$semesterId) {
-            // Get current academic year from user's school
             $school = auth()->user()->school ?? null;
             
             if ($school && $school->academic_year_id) {
                 $academicYearId = $school->academic_year_id;
-                
-                // Get first semester of current academic year
-                $firstSemester = $this->semestersForCurrentSchool()
-                    ->where('academic_year_id', $academicYearId)
-                    ->first();
-                if ($firstSemester) {
-                    $semesterId = $firstSemester->id;
-                }
+                $semesterId = $school->semester_id;
             }
         }
         
-        // 🔥 VALIDATE REQUIRED PARAMETERS
         if (!$academicYearId || !$semesterId) {
             abort(400, 'Academic year and semester are required. Please ensure your school has an active academic year and semester.');
         }
@@ -759,8 +749,9 @@ class ResultController extends Controller
                 $query->with('subject');
             }
         ])->findOrFail($studentId);
-        $academicYearId = optional($this->academicYearsForCurrentSchool()->latest()->first())->id;
-        $semesterId = optional($this->semestersForCurrentSchool()->latest()->first())->id;
+        $school = auth()->user()?->school;
+        $academicYearId = $school?->academic_year_id;
+        $semesterId = $school?->semester_id;
 
         if (!$academicYearId || !$semesterId) {
             abort(400, 'Academic year and semester are required for report generation.');

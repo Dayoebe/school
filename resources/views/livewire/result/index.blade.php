@@ -6,34 +6,13 @@
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
                 <h2 class="text-2xl font-bold text-white mb-2">Results Management System</h2>
-                <p class="text-indigo-100">Select academic period to manage results</p>
+                <p class="text-indigo-100">Results follow the active academic session and term already set by the admin</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                 <livewire:result.academic-period-selector />
-                <livewire:result.cleanup-invalid-results />
             </div>
         </div>
     </div>
-
-    <!-- Display cleanup details if available -->
-    @if(session('cleanup_details'))
-        <div class="bg-green-50 border-2 border-green-200 rounded-2xl p-6">
-            <div class="flex items-start">
-                <i class="fas fa-check-circle text-green-600 text-3xl mr-4 mt-1"></i>
-                <div class="flex-1">
-                    <h3 class="text-xl font-bold text-green-900 mb-3">Cleanup Successful!</h3>
-                    <ul class="space-y-2">
-                        @foreach(session('cleanup_details') as $detail)
-                            <li class="text-green-800 flex items-start">
-                                <i class="fas fa-check text-green-600 mr-2 mt-1"></i>
-                                <span>{{ $detail }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            </div>
-        </div>
-    @endif
 
     <!-- Navigation Tabs -->
     <div class="bg-white rounded-2xl shadow-lg overflow-hidden">

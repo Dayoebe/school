@@ -2,8 +2,8 @@
     @if(empty($stats))
         <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-6 text-center">
             <i class="fas fa-info-circle text-yellow-600 text-3xl mb-3"></i>
-            <h3 class="text-lg font-semibold text-yellow-800">Select Academic Period</h3>
-            <p class="text-yellow-600">Please select an academic year and term to view statistics</p>
+            <h3 class="text-lg font-semibold text-yellow-800">Active Academic Period Not Set</h3>
+            <p class="text-yellow-600">Ask an admin to set the current academic session and term before using results.</p>
         </div>
     @else
         <!-- Stats Grid -->
