@@ -17,8 +17,10 @@ class Dashboard extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id');
-        $this->semesterId = session('result_semester_id');
+        $school = auth()->user()?->school;
+
+        $this->academicYearId = $school?->academic_year_id;
+        $this->semesterId = $school?->semester_id;
         $this->loadStats();
     }
 
@@ -40,6 +42,7 @@ class Dashboard extends Component
         // Get student records for this academic year
         $studentRecordIds = DB::table('academic_year_student_record')
             ->where('academic_year_id', $this->academicYearId)
+            ->distinct()
             ->pluck('student_record_id');
     
         $totalStudents = $studentRecordIds->count();

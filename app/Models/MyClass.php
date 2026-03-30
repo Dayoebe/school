@@ -110,9 +110,14 @@ class MyClass extends Model
      */
     public function students(): Collection
     {
-        $students = User::students()
+        $students = User::query()
             ->inSchool()
-            ->whereRelation('studentRecord.myClass', 'id', $this->id)
+            ->whereNull('deleted_at')
+            ->whereHas('studentRecord', function ($query) {
+                $query->where('my_class_id', $this->id);
+            })
+            ->with(['studentRecord.myClass', 'studentRecord.section'])
+            ->orderBy('name')
             ->get();
 
         return $students;
@@ -144,12 +149,14 @@ class MyClass extends Model
             return new Collection();
         }
     
-        $students = User::students()
+        $students = User::query()
             ->inSchool()
+            ->whereNull('deleted_at')
             ->whereHas('studentRecord', function($query) use ($studentIds) {
                 $query->whereIn('id', $studentIds);
             })
             ->with(['studentRecord.myClass', 'studentRecord.section'])
+            ->orderBy('name')
             ->get();
     
         return $students;
@@ -186,12 +193,14 @@ class MyClass extends Model
             return new Collection();
         }
 
-        $students = User::students()
+        $students = User::query()
             ->inSchool()
+            ->whereNull('deleted_at')
             ->whereHas('studentRecord', function($query) use ($studentIds) {
                 $query->whereIn('id', $studentIds);
             })
-            ->with('studentRecord')
+            ->with(['studentRecord.myClass', 'studentRecord.section'])
+            ->orderBy('name')
             ->get();
 
         return $students;

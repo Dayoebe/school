@@ -33,8 +33,10 @@ class StudentResults extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
-        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
+        $school = auth()->user()?->school;
+
+        $this->academicYearId = $school?->academic_year_id;
+        $this->semesterId = $school?->semester_id;
 
         if ($this->isRestrictedTeacherResultViewer() && !$this->currentUserCanAccessClassOnlyResultTools()) {
             abort(403);
@@ -82,11 +84,23 @@ class StudentResults extends Component
             ->with(['user', 'myClass', 'section'])
             ->findOrFail($studentId);
 
+        $classId = DB::table('academic_year_student_record')
+            ->where('student_record_id', $this->studentRecord->id)
+            ->where('academic_year_id', $this->academicYearId)
+            ->value('my_class_id') ?: $this->studentRecord->my_class_id;
+
         // Get subjects for this student
         $this->subjects = Subject::query()
-            ->where('my_class_id', $this->studentRecord->my_class_id)
+            ->where('school_id', auth()->user()->school_id)
+            ->where(function ($query) use ($classId) {
+                $query->where('my_class_id', $classId)
+                    ->orWhereHas('classes', function ($classQuery) use ($classId) {
+                        $classQuery->where('my_classes.id', $classId);
+                    });
+            })
             ->where('school_id', auth()->user()->school_id)
             ->orderBy('name')
+            ->distinct()
             ->get();
 
         // Load results
@@ -118,13 +132,23 @@ class StudentResults extends Component
 
     protected function calculatePosition()
     {
+        $classId = DB::table('academic_year_student_record')
+            ->where('student_record_id', $this->studentRecord->id)
+            ->where('academic_year_id', $this->academicYearId)
+            ->value('my_class_id') ?: $this->studentRecord->my_class_id;
+
+        $studentRecordIds = DB::table('academic_year_student_record')
+            ->where('academic_year_id', $this->academicYearId)
+            ->where('my_class_id', $classId)
+            ->pluck('student_record_id');
+
         $classStudents = StudentRecord::with(['results' => function ($query) {
-            $query->where('academic_year_id', $this->academicYearId)
-                ->where('semester_id', $this->semesterId);
-        }])
-        ->where('my_class_id', $this->studentRecord->my_class_id)
-        ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
-        ->get();
+                $query->where('academic_year_id', $this->academicYearId)
+                    ->where('semester_id', $this->semesterId);
+            }])
+            ->whereIn('student_records.id', $studentRecordIds)
+            ->whereHas('user', fn($q) => $q->where('school_id', auth()->user()->school_id)->whereNull('deleted_at'))
+            ->get();
 
         $this->totalStudents = $classStudents->count();
 

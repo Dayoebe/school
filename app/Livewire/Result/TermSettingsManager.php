@@ -33,9 +33,10 @@ class TermSettingsManager extends Component
             ->orderBy('name')
             ->get();
         
-        // Get from session (set by AcademicPeriodSelector)
-        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
-        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
+        $school = auth()->user()?->school;
+
+        $this->academicYearId = $school?->academic_year_id;
+        $this->semesterId = $school?->semester_id;
         
         $this->loadSettings();
     }

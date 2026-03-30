@@ -26,18 +26,10 @@ class BulkUpload extends Component
 
     public function mount()
     {
-        $this->academicYearId = session('result_academic_year_id')
-            ?? auth()->user()->school?->academic_year_id
-            ?? AcademicYear::query()
-                ->orderBy('start_year', 'desc')
-                ->value('id');
-        $this->semesterId = session('result_semester_id');
+        $school = auth()->user()?->school;
 
-        if (!$this->semesterId && $this->academicYearId) {
-            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)
-                ->orderBy('name')
-                ->value('id');
-        }
+        $this->academicYearId = $school?->academic_year_id;
+        $this->semesterId = $school?->semester_id;
 
         $this->students = collect();
     }
@@ -80,32 +72,26 @@ class BulkUpload extends Component
             return;
         }
 
+        $school = auth()->user()?->school;
+
         if (!$this->academicYearId) {
-            $this->academicYearId = session('result_academic_year_id')
-                ?? auth()->user()->school?->academic_year_id
-                ?? AcademicYear::query()
-                    ->orderBy('start_year', 'desc')
-                    ->value('id');
+            $this->academicYearId = $school?->academic_year_id;
         }
 
         if (!$this->academicYearId) {
-            $this->dispatch('error', 'Please select an academic year first');
+            $this->dispatch('error', 'No active academic session is configured. Ask an admin to set the current academic session first.');
             return;
         }
 
-        if (!$this->semesterId) {
-            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)
+        if (!$this->semesterId && $school?->semester_id) {
+            $this->semesterId = Semester::where('id', $school->semester_id)
+                ->where('academic_year_id', $this->academicYearId)
                 ->where('school_id', auth()->user()->school_id)
-                ->orderBy('name')
                 ->value('id');
-
-            if ($this->semesterId) {
-                session(['result_semester_id' => $this->semesterId]);
-            }
         }
 
         if (!$this->semesterId) {
-            $this->dispatch('error', 'No term found for this academic year. Please create/select a term first.');
+            $this->dispatch('error', 'No active term is configured for this academic session. Ask an admin to set the current term first.');
             return;
         }
 

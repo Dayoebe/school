@@ -35,22 +35,10 @@ class IndividualUpload extends Component
 
     public function mount()
     {
-        // First check session, then fall back to school's current academic year/semester
-        $this->academicYearId = session('result_academic_year_id') 
-            ?? auth()->user()->school?->academic_year_id
-            ?? AcademicYear::query()
-                ->orderBy('start_year', 'desc')
-                ->value('id');
-        
-        // Get current semester for the academic year
-        if (!session('result_semester_id') && $this->academicYearId) {
-            $currentSemester = Semester::where('academic_year_id', $this->academicYearId)
-                ->orderBy('name')
-                ->first();
-            $this->semesterId = $currentSemester?->id;
-        } else {
-            $this->semesterId = session('result_semester_id');
-        }
+        $school = auth()->user()?->school;
+
+        $this->academicYearId = $school?->academic_year_id;
+        $this->semesterId = $school?->semester_id;
         
         $this->initializeScores();
     }
@@ -87,33 +75,26 @@ class IndividualUpload extends Component
             return;
         }
 
+        $school = auth()->user()?->school;
+
         if (!$this->academicYearId) {
-            $this->academicYearId = session('result_academic_year_id')
-                ?? auth()->user()->school?->academic_year_id
-                ?? AcademicYear::query()
-                    ->orderBy('start_year', 'desc')
-                    ->value('id');
+            $this->academicYearId = $school?->academic_year_id;
         }
 
         if (!$this->academicYearId) {
-            $this->dispatch('error', 'Please select an academic year');
+            $this->dispatch('error', 'No active academic session is configured. Ask an admin to set the current academic session first.');
             return;
         }
 
-        // Ensure a semester is available for the selected academic year
-        if (!$this->semesterId && $this->academicYearId) {
-            $this->semesterId = Semester::where('academic_year_id', $this->academicYearId)
+        if (!$this->semesterId && $school?->semester_id) {
+            $this->semesterId = Semester::where('id', $school->semester_id)
+                ->where('academic_year_id', $this->academicYearId)
                 ->where('school_id', auth()->user()->school_id)
-                ->orderBy('name')
                 ->value('id');
-
-            if ($this->semesterId) {
-                session(['result_semester_id' => $this->semesterId]);
-            }
         }
 
         if (!$this->semesterId) {
-            $this->dispatch('error', 'No term found for this academic year. Please create/select a term first.');
+            $this->dispatch('error', 'No active term is configured for this academic session. Ask an admin to set the current term first.');
             return;
         }
 

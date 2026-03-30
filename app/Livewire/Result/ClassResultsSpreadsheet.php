@@ -41,8 +41,10 @@ class ClassResultsSpreadsheet extends Component
             ->orderBy('start_year', 'desc')
             ->get();
         
-        $this->academicYearId = session('result_academic_year_id') ?? auth()->user()->school?->academic_year_id;
-        $this->semesterId = session('result_semester_id') ?? auth()->user()->school?->semester_id;
+        $school = auth()->user()?->school;
+
+        $this->academicYearId = $school?->academic_year_id;
+        $this->semesterId = $school?->semester_id;
         
         $this->loadSemesters();
     }

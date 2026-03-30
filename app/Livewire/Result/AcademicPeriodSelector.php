@@ -19,32 +19,9 @@ class AcademicPeriodSelector extends Component
             ->where('school_id', auth()->user()->school_id)
             ->orderBy('start_year', 'desc')
             ->get();
-        
-        // Set defaults: first check session, then fall back to school's current settings
-        $sessionAcademicYearId = session('result_academic_year_id');
-        $this->academicYearId = $sessionAcademicYearId 
-            ?? auth()->user()->school?->academic_year_id
-            ?? $this->academicYears->first()?->id;
 
-        if ($this->academicYearId && !$this->academicYears->contains('id', $this->academicYearId)) {
-            $this->academicYearId = $this->academicYears->first()?->id;
-        }
-        
-        $this->loadSemesters();
-        
-        // For semester, check session first, then get current semester
-        $this->semesterId = session('result_semester_id');
-        
-        if (!$this->semesterId && $this->academicYearId) {
-            // If no session value, try to get the "current" semester (you might have a flag for this)
-            // or just get the first semester
-            $this->semesterId = $this->semesters->first()?->id;
-        }
-        
-        // Save the defaults to session and notify listeners.
-        if ($this->academicYearId) {
-            $this->savePeriod();
-        }
+        $this->syncWithActiveSchoolPeriod();
+        $this->savePeriod();
     }
 
     public function updatedAcademicYearId()
@@ -69,14 +46,37 @@ class AcademicPeriodSelector extends Component
             : collect();
     }
 
-    protected function savePeriod()
+    protected function syncWithActiveSchoolPeriod(): void
     {
+        $school = auth()->user()?->school?->fresh();
+
+        $this->academicYearId = $school?->academic_year_id;
+
         if ($this->academicYearId && !$this->academicYears->contains('id', $this->academicYearId)) {
-            return;
+            $this->academicYearId = null;
         }
 
-        if ($this->semesterId && !$this->semesters->contains('id', $this->semesterId)) {
+        $this->loadSemesters();
+
+        $this->semesterId = null;
+
+        if ($school?->semester_id && $this->semesters->contains('id', $school->semester_id)) {
+            $this->semesterId = $school->semester_id;
+        }
+    }
+
+    protected function savePeriod()
+    {
+        if (!$this->academicYearId || !$this->academicYears->contains('id', $this->academicYearId)) {
+            $this->academicYearId = null;
+            $this->semesters = collect();
             $this->semesterId = null;
+        } else {
+            $this->loadSemesters();
+
+            if ($this->semesterId && !$this->semesters->contains('id', $this->semesterId)) {
+                $this->semesterId = null;
+            }
         }
 
         session([

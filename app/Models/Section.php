@@ -32,9 +32,14 @@ class Section extends Model
      */
     public function students(): Collection
     {
-        $students = User::students()
+        $students = User::query()
             ->inSchool()
-            ->whereRelation('studentRecord.section', 'id', $this->id)
+            ->whereNull('deleted_at')
+            ->whereHas('studentRecord', function ($query) {
+                $query->where('section_id', $this->id);
+            })
+            ->with(['studentRecord.myClass', 'studentRecord.section'])
+            ->orderBy('name')
             ->get();
 
         return $students;
@@ -49,19 +54,28 @@ class Section extends Model
         if (!$academicYearId) {
             $academicYearId = auth()->user()->school->academic_year_id;
         }
+
+        if (!$academicYearId) {
+            return new Collection();
+        }
     
         $studentIds = \DB::table('academic_year_student_record')
             ->where('section_id', $this->id)
             ->where('academic_year_id', $academicYearId)
             ->pluck('student_record_id');
+
+        if ($studentIds->isEmpty()) {
+            return new Collection();
+        }
     
-        // ✅ FIXED: Eager load myClass and section relationships
-        $students = User::students()
+        $students = User::query()
             ->inSchool()
+            ->whereNull('deleted_at')
             ->whereHas('studentRecord', function($query) use ($studentIds) {
                 $query->whereIn('id', $studentIds);
             })
             ->with(['studentRecord.myClass', 'studentRecord.section'])
+            ->orderBy('name')
             ->get();
     
         return $students;
