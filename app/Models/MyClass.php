@@ -132,7 +132,7 @@ class MyClass extends Model
         }
     
         if (!$academicYearId) {
-            return collect();
+            return new Collection();
         }
     
         $studentIds = DB::table('academic_year_student_record')
@@ -141,7 +141,7 @@ class MyClass extends Model
             ->pluck('student_record_id');
     
         if ($studentIds->isEmpty()) {
-            return collect();
+            return new Collection();
         }
     
         $students = User::students()
@@ -169,7 +169,7 @@ class MyClass extends Model
         }
 
         if (!$academicYearId) {
-            return collect();
+            return new Collection();
         }
 
         $query = DB::table('academic_year_student_record')
@@ -183,7 +183,7 @@ class MyClass extends Model
         $studentIds = $query->pluck('student_record_id');
 
         if ($studentIds->isEmpty()) {
-            return collect();
+            return new Collection();
         }
 
         $students = User::students()
