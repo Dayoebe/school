@@ -50,7 +50,7 @@
             <i class="fas fa-info-circle text-yellow-600 text-3xl mb-3"></i>
             <p class="text-yellow-800 font-medium">Please select a term to view termly top performers</p>
         </div>
-    @elseif(empty($topPerformers))
+    @elseif($topPerformersData->isEmpty())
         <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center">
             <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>
             <h3 class="text-xl font-semibold text-gray-600 mb-2">No Results Found</h3>
@@ -58,14 +58,14 @@
         </div>
     @else
         <!-- Top 3 Overall -->
-        @if(!empty($topPerformers['top_3']))
+        @if(!empty($topPerformersData->get('top_3')))
             <div class="bg-white rounded-2xl shadow-lg p-6">
                 <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-crown text-yellow-500 mr-2"></i>
                     Top 3 Best Students (By Average)
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    @foreach($topPerformers['top_3'] as $index => $performer)
+                    @foreach($topPerformersData->get('top_3', []) as $index => $performer)
                         <div class="border-2 {{ $index === 0 ? 'border-yellow-400 bg-yellow-50' : ($index === 1 ? 'border-gray-400 bg-gray-50' : 'border-orange-400 bg-orange-50') }} rounded-xl p-6 text-center">
                             <div class="text-5xl mb-3">
                                 {{ $index === 0 ? '🥇' : ($index === 1 ? '🥈' : '🥉') }}
@@ -87,57 +87,57 @@
         <!-- Other Top Performers -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <!-- Highest Total Score -->
-            @if(!empty($topPerformers['highest_total']))
+            @if(!empty($topPerformersData->get('highest_total')))
                 <div class="bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-blue-300 rounded-xl p-6">
                     <h4 class="font-bold text-lg text-blue-900 mb-4 flex items-center">
                         <i class="fas fa-chart-bar mr-2"></i>
                         Highest Total Score
                     </h4>
                     <div class="flex items-center">
-                        <img src="{{ $topPerformers['highest_total']['student']['profile_photo_url'] }}"
+                        <img src="{{ $topPerformersData->get('highest_total.student.profile_photo_url') }}"
                             class="w-16 h-16 rounded-full object-cover border-4 border-white mr-4">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ $topPerformers['highest_total']['student']['name'] }}</div>
-                            <div class="text-sm text-gray-600">{{ $topPerformers['highest_total']['student']['class_name'] }}</div>
-                            <div class="text-2xl font-bold text-blue-600 mt-2">{{ $topPerformers['highest_total']['total'] }} points</div>
+                            <div class="font-bold text-gray-900">{{ $topPerformersData->get('highest_total.student.name') }}</div>
+                            <div class="text-sm text-gray-600">{{ $topPerformersData->get('highest_total.student.class_name') }}</div>
+                            <div class="text-2xl font-bold text-blue-600 mt-2">{{ $topPerformersData->get('highest_total.total') }} points</div>
                         </div>
                     </div>
                 </div>
             @endif
 
             <!-- Most A Grades -->
-            @if(!empty($topPerformers['most_as']) && $topPerformers['most_as']['a_grades'] > 0)
+            @if(!empty($topPerformersData->get('most_as')) && $topPerformersData->get('most_as.a_grades', 0) > 0)
                 <div class="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-6">
                     <h4 class="font-bold text-lg text-green-900 mb-4 flex items-center">
                         <i class="fas fa-star mr-2"></i>
                         Most A Grades (75%+)
                     </h4>
                     <div class="flex items-center">
-                        <img src="{{ $topPerformers['most_as']['student']['profile_photo_url'] }}"
+                        <img src="{{ $topPerformersData->get('most_as.student.profile_photo_url') }}"
                             class="w-16 h-16 rounded-full object-cover border-4 border-white mr-4">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ $topPerformers['most_as']['student']['name'] }}</div>
-                            <div class="text-sm text-gray-600">{{ $topPerformers['most_as']['student']['class_name'] }}</div>
-                            <div class="text-2xl font-bold text-green-600 mt-2">{{ $topPerformers['most_as']['a_grades'] }} A's</div>
+                            <div class="font-bold text-gray-900">{{ $topPerformersData->get('most_as.student.name') }}</div>
+                            <div class="text-sm text-gray-600">{{ $topPerformersData->get('most_as.student.class_name') }}</div>
+                            <div class="text-2xl font-bold text-green-600 mt-2">{{ $topPerformersData->get('most_as.a_grades') }} A's</div>
                         </div>
                     </div>
                 </div>
             @endif
 
             <!-- Most Consistent -->
-            @if(!empty($topPerformers['most_consistent']))
+            @if(!empty($topPerformersData->get('most_consistent')))
                 <div class="bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-6">
                     <h4 class="font-bold text-lg text-purple-900 mb-4 flex items-center">
                         <i class="fas fa-equals mr-2"></i>
                         Most Consistent Performance
                     </h4>
                     <div class="flex items-center">
-                        <img src="{{ $topPerformers['most_consistent']['student']['profile_photo_url'] }}"
+                        <img src="{{ $topPerformersData->get('most_consistent.student.profile_photo_url') }}"
                             class="w-16 h-16 rounded-full object-cover border-4 border-white mr-4">
                         <div class="flex-1">
-                            <div class="font-bold text-gray-900">{{ $topPerformers['most_consistent']['student']['name'] }}</div>
-                            <div class="text-sm text-gray-600">{{ $topPerformers['most_consistent']['student']['class_name'] }}</div>
-                            <div class="text-2xl font-bold text-purple-600 mt-2">{{ $topPerformers['most_consistent']['average'] }}% avg</div>
+                            <div class="font-bold text-gray-900">{{ $topPerformersData->get('most_consistent.student.name') }}</div>
+                            <div class="text-sm text-gray-600">{{ $topPerformersData->get('most_consistent.student.class_name') }}</div>
+                            <div class="text-2xl font-bold text-purple-600 mt-2">{{ $topPerformersData->get('most_consistent.average') }}% avg</div>
                         </div>
                     </div>
                 </div>
@@ -145,14 +145,14 @@
         </div>
 
         <!-- Best in Each Subject -->
-        @if(!empty($topPerformers['best_in_subjects']))
+        @if(!empty($topPerformersData->get('best_in_subjects')))
             <div class="bg-white rounded-2xl shadow-lg p-6">
                 <h3 class="text-xl font-bold text-gray-800 mb-4 flex items-center">
                     <i class="fas fa-medal mr-2 text-indigo-600"></i>
                     Best in Each Subject
                 </h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    @foreach($topPerformers['best_in_subjects'] as $best)
+                    @foreach($topPerformersData->get('best_in_subjects', []) as $best)
                         <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div class="font-bold text-indigo-600 mb-2">{{ $best['subject']['name'] }}</div>
                             <div class="flex items-center">

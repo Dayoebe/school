@@ -4,6 +4,7 @@ namespace App\Livewire\Exams;
 
 use App\Models\Exam;
 use Livewire\Component;
+use Illuminate\Support\Facades\Schema;
 
 class ListExamsTable extends Component
 {
@@ -24,6 +25,7 @@ class ListExamsTable extends Component
         $dateWindowEnd = null;
         $paperCoverage = 0;
         $slotCoverage = 0;
+        $paperUploadsEnabled = Schema::hasTable('exam_papers');
         $tableFilters = [['name' => 'whereRaw', 'arguments' => ['1 = 0']]];
         $stats = [
             'total_exams' => 0,
@@ -45,12 +47,17 @@ class ListExamsTable extends Component
             $exams = Exam::query()
                 ->withoutUploadArchives()
                 ->where('semester_id', $semester->id)
-                ->withCount([
-                    'examSlots',
+                ->withCount(['examSlots']);
+
+            if ($paperUploadsEnabled) {
+                $exams->withCount([
                     'papers',
                     'papers as published_papers_count' => fn ($query) => $query->whereNotNull('published_at'),
                     'papers as sealed_papers_count' => fn ($query) => $query->whereNotNull('sealed_at'),
-                ])
+                ]);
+            }
+
+            $exams = $exams
                 ->orderBy('start_date')
                 ->get();
 
@@ -89,6 +96,7 @@ class ListExamsTable extends Component
             'school' => $school,
             'semester' => $semester,
             'stats' => $stats,
+            'paperUploadsEnabled' => $paperUploadsEnabled,
             'nextExam' => $nextExam,
             'latestExam' => $latestExam,
             'featuredExam' => $featuredExam,

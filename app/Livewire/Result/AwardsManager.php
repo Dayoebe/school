@@ -7,6 +7,7 @@ use Livewire\Attributes\On;
 use App\Models\{Result, MyClass, StudentRecord, Semester};
 use App\Traits\RestrictsTeacherResultViewing;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 
 class AwardsManager extends Component
 {
@@ -67,24 +68,26 @@ class AwardsManager extends Component
             $this->semesters = Semester::where('academic_year_id', $this->academicYearId)
                 ->where('school_id', auth()->user()->school_id)
                 ->get();
+        } else {
+            $this->semesters = collect();
         }
     }
 
     public function loadTopPerformers()
     {
         if (!$this->academicYearId) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
         if ($this->isRestrictedTeacherResultViewer() && !$this->selectedClassId) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
         // For termly, we need a semester selected
         if ($this->viewType === 'termly' && !$this->semesterId) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
@@ -100,7 +103,7 @@ class AwardsManager extends Component
                 ->exists();
 
             if (!$classExists || !$this->currentUserCanViewClassTeacherClass($this->selectedClassId)) {
-                $this->topPerformers = [];
+                $this->topPerformers = collect();
                 return;
             }
 
@@ -110,7 +113,7 @@ class AwardsManager extends Component
         $studentRecordIds = $query->pluck('student_record_id');
 
         if ($studentRecordIds->isEmpty()) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
@@ -142,7 +145,7 @@ class AwardsManager extends Component
         ->get();
 
         if ($results->isEmpty()) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
@@ -210,7 +213,7 @@ class AwardsManager extends Component
 
         // If no valid students, return empty
         if (empty($studentData)) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
@@ -225,7 +228,7 @@ class AwardsManager extends Component
         });
 
         if ($eligibleStudents->isEmpty()) {
-            $this->topPerformers = [];
+            $this->topPerformers = collect();
             return;
         }
 
@@ -279,13 +282,13 @@ class AwardsManager extends Component
             ];
         }
 
-        $this->topPerformers = [
+        $this->topPerformers = collect([
             'top_3' => $top3,
             'highest_total' => $highestTotal ? $this->formatStudentAward($highestTotal) : null,
             'most_as' => $mostAs ? $this->formatStudentAward($mostAs) : null,
             'most_consistent' => $mostConsistent ? $this->formatStudentAward($mostConsistent) : null,
             'best_in_subjects' => $bestInSubjects,
-        ];
+        ]);
     }
 
     protected function formatStudentAward(array $studentData): array
@@ -344,6 +347,16 @@ protected function getTotalSubjectsPerClass(): array
     {
         return view('livewire.result.awards-manager', [
             'isRestrictedTeacherResultViewer' => $this->isRestrictedTeacherResultViewer(),
+            'topPerformersData' => $this->topPerformersData(),
         ]);
+    }
+
+    protected function topPerformersData(): Collection
+    {
+        if ($this->topPerformers instanceof Collection) {
+            return $this->topPerformers;
+        }
+
+        return collect(is_array($this->topPerformers) ? $this->topPerformers : []);
     }
 }

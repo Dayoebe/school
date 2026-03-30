@@ -160,6 +160,12 @@
         </div>
     </div>
 
+    @unless($paperUploadsEnabled)
+        <div class="rounded-3xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900 shadow-sm">
+            Exam paper uploads are unavailable on this installation because the `exam_papers` table has not been created yet. The exams dashboard is still available, but paper totals stay at `0` until that migration is run.
+        </div>
+    @endunless
+
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-3xl border border-sky-100 bg-white p-5 shadow-lg shadow-sky-100/60">
             <div class="flex items-start justify-between gap-4">
