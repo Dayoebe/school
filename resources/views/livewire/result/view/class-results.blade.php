@@ -55,7 +55,7 @@
                         <i class="fas fa-users mr-2"></i>
                         {{ $classes->firstWhere('id', $selectedClass)?->name }} Results
                     </h3>
-                    <p class="text-indigo-100 text-sm mt-1">{{ $classResults->count() }} Students</p>
+                    <p class="text-indigo-100 text-sm mt-1">{{ $classResults->count() }} Active Students</p>
                 </div>
                 <a href="{{ route('result.print-class', [
                     'academicYearId' => $academicYearId,

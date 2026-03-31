@@ -139,10 +139,11 @@ class ClassResultsSpreadsheet extends Component
         }
 
         // Get students in this class for this academic year
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClassId)
-            ->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
 
         $this->students = StudentRecord::with(['user' => function($q) {
                 $q->where('school_id', auth()->user()->school_id)
@@ -246,10 +247,11 @@ class ClassResultsSpreadsheet extends Component
         }
 
         // Get students
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClassId)
-            ->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
 
         $this->students = StudentRecord::with(['user' => function($q) {
                 $q->where('school_id', auth()->user()->school_id)

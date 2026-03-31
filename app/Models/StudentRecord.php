@@ -10,6 +10,8 @@ use App\Models\Result;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class StudentRecord extends Model
 {
@@ -66,10 +68,23 @@ class StudentRecord extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_graduated', false)
-            ->whereHas('baseClass', function ($query) {
-                $query->instructional();
-            });
+        $schoolId = auth()->user()?->school_id;
+        $academicYearId = auth()->user()?->school?->academic_year_id;
+
+        if (!$schoolId) {
+            return $query->where('is_graduated', false)
+                ->whereHas('baseClass', function ($query) {
+                    $query->instructional();
+                });
+        }
+
+        $activeStudentRecordIds = static::activeStudentRecordIdsForSchoolAcademicYear($schoolId, $academicYearId);
+
+        if ($activeStudentRecordIds->isEmpty()) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereIn('student_records.id', $activeStudentRecordIds);
     }
 
     /**
@@ -82,8 +97,96 @@ class StudentRecord extends Model
 
     public function isActiveStudent(): bool
     {
-        return $this->is_graduated === false
-            && $this->baseClass?->isInstructional() === true;
+        if ($this->is_graduated) {
+            return false;
+        }
+
+        $academicYearId = auth()->user()?->school?->academic_year_id;
+        $effectiveClass = $academicYearId
+            ? $this->getClassForYear($academicYearId)
+            : null;
+
+        return ($effectiveClass ?? $this->baseClass)?->isInstructional() === true;
+    }
+
+    public static function activeStudentRecordIdsForSchoolAcademicYear(
+        ?int $schoolId,
+        ?int $academicYearId = null,
+        ?int $classId = null,
+        ?int $sectionId = null
+    ): Collection {
+        if (!$schoolId) {
+            return collect();
+        }
+
+        $instructionalClassIds = MyClass::query()
+            ->whereHas('classGroup', function ($query) use ($schoolId) {
+                $query->where('school_id', $schoolId);
+            })
+            ->instructional()
+            ->pluck('my_classes.id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+
+        if ($instructionalClassIds->isEmpty()) {
+            return collect();
+        }
+
+        $query = DB::table('student_records as sr')
+            ->join('users as u', 'u.id', '=', 'sr.user_id')
+            ->where('u.school_id', $schoolId)
+            ->whereNull('u.deleted_at')
+            ->where('sr.is_graduated', false);
+
+        if ($academicYearId) {
+            $query->leftJoin('academic_year_student_record as aysr', function ($join) use ($academicYearId) {
+                $join->on('aysr.student_record_id', '=', 'sr.id')
+                    ->where('aysr.academic_year_id', '=', $academicYearId);
+            });
+
+            $query->where(function ($query) use ($instructionalClassIds) {
+                $query->where(function ($q) use ($instructionalClassIds) {
+                    $q->whereNotNull('aysr.my_class_id')
+                        ->whereIn('aysr.my_class_id', $instructionalClassIds);
+                })->orWhere(function ($q) use ($instructionalClassIds) {
+                    $q->whereNull('aysr.my_class_id')
+                        ->whereIn('sr.my_class_id', $instructionalClassIds);
+                });
+            });
+
+            if ($classId) {
+                $query->where(function ($query) use ($classId) {
+                    $query->where(function ($q) use ($classId) {
+                        $q->whereNotNull('aysr.my_class_id')
+                            ->where('aysr.my_class_id', $classId);
+                    })->orWhere(function ($q) use ($classId) {
+                        $q->whereNull('aysr.my_class_id')
+                            ->where('sr.my_class_id', $classId);
+                    });
+                });
+            }
+
+            if ($sectionId) {
+                $query->where(function ($query) use ($sectionId) {
+                    $query->where(function ($q) use ($sectionId) {
+                        $q->whereNotNull('aysr.my_class_id')
+                            ->where('aysr.section_id', $sectionId);
+                    })->orWhere(function ($q) use ($sectionId) {
+                        $q->whereNull('aysr.my_class_id')
+                            ->where('sr.section_id', $sectionId);
+                    });
+                });
+            }
+        } else {
+            $query->whereIn('sr.my_class_id', $instructionalClassIds)
+                ->when($classId, fn ($q) => $q->where('sr.my_class_id', $classId))
+                ->when($sectionId, fn ($q) => $q->where('sr.section_id', $sectionId));
+        }
+
+        return $query->distinct()
+            ->pluck('sr.id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
     }
 
     public function myClass()

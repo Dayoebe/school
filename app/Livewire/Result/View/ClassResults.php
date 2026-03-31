@@ -6,8 +6,6 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{StudentRecord, MyClass, Section, Result, Subject};
 use App\Traits\ResolvesAccessibleStudentResults;
-use Illuminate\Support\Facades\DB;
-
 class ClassResults extends Component
 {
     use ResolvesAccessibleStudentResults;
@@ -82,12 +80,12 @@ class ClassResults extends Component
             }
         }
     
-        // Get students for this academic year
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClass)
-            ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-            ->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClass,
+            $this->selectedSection ? (int) $this->selectedSection : null
+        );
     
         if ($studentRecordIds->isEmpty()) {
             $this->dispatch('error', 'No students found for this class in current academic year');
@@ -99,8 +97,7 @@ class ClassResults extends Component
         // Get subjects for this class
         $this->subjects = $this->classSubjectsQuery((int) $this->selectedClass)->get();
     
-        // Load students with their results (filter out soft-deleted users)
-        $students = StudentRecord::whereIn('student_records.id', $studentRecordIds) // CHANGE HERE
+        $students = StudentRecord::whereIn('student_records.id', $studentRecordIds)
             ->with([
                 'user' => function ($query) {
                     $query->whereNull('deleted_at');
