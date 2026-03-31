@@ -6,8 +6,6 @@ use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{MyClass, Subject, Result};
 use App\Traits\ResolvesAccessibleStudentResults;
-use Illuminate\Support\Facades\DB;
-
 class SubjectResults extends Component
 {
     use ResolvesAccessibleStudentResults;
@@ -106,11 +104,11 @@ class SubjectResults extends Component
             return;
         }
 
-        // Get students for this academic year
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClass)
-            ->pluck('student_record_id');
+        $studentRecordIds = \App\Models\StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClass
+        );
 
         if ($studentRecordIds->isEmpty()) {
             $this->dispatch('error', 'No students found for this class');

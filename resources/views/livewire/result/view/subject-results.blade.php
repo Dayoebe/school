@@ -50,7 +50,7 @@
     @if(!empty($subjectStats))
         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
-                <p class="text-blue-100 text-sm font-medium">Total Students</p>
+                <p class="text-blue-100 text-sm font-medium">Active Students</p>
                 <p class="text-4xl font-bold mt-2">{{ $subjectStats['total_students'] }}</p>
             </div>
 
