@@ -79,9 +79,7 @@ class ManageClasses extends Component
                 'required',
                 'max:255',
                 function ($attribute, $value, $fail) {
-                    if (!$this->class_group_id) return;
-
-                    $normalizedValue = trim((string) $value);
+                    if (!$this->class_grou                    $normalizedValue = trim((string) $value);
 
                     $query = MyClass::withTrashed()
                         ->where('class_group_id', $this->class_group_id)

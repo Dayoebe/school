@@ -473,11 +473,10 @@ class DashboardStats extends Component
             return 0;
         }
 
-        return User::where('school_id', $schoolId)
+        return User::query()
+            ->where('school_id', $schoolId)
             ->role('student')
-            ->whereHas('studentRecord', function ($q) {
-                $q->where('is_graduated', false);
-            })
+            ->activeStudents()
             ->count();
     }
 

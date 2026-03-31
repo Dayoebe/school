@@ -16,7 +16,34 @@ class MyClass extends Model
     use HasFactory;
     use SoftDeletes;
 
+    protected const ACTIVE_STUDENT_CLASS_CODES = [
+        'JSS1',
+        'JSS2',
+        'JSS3',
+        'SS1',
+        'SS2',
+        'SS3',
+        'SSS1',
+        'SSS2',
+        'SSS3',
+    ];
+
     protected $fillable = ['name', 'class_group_id'];
+
+    public function scopeInstructional($query)
+    {
+        return $query->whereIn(
+            DB::raw("UPPER(REPLACE(name, ' ', ''))"),
+            self::ACTIVE_STUDENT_CLASS_CODES
+        );
+    }
+
+    public function isInstructional(): bool
+    {
+        $normalizedName = strtoupper(str_replace(' ', '', (string) $this->name));
+
+        return in_array($normalizedName, self::ACTIVE_STUDENT_CLASS_CODES, true);
+    }
 
     public function school()
     {

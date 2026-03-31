@@ -83,7 +83,7 @@ class User extends Authenticatable
     public function scopeActiveStudents($query)
     {
         return $query->whereHas('studentRecord', function($q) {
-            $q->where('is_graduated', false);
+            $q->active();
         });
     }
 

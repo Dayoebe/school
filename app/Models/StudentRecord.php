@@ -38,6 +38,11 @@ class StudentRecord extends Model
         return $this->hasOne(Graduation::class);
     }
 
+    public function baseClass()
+    {
+        return $this->belongsTo(MyClass::class, 'my_class_id');
+    }
+
     /**
      * Check if student is graduated
      */
@@ -61,7 +66,10 @@ class StudentRecord extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_graduated', false);
+        return $query->where('is_graduated', false)
+            ->whereHas('baseClass', function ($query) {
+                $query->instructional();
+            });
     }
 
     /**
@@ -70,6 +78,12 @@ class StudentRecord extends Model
     public function scopeGraduated($query)
     {
         return $query->where('is_graduated', true);
+    }
+
+    public function isActiveStudent(): bool
+    {
+        return $this->is_graduated === false
+            && $this->baseClass?->isInstructional() === true;
     }
 
     public function myClass()
