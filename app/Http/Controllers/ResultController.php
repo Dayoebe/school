@@ -85,20 +85,23 @@ class ResultController extends Controller
 
             if ($mode === 'subject' && $subjectId) {
                 $selectedSubject = $this->subjectsForCurrentSchool()->find($subjectId);
+                $studentRecordIds = $this->studentRecordIdsForAcademicYearClass(
+                    $academicYear->id,
+                    $class->id
+                );
 
                 $subjectResults = Result::with(['student.user', 'subject'])
                     ->where('subject_id', $subjectId)
                     ->where('academic_year_id', $academicYearId)
                     ->where('semester_id', $semesterId)
-                    ->whereHas('student', function ($q) use ($classId, $subjectId) {
-                        $q->where('my_class_id', $classId)
-                            ->where('is_graduated', false)
-                            ->whereHas('user', function ($userQuery) {
-                                $userQuery->where('school_id', $this->currentSchoolId());
-                            })
-                            ->whereHas('studentSubjects', function ($q) use ($subjectId) {
-                                $q->where('subject_id', $subjectId);
-                            });
+                    ->whereIn('student_record_id', $studentRecordIds)
+                    ->whereHas('student', function ($q) use ($subjectId) {
+                        $q->whereHas('user', function ($userQuery) {
+                            $userQuery->where('school_id', $this->currentSchoolId())
+                                ->whereNull('deleted_at');
+                        })->whereHas('studentSubjects', function ($q) use ($subjectId) {
+                            $q->where('subject_id', $subjectId);
+                        });
                     })
                     ->get()
                     ->each(function ($result) {
@@ -1154,11 +1157,12 @@ public function exportAnnualPdf(Request $request)
 
     protected function studentRecordIdsForAcademicYearClass($academicYearId, $classId, $sectionId = null)
     {
-        return DB::table('academic_year_student_record')
-            ->where('academic_year_id', $academicYearId)
-            ->where('my_class_id', $classId)
-            ->when($sectionId, fn ($query) => $query->where('section_id', $sectionId))
-            ->pluck('student_record_id');
+        return StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            $this->currentSchoolId(),
+            (int) $academicYearId,
+            (int) $classId,
+            $sectionId ? (int) $sectionId : null
+        );
     }
 
     protected function classIdForStudentInAcademicYear(StudentRecord $studentRecord, $academicYearId): ?int

@@ -91,10 +91,6 @@ class AwardsManager extends Component
             return;
         }
 
-        // Get student record IDs
-        $query = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId);
-
         if ($this->selectedClassId) {
             $classExists = MyClass::where('id', $this->selectedClassId)
                 ->whereHas('classGroup', function ($q) {
@@ -106,11 +102,13 @@ class AwardsManager extends Component
                 $this->topPerformers = collect();
                 return;
             }
-
-            $query->where('my_class_id', $this->selectedClassId);
         }
 
-        $studentRecordIds = $query->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            $this->selectedClassId ? (int) $this->selectedClassId : null
+        );
 
         if ($studentRecordIds->isEmpty()) {
             $this->topPerformers = collect();

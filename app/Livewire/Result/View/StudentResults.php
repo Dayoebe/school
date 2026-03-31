@@ -32,6 +32,16 @@ class StudentResults extends Component
 
     protected $paginationTheme = 'tailwind';
 
+    protected function activeStudentRecordIdsForSelectedClass(?int $classId = null, ?int $sectionId = null)
+    {
+        return StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            $classId,
+            $sectionId
+        );
+    }
+
     public function mount()
     {
         $school = auth()->user()?->school;
@@ -144,10 +154,7 @@ class StudentResults extends Component
             ->where('academic_year_id', $this->academicYearId)
             ->value('my_class_id') ?: $this->studentRecord->my_class_id;
 
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $classId)
-            ->pluck('student_record_id');
+        $studentRecordIds = $this->activeStudentRecordIdsForSelectedClass((int) $classId);
 
         $classStudents = StudentRecord::with(['results' => function ($query) {
                 $query->where('academic_year_id', $this->academicYearId)
@@ -293,11 +300,10 @@ class StudentResults extends Component
                         ]);
                 }
 
-                $studentRecordIds = DB::table('academic_year_student_record')
-                    ->where('academic_year_id', $this->academicYearId)
-                    ->where('my_class_id', $this->selectedClass)
-                    ->when($this->selectedSection, fn($q) => $q->where('section_id', $this->selectedSection))
-                    ->pluck('student_record_id');
+                $studentRecordIds = $this->activeStudentRecordIdsForSelectedClass(
+                    (int) $this->selectedClass,
+                    $this->selectedSection ? (int) $this->selectedSection : null
+                );
 
                 $students = $this->accessibleStudentRecordsQuery()
                     ->whereIn('student_records.id', $studentRecordIds)
@@ -319,6 +325,12 @@ class StudentResults extends Component
                     ->paginate($this->perPage);
             } elseif (!$canBrowseAllStudents) {
                 $students = $this->accessibleStudentRecordsQuery()
+                    ->when($isRestrictedTeacherResultViewer, function ($query) {
+                        $query->whereIn(
+                            'student_records.id',
+                            $this->activeStudentRecordIdsForSelectedClass()
+                        );
+                    })
                     ->with(['user' => function ($query) {
                         $query->where('school_id', auth()->user()->school_id)
                             ->whereNull('deleted_at');

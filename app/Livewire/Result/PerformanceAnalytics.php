@@ -87,10 +87,11 @@ class PerformanceAnalytics extends Component
             return;
         }
 
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClassId)
-            ->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
 
         $this->students = StudentRecord::with(['user' => function($q) {
                 $q->where('school_id', auth()->user()->school_id)
@@ -126,8 +127,14 @@ class PerformanceAnalytics extends Component
 
     protected function loadStudentAnalytics()
     {
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
+
         $student = StudentRecord::where('id', $this->selectedStudentId)
-            ->where('my_class_id', $this->selectedClassId)
+            ->whereIn('student_records.id', $studentRecordIds)
             ->whereHas('user', function ($query) {
                 $query->where('school_id', auth()->user()->school_id)
                     ->whereNull('deleted_at');
@@ -170,10 +177,11 @@ class PerformanceAnalytics extends Component
             return;
         }
 
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClassId)
-            ->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
 
         $this->subjects = Subject::where('my_class_id', $this->selectedClassId)
             ->where('school_id', auth()->user()->school_id)
@@ -207,10 +215,11 @@ class PerformanceAnalytics extends Component
             return;
         }
 
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $this->selectedClassId)
-            ->pluck('student_record_id');
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
 
         $this->subjects = Subject::where('my_class_id', $this->selectedClassId)
             ->where('school_id', auth()->user()->school_id)
@@ -289,10 +298,11 @@ class PerformanceAnalytics extends Component
     protected function buildComparisonData($student, $studentResults)
     {
         // Get class average for comparison
-        $classmates = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->where('my_class_id', $student->my_class_id)
-            ->pluck('student_record_id');
+        $classmates = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClassId
+        );
 
         $classResults = Result::whereIn('student_record_id', $classmates)
             ->where('academic_year_id', $this->academicYearId)

@@ -646,37 +646,30 @@ class IndividualUpload extends Component
 
     protected function resolveSelectedClassStudentRecordIds()
     {
-        $studentIds = collect();
+        $studentIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            auth()->user()?->school_id,
+            $this->academicYearId,
+            (int) $this->selectedClass,
+            $this->selectedSection ? (int) $this->selectedSection : null
+        );
 
-        if ($this->academicYearId) {
-            $studentIds = DB::table('academic_year_student_record')
+        $existingAcademicYearRecordIds = $this->academicYearId
+            ? DB::table('academic_year_student_record')
                 ->where('academic_year_id', $this->academicYearId)
                 ->where('my_class_id', $this->selectedClass)
                 ->when($this->selectedSection, fn ($q) => $q->where('section_id', $this->selectedSection))
+                ->whereIn('student_record_id', $studentIds)
                 ->pluck('student_record_id')
-                ->map(fn ($id) => (int) $id);
-        }
+                ->map(fn ($id) => (int) $id)
+            : collect();
 
-        $fallbackStudentIds = StudentRecord::where('my_class_id', $this->selectedClass)
-            ->whereHas('user', function ($query) {
-                $query->where('school_id', auth()->user()->school_id)
-                    ->whereNull('deleted_at');
-            })
-            ->when($this->selectedSection, fn ($q) => $q->where('section_id', $this->selectedSection))
-            ->withActiveUser()
-            ->pluck('student_records.id')
-            ->map(fn ($id) => (int) $id);
-
-        $missingAcademicYearRecordIds = $fallbackStudentIds->diff($studentIds)->values();
+        $missingAcademicYearRecordIds = $studentIds->diff($existingAcademicYearRecordIds)->values();
 
         if ($missingAcademicYearRecordIds->isNotEmpty()) {
             $this->syncMissingAcademicYearRecords($missingAcademicYearRecordIds);
         }
 
-        return $studentIds
-            ->merge($fallbackStudentIds)
-            ->unique()
-            ->values();
+        return $studentIds->values();
     }
 
     protected function syncMissingAcademicYearRecords($studentRecordIds): void

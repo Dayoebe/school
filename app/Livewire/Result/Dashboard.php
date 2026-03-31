@@ -5,7 +5,7 @@ namespace App\Livewire\Result;
 use Livewire\Component;
 use Livewire\Attributes\On;
 use App\Models\{Result, StudentRecord, Subject, MyClass};
-use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class Dashboard extends Component
 {
@@ -38,14 +38,19 @@ class Dashboard extends Component
             $this->stats = [];
             return;
         }
-    
-        // Get student records for this academic year
-        $studentRecordIds = DB::table('academic_year_student_record')
-            ->where('academic_year_id', $this->academicYearId)
-            ->distinct()
-            ->pluck('student_record_id');
+
+        $schoolId = auth()->user()?->school_id;
+
+        $studentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            $schoolId,
+            $this->academicYearId
+        );
     
         $totalStudents = $studentRecordIds->count();
+        $inactiveStudents = max(
+            User::query()->where('school_id', $schoolId)->role('student')->count() - $totalStudents,
+            0
+        );
     
         $results = Result::where('academic_year_id', $this->academicYearId)
             ->where('semester_id', $this->semesterId)
@@ -82,6 +87,7 @@ class Dashboard extends Component
     
         $this->stats = [
             'total_students' => $totalStudents,
+            'inactive_students' => $inactiveStudents,
             'students_with_results' => $studentsWithResults,
             'pending_students' => $totalStudents - $studentsWithResults,
             'total_results' => $totalResults,
