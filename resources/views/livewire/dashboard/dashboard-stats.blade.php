@@ -133,8 +133,15 @@
                     'permissions' => ['read school', 'create school', 'manage school settings'],
                 ],
                 [
-                    'label' => 'Students',
+                    'label' => 'Active Students',
                     'value' => $stats['active_students'] ?? 0,
+                    'route' => 'students.index',
+                    'visible' => $isStaff,
+                    'permissions' => ['read student'],
+                ],
+                [
+                    'label' => 'Inactive Students',
+                    'value' => $stats['inactive_students'] ?? 0,
                     'route' => 'students.index',
                     'visible' => $isStaff,
                     'permissions' => ['read student'],

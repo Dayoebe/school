@@ -12,7 +12,7 @@
             <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-xl hover:shadow-2xl transition-shadow">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-blue-100 text-sm font-medium">Total Students</p>
+                        <p class="text-blue-100 text-sm font-medium">Active Students</p>
                         <p class="text-4xl font-bold mt-2">{{ $stats['total_students'] }}</p>
                     </div>
                     <div class="bg-white/20 p-4 rounded-xl">
@@ -72,8 +72,13 @@
                      style="width: {{ $stats['completion_rate'] }}%"></div>
             </div>
             <p class="text-sm text-gray-600 mt-2">
-                {{ $stats['students_with_results'] }} out of {{ $stats['total_students'] }} students have results uploaded
+                {{ $stats['students_with_results'] }} out of {{ $stats['total_students'] }} active students have results uploaded
             </p>
+            @if(($stats['inactive_students'] ?? 0) > 0)
+                <p class="text-xs text-gray-500 mt-2">
+                    {{ $stats['inactive_students'] }} inactive students are excluded from result counts.
+                </p>
+            @endif
         </div>
 
         <!-- Recently Uploaded -->

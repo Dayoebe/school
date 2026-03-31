@@ -6,6 +6,7 @@ use App\Models\Exam;
 use App\Models\Notice;
 use App\Models\Result;
 use App\Models\School;
+use App\Models\StudentRecord;
 use App\Models\Subject;
 use App\Models\User;
 use App\Models\MyClass;
@@ -124,6 +125,10 @@ class DashboardStats extends Component
     {
         $schoolId = $user->school_id;
         $today = Carbon::today();
+        $activeStudentRecordIds = StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            $schoolId,
+            $user->school?->academic_year_id
+        );
 
         $activeNotices = 0;
         $ongoingExams = 0;
@@ -156,13 +161,13 @@ class DashboardStats extends Component
                 ->count();
 
             if ($user->school?->academic_year_id && $user->school?->semester_id) {
-                $termResults = Result::query()
-                    ->where('academic_year_id', $user->school->academic_year_id)
-                    ->where('semester_id', $user->school->semester_id)
-                    ->whereHas('studentRecord.user', function ($query) use ($schoolId) {
-                        $query->where('school_id', $schoolId);
-                    })
-                    ->count();
+                $termResults = $activeStudentRecordIds->isEmpty()
+                    ? 0
+                    : Result::query()
+                        ->where('academic_year_id', $user->school->academic_year_id)
+                        ->where('semester_id', $user->school->semester_id)
+                        ->whereIn('student_record_id', $activeStudentRecordIds)
+                        ->count();
             }
         }
 
@@ -443,6 +448,7 @@ class DashboardStats extends Component
     private function loadStats(User $user): void
     {
         $schoolId = $user->school_id;
+        $activeStudentsCount = $this->getActiveStudentsCount($schoolId);
 
         $this->stats = [
             'schools' => $this->isSuperAdmin ? School::count() : 0,
@@ -456,7 +462,8 @@ class DashboardStats extends Component
             'subjects' => $schoolId ? Subject::whereHas('myClass.classGroup', function ($q) use ($schoolId) {
                 $q->where('school_id', $schoolId);
             })->count() : 0,
-            'active_students' => $this->getActiveStudentsCount($schoolId),
+            'active_students' => $activeStudentsCount,
+            'inactive_students' => $this->getInactiveStudentsCount($schoolId, $activeStudentsCount),
             'graduated_students' => $this->getGraduatedStudentsCount($schoolId),
             'teachers' => User::where('school_id', $schoolId)->role('teacher')->count(),
             'parents' => User::where('school_id', $schoolId)->role('parent')->count(),
@@ -473,11 +480,26 @@ class DashboardStats extends Component
             return 0;
         }
 
-        return User::query()
+        return StudentRecord::activeStudentRecordIdsForSchoolAcademicYear(
+            $schoolId,
+            auth()->user()?->school?->academic_year_id
+        )->count();
+    }
+
+    private function getInactiveStudentsCount(?int $schoolId, ?int $activeStudentsCount = null): int
+    {
+        if (!$schoolId) {
+            return 0;
+        }
+
+        $activeStudentsCount ??= $this->getActiveStudentsCount($schoolId);
+
+        $totalStudents = User::query()
             ->where('school_id', $schoolId)
             ->role('student')
-            ->activeStudents()
             ->count();
+
+        return max($totalStudents - $activeStudentsCount, 0);
     }
 
     private function getGraduatedStudentsCount(?int $schoolId): int
