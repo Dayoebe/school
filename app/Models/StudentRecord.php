@@ -409,7 +409,7 @@ class StudentRecord extends Model
         });
     
         static::updated(function ($studentRecord) {
-            if ($studentRecord->isDirty(['my_class_id', 'section_id'])) {
+            if ($studentRecord->wasChanged(['my_class_id', 'section_id'])) {
                 $studentRecord->assignSubjectsAutomatically();
             }
         });

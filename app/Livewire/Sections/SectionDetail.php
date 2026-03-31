@@ -3,6 +3,7 @@
 namespace App\Livewire\Sections;
 
 use App\Models\Section;
+use App\Models\StudentRecord;
 use App\Models\Subject;
 use Livewire\Component;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -46,10 +47,9 @@ class SectionDetail extends Component
 
     public function loadStudents()
     {
-        $this->students = $this->section->studentRecords()
-            ->with('user')
-            ->get()
-            ->pluck('user');
+        $academicYearId = auth()->user()?->school?->academic_year_id;
+
+        $this->students = $this->section->studentsForAcademicYear($academicYearId);
     }
 
     public function loadAvailableSubjects()
@@ -97,7 +97,7 @@ class SectionDetail extends Component
         $this->section->subjects()->syncWithoutDetaching($validSubjectIds);
 
         // Update students' subject assignments
-        foreach ($this->section->studentRecords as $record) {
+        foreach ($this->currentAcademicYearStudentRecords() as $record) {
             $record->assignSubjectsAutomatically();
         }
 
@@ -122,7 +122,7 @@ class SectionDetail extends Component
         $this->section->subjects()->detach($subjectId);
 
         // Update students' subject assignments
-        foreach ($this->section->studentRecords as $record) {
+        foreach ($this->currentAcademicYearStudentRecords() as $record) {
             $record->assignSubjectsAutomatically();
         }
 
@@ -154,5 +154,31 @@ class SectionDetail extends Component
             ])
             ->title("View {$this->section->name}")
             ->with('page_heading', "{$this->section->name} Details");
+    }
+
+    protected function currentAcademicYearStudentRecords()
+    {
+        $academicYearId = auth()->user()?->school?->academic_year_id;
+
+        if (!$academicYearId) {
+            return collect();
+        }
+
+        $studentRecordIds = \DB::table('academic_year_student_record')
+            ->where('academic_year_id', $academicYearId)
+            ->where('section_id', $this->section->id)
+            ->pluck('student_record_id');
+
+        if ($studentRecordIds->isEmpty()) {
+            return collect();
+        }
+
+        return StudentRecord::query()
+            ->whereIn('student_records.id', $studentRecordIds)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->get();
     }
 }

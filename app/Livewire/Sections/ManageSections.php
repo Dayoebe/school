@@ -81,10 +81,14 @@ class ManageSections extends Component
     public function loadSections()
     {
         if ($this->selectedClass) {
+            $academicYearId = auth()->user()?->school?->academic_year_id;
+
             $this->sections = Section::where('my_class_id', $this->selectedClass)
-                ->withCount('studentRecords')
                 ->with('myClass')
-                ->get();
+                ->get()
+                ->each(function (Section $section) use ($academicYearId) {
+                    $section->student_records_count = $section->studentsCount($academicYearId);
+                });
         }
     }
 
@@ -179,7 +183,7 @@ class ManageSections extends Component
         $section = $this->getSectionForCurrentSchool($sectionId);
         $this->authorize('delete', $section);
         
-        if ($section->studentRecords()->count() > 0) {
+        if ($section->studentsCount(auth()->user()?->school?->academic_year_id) > 0) {
             session()->flash('error', 'Cannot delete section with students');
             return;
         }

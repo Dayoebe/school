@@ -438,36 +438,113 @@ class ManageStudents extends Component
     protected function bulkAssignSection()
     {
         $currentAcademicYear = auth()->user()->school->academic_year_id;
-        
-        $studentRecords = DB::table('student_records')
+
+        if (!$currentAcademicYear) {
+            session()->flash('error', 'No active academic year is set.');
+            return;
+        }
+
+        $studentRecords = StudentRecord::query()
             ->whereIn('user_id', $this->selectedStudents)
-            ->pluck('id');
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->get();
 
-        DB::table('academic_year_student_record')
-            ->whereIn('student_record_id', $studentRecords)
-            ->where('academic_year_id', $currentAcademicYear)
-            ->update(['section_id' => $this->bulkSection ?: null]);
+        $updatedCount = 0;
 
-        session()->flash('success', count($this->selectedStudents) . ' students assigned to section');
+        foreach ($studentRecords as $studentRecord) {
+            DB::table('academic_year_student_record')->updateOrInsert(
+                [
+                    'student_record_id' => $studentRecord->id,
+                    'academic_year_id' => $currentAcademicYear,
+                ],
+                [
+                    'my_class_id' => $studentRecord->my_class_id,
+                    'section_id' => $this->bulkSection ?: null,
+                    'updated_at' => now(),
+                ]
+            );
+
+            $studentRecord->update([
+                'section_id' => $this->bulkSection ?: null,
+            ]);
+
+            $updatedCount++;
+        }
+
+        session()->flash('success', $updatedCount . ' students assigned to section');
     }
 
     protected function bulkMoveClass()
     {
         $currentAcademicYear = auth()->user()->school->academic_year_id;
-        
-        $studentRecords = DB::table('student_records')
-            ->whereIn('user_id', $this->selectedStudents)
-            ->pluck('id');
 
-        DB::table('academic_year_student_record')
-            ->whereIn('student_record_id', $studentRecords)
-            ->where('academic_year_id', $currentAcademicYear)
-            ->update([
-                'my_class_id' => $this->bulkClass,
+        if (!$currentAcademicYear) {
+            session()->flash('error', 'No active academic year is set.');
+            return;
+        }
+
+        $targetClass = MyClass::query()
+            ->where('id', $this->bulkClass)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->first();
+
+        if (!$targetClass) {
+            session()->flash('error', 'Selected class does not belong to your current school.');
+            return;
+        }
+
+        if ($this->bulkSection) {
+            $targetSection = Section::query()
+                ->where('id', $this->bulkSection)
+                ->where('my_class_id', $targetClass->id)
+                ->whereHas('myClass.classGroup', function ($query) {
+                    $query->where('school_id', auth()->user()->school_id);
+                })
+                ->first();
+
+            if (!$targetSection) {
+                session()->flash('error', 'Selected section does not belong to the selected class.');
+                return;
+            }
+        }
+
+        $studentRecords = StudentRecord::query()
+            ->whereIn('user_id', $this->selectedStudents)
+            ->whereHas('user', function ($query) {
+                $query->where('school_id', auth()->user()->school_id)
+                    ->whereNull('deleted_at');
+            })
+            ->get();
+
+        $updatedCount = 0;
+
+        foreach ($studentRecords as $studentRecord) {
+            DB::table('academic_year_student_record')->updateOrInsert(
+                [
+                    'student_record_id' => $studentRecord->id,
+                    'academic_year_id' => $currentAcademicYear,
+                ],
+                [
+                    'my_class_id' => $targetClass->id,
+                    'section_id' => $this->bulkSection ?: null,
+                    'updated_at' => now(),
+                ]
+            );
+
+            $studentRecord->update([
+                'my_class_id' => $targetClass->id,
                 'section_id' => $this->bulkSection ?: null,
             ]);
 
-        session()->flash('success', count($this->selectedStudents) . ' students moved to new class');
+            $updatedCount++;
+        }
+
+        session()->flash('success', $updatedCount . ' students moved to new class');
     }
 
     public function closeBulkModal()
