@@ -453,7 +453,7 @@
                             Students ({{ $studentsCount }})
                         </h3>
                         @can('update', $selectedClass)
-                            <button wire:click="assignSubjects"
+                            <button wire:click="showAddSubjects"
                                 class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-semibold">
                                 <i class="fas fa-link mr-1"></i>Assign Subjects
                             </button>

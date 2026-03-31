@@ -10,7 +10,9 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AuthController extends Controller
 {
@@ -94,9 +96,22 @@ class AuthController extends Controller
     {
         $request->validate(['email' => 'required|email']);
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+        try {
+            $status = Password::sendResetLink(
+                $request->only('email')
+            );
+        } catch (TransportExceptionInterface $e) {
+            Log::warning('Password reset email could not be sent because mail transport failed.', [
+                'email' => $request->email,
+                'message' => $e->getMessage(),
+            ]);
+
+            return back()
+                ->withInput($request->only('email'))
+                ->withErrors([
+                    'email' => 'Password reset email could not be sent right now. Ask the administrator to check the mail server settings.',
+                ]);
+        }
 
         return $status === Password::RESET_LINK_SENT
             ? back()->with(['status' => __($status)])

@@ -594,6 +594,22 @@ class ManageStudents extends Component
 
             $studentRecordIds = $pivotData->pluck('student_record_id')->filter()->values();
 
+            $fallbackStudentRecordIds = DB::table('student_records')
+                ->join('users', 'users.id', '=', 'student_records.user_id')
+                ->where('users.school_id', $schoolId)
+                ->whereNull('users.deleted_at')
+                ->where('student_records.is_graduated', false)
+                ->when($this->appliedClass, fn($q) => $q->where('student_records.my_class_id', $this->appliedClass))
+                ->when($this->selectedSection, fn($q) => $q->where('student_records.section_id', $this->selectedSection))
+                ->pluck('student_records.id')
+                ->filter()
+                ->values();
+
+            $studentRecordIds = $studentRecordIds
+                ->merge($fallbackStudentRecordIds)
+                ->unique()
+                ->values();
+
             if ($studentRecordIds->isEmpty()) {
                 $query->whereRaw('1 = 0');
             } else {
@@ -657,9 +673,9 @@ class ManageStudents extends Component
                             ? $sections->get($pivot->section_id) 
                             : null;
                     } else {
-                        // No pivot data for this academic year
-                        $student->studentRecord->current_year_class = null;
-                        $student->studentRecord->current_year_section = null;
+                        // Fall back to the base student record when the current-year pivot is missing.
+                        $student->studentRecord->current_year_class = $student->studentRecord->myClass;
+                        $student->studentRecord->current_year_section = $student->studentRecord->section;
                     }
                     return $student;
                 });

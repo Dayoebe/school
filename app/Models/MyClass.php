@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class MyClass extends Model
@@ -132,18 +132,7 @@ class MyClass extends Model
      */
     public function studentsForAcademicYear($academicYearId = null): Collection
     {
-        if (!$academicYearId) {
-            $academicYearId = auth()->user()?->school->academic_year_id;
-        }
-    
-        if (!$academicYearId) {
-            return new Collection();
-        }
-    
-        $studentIds = DB::table('academic_year_student_record')
-            ->where('my_class_id', $this->id)
-            ->where('academic_year_id', $academicYearId)
-            ->pluck('student_record_id');
+        $studentIds = $this->getStudentRecordIds($academicYearId);
     
         if ($studentIds->isEmpty()) {
             return new Collection();
@@ -171,23 +160,7 @@ class MyClass extends Model
      */
     public function studentsForAcademicYearAndSection($academicYearId = null, $sectionId = null): Collection
     {
-        if (!$academicYearId) {
-            $academicYearId = auth()->user()?->school->academic_year_id;
-        }
-
-        if (!$academicYearId) {
-            return new Collection();
-        }
-
-        $query = DB::table('academic_year_student_record')
-            ->where('my_class_id', $this->id)
-            ->where('academic_year_id', $academicYearId);
-
-        if ($sectionId) {
-            $query->where('section_id', $sectionId);
-        }
-
-        $studentIds = $query->pluck('student_record_id');
+        $studentIds = $this->resolveStudentRecordIdsForAcademicYear($academicYearId, $sectionId);
 
         if ($studentIds->isEmpty()) {
             return new Collection();
@@ -214,26 +187,7 @@ class MyClass extends Model
      */
     public function studentsCount($academicYearId = null): int
     {
-        if (!$academicYearId) {
-            $academicYearId = auth()->user()?->school->academic_year_id;
-        }
-
-        if (!$academicYearId) {
-            return 0;
-        }
-
-        $schoolId = $this->classGroup?->school_id ?? $this->classGroup()->value('school_id');
-
-        return DB::table('academic_year_student_record as aysr')
-            ->join('student_records as sr', 'sr.id', '=', 'aysr.student_record_id')
-            ->join('users as u', 'u.id', '=', 'sr.user_id')
-            ->where('aysr.my_class_id', $this->id)
-            ->where('aysr.academic_year_id', $academicYearId)
-            ->where('sr.is_graduated', false)
-            ->whereNull('u.deleted_at')
-            ->when($schoolId, fn ($query) => $query->where('u.school_id', $schoolId))
-            ->distinct()
-            ->count('aysr.student_record_id');
+        return $this->getStudentRecordIds($academicYearId)->count();
     }
 
     /**
@@ -245,18 +199,7 @@ class MyClass extends Model
      */
     public function getStudentRecordIds($academicYearId = null): Collection
     {
-        if (!$academicYearId) {
-            $academicYearId = auth()->user()?->school->academic_year_id;
-        }
-
-        if (!$academicYearId) {
-            return collect();
-        }
-
-        return DB::table('academic_year_student_record')
-            ->where('my_class_id', $this->id)
-            ->where('academic_year_id', $academicYearId)
-            ->pluck('student_record_id');
+        return $this->resolveStudentRecordIdsForAcademicYear($academicYearId);
     }
 
     /**
@@ -268,19 +211,49 @@ class MyClass extends Model
      */
     public function hasStudent($studentRecordId, $academicYearId = null): bool
     {
+        return $this->getStudentRecordIds($academicYearId)
+            ->contains((int) $studentRecordId);
+    }
+
+    protected function resolveStudentRecordIdsForAcademicYear($academicYearId = null, $sectionId = null)
+    {
         if (!$academicYearId) {
             $academicYearId = auth()->user()?->school->academic_year_id;
         }
 
         if (!$academicYearId) {
-            return false;
+            return collect();
         }
 
-        return DB::table('academic_year_student_record')
-            ->where('my_class_id', $this->id)
-            ->where('academic_year_id', $academicYearId)
-            ->where('student_record_id', $studentRecordId)
-            ->exists();
+        $schoolId = $this->classGroup?->school_id ?? $this->classGroup()->value('school_id');
+
+        $academicYearStudentIds = DB::table('academic_year_student_record as aysr')
+            ->join('student_records as sr', 'sr.id', '=', 'aysr.student_record_id')
+            ->join('users as u', 'u.id', '=', 'sr.user_id')
+            ->where('aysr.my_class_id', $this->id)
+            ->where('aysr.academic_year_id', $academicYearId)
+            ->where('sr.is_graduated', false)
+            ->whereNull('u.deleted_at')
+            ->when($schoolId, fn ($query) => $query->where('u.school_id', $schoolId))
+            ->when($sectionId, fn ($query) => $query->where('aysr.section_id', $sectionId))
+            ->pluck('aysr.student_record_id')
+            ->map(fn ($id) => (int) $id);
+
+        $fallbackStudentIds = StudentRecord::query()
+            ->select('student_records.id')
+            ->join('users', 'users.id', '=', 'student_records.user_id')
+            ->where('student_records.my_class_id', $this->id)
+            ->where('student_records.is_graduated', false)
+            ->whereNull('users.deleted_at')
+            ->when($schoolId, fn ($query) => $query->where('users.school_id', $schoolId))
+            ->when($sectionId, fn ($query) => $query->where('student_records.section_id', $sectionId))
+            ->pluck('student_records.id')
+            ->map(fn ($id) => (int) $id);
+
+        return $academicYearStudentIds
+            ->merge($fallbackStudentIds)
+            ->unique()
+            ->values();
     }
 
     public function syllabi(): HasManyThrough

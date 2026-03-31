@@ -81,10 +81,13 @@ class ManageClasses extends Component
                 function ($attribute, $value, $fail) {
                     if (!$this->class_group_id) return;
 
-                    $query = MyClass::where('class_group_id', $this->class_group_id)
-                        ->where('name', $value);
+                    $normalizedValue = trim((string) $value);
 
-                    if ($this->view === 'edit' && $this->selectedClass) {
+                    $query = MyClass::withTrashed()
+                        ->where('class_group_id', $this->class_group_id)
+                        ->where('name', $normalizedValue);
+
+                    if ($this->selectedClass?->id) {
                         $query->where('id', '!=', $this->selectedClass->id);
                     }
 
@@ -165,6 +168,7 @@ class ManageClasses extends Component
     public function create()
     {
         $this->authorize('create', MyClass::class);
+        $this->name = trim($this->name);
         $this->validate();
 
         if (!$this->classGroupBelongsToCurrentSchool($this->class_group_id)) {
@@ -172,10 +176,15 @@ class ManageClasses extends Component
             return;
         }
 
-        $class = MyClass::create([
-            'name' => $this->name,
-            'class_group_id' => $this->class_group_id,
-        ]);
+        try {
+            MyClass::create([
+                'name' => $this->name,
+                'class_group_id' => $this->class_group_id,
+            ]);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            $this->addError('name', 'This class name already exists in the selected group.');
+            return;
+        }
 
         session()->flash('success', 'Class created successfully!');
         $this->showList();
@@ -184,6 +193,7 @@ class ManageClasses extends Component
     public function update()
     {
         $this->authorize('update', $this->selectedClass);
+        $this->name = trim($this->name);
         $this->validate();
 
         if (!$this->classGroupBelongsToCurrentSchool($this->class_group_id)) {
@@ -191,10 +201,15 @@ class ManageClasses extends Component
             return;
         }
 
-        $this->selectedClass->update([
-            'name' => $this->name,
-            'class_group_id' => $this->class_group_id,
-        ]);
+        try {
+            $this->selectedClass->update([
+                'name' => $this->name,
+                'class_group_id' => $this->class_group_id,
+            ]);
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            $this->addError('name', 'This class name already exists in the selected group.');
+            return;
+        }
 
         session()->flash('success', 'Class updated successfully!');
         $this->showList();
@@ -264,7 +279,26 @@ class ManageClasses extends Component
             ->select('student_record_id', 'my_class_id', 'section_id')
             ->get()
             ->keyBy('student_record_id');
-    
+
+        $fallbackStudents = StudentRecord::query()
+            ->select('student_records.id', 'student_records.section_id')
+            ->join('users', 'users.id', '=', 'student_records.user_id')
+            ->where('student_records.my_class_id', $classId)
+            ->where('student_records.is_graduated', false)
+            ->whereNull('users.deleted_at')
+            ->where('users.school_id', auth()->user()->school_id)
+            ->get();
+
+        foreach ($fallbackStudents as $fallbackStudent) {
+            if (!$pivotData->has($fallbackStudent->id)) {
+                $pivotData->put($fallbackStudent->id, (object) [
+                    'student_record_id' => $fallbackStudent->id,
+                    'my_class_id' => $classId,
+                    'section_id' => $fallbackStudent->section_id,
+                ]);
+            }
+        }
+
         $studentRecordIds = $pivotData->pluck('student_record_id');
     
         if ($studentRecordIds->isEmpty()) {
@@ -288,7 +322,8 @@ class ManageClasses extends Component
             ->select('student_records.*')
             ->join('users', 'student_records.user_id', '=', 'users.id')
             ->leftJoin('sections', 'student_records.section_id', '=', 'sections.id')
-            ->whereNull('users.deleted_at');
+            ->whereNull('users.deleted_at')
+            ->where('users.school_id', auth()->user()->school_id);
     
         switch ($this->sortField) {
             case 'name':
@@ -522,6 +557,11 @@ class ManageClasses extends Component
     // ============================================
     // SUBJECT OPERATIONS (UPDATED)
     // ============================================
+    public function assignSubjects()
+    {
+        $this->showAddSubjects();
+    }
+
     public function showAddSubjects()
     {
         $this->authorize('update', $this->selectedClass);

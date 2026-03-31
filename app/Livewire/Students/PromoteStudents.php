@@ -144,6 +144,11 @@ class PromoteStudents extends Component
             return;
         }
 
+        if ($this->isAlumniClass($this->newClass)) {
+            session()->flash('error', 'Use Graduate Students to move students into Alumni. Promotions cannot target Alumni.');
+            return;
+        }
+
         if (!$this->classBelongsToCurrentSchool($this->oldClass) || !$this->classBelongsToCurrentSchool($this->newClass)) {
             session()->flash('error', 'Selected class is not in your current school.');
             return;
@@ -337,6 +342,11 @@ class PromoteStudents extends Component
 
         if (empty($this->selectedStudents)) {
             session()->flash('error', 'Please select at least one student to promote.');
+            return;
+        }
+
+        if ($this->isAlumniClass($this->newClass)) {
+            session()->flash('error', 'Use Graduate Students to move students into Alumni. Promotions cannot target Alumni.');
             return;
         }
 
@@ -567,6 +577,24 @@ class PromoteStudents extends Component
             ->where('my_class_id', $classId)
             ->whereHas('myClass.classGroup', function ($query) {
                 $query->where('school_id', auth()->user()->school_id);
+            })
+            ->exists();
+    }
+
+    protected function isAlumniClass($classId): bool
+    {
+        if (!$classId) {
+            return false;
+        }
+
+        return MyClass::query()
+            ->where('id', $classId)
+            ->whereHas('classGroup', function ($query) {
+                $query->where('school_id', auth()->user()->school_id);
+            })
+            ->where(function ($query) {
+                $query->where('name', 'Alumni')
+                    ->orWhere('name', 'like', 'Alumni%');
             })
             ->exists();
     }
