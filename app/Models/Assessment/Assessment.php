@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\MyClass;
 use App\Models\Section;
 use App\Models\StudentRecord;
 use App\Models\Subject;
+use App\Models\AcademicYear;
+use App\Models\Semester;
 use App\Models\User;
 
 class Assessment extends Model
@@ -22,6 +25,8 @@ class Assessment extends Model
         'course_id',
         'section_id',
         'lesson_id',
+        'academic_year_id',
+        'semester_id',
         'title',
         'slug',
         'description',
@@ -82,6 +87,16 @@ class Assessment extends Model
         return $this->belongsTo(Subject::class, 'lesson_id');
     }
 
+    public function academicYear()
+    {
+        return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function semester()
+    {
+        return $this->belongsTo(Semester::class);
+    }
+
     public function questions()
     {
         return $this->hasMany(Question::class, 'assessment_id')->orderBy('order');
@@ -117,6 +132,13 @@ class Assessment extends Model
         parent::boot();
 
         static::creating(function ($assessment) {
+            if (static::supportsAcademicPeriodFields()) {
+                $school = auth()->user()?->school;
+
+                $assessment->academic_year_id = $assessment->academic_year_id ?: $school?->academic_year_id;
+                $assessment->semester_id = $assessment->semester_id ?: $school?->semester_id;
+            }
+
             // Generate slug
             $assessment->slug = Str::slug($assessment->title);
 
@@ -130,9 +152,18 @@ class Assessment extends Model
                 $assessment->order = $assessment->order ?? $assessment->section->assessments()->count() + 1;
             } else {
                 // For direct course assessments (like CBT assessments)
-                $assessment->order = $assessment->order ?? Assessment::where('course_id', $assessment->course_id)
-                    ->whereNull('section_id')
-                    ->count() + 1;
+                $orderQuery = Assessment::where('course_id', $assessment->course_id)
+                    ->whereNull('section_id');
+
+                if (static::supportsAcademicPeriodFields() && $assessment->academic_year_id) {
+                    $orderQuery->where('academic_year_id', $assessment->academic_year_id);
+                }
+
+                if (static::supportsAcademicPeriodFields() && $assessment->semester_id) {
+                    $orderQuery->where('semester_id', $assessment->semester_id);
+                }
+
+                $assessment->order = $assessment->order ?? $orderQuery->count() + 1;
             }
 
             // Set default max_attempts if not specified
@@ -540,6 +571,51 @@ class Assessment extends Model
         });
     }
 
+    public function scopeForAcademicPeriod(
+        Builder $query,
+        ?int $academicYearId,
+        ?int $semesterId,
+        bool $includeLegacyUnassigned = false
+    ): Builder {
+        if (!static::supportsAcademicPeriodFields()) {
+            return $query;
+        }
+
+        if (!$academicYearId || !$semesterId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $periodQuery) use ($academicYearId, $semesterId, $includeLegacyUnassigned) {
+            $periodQuery->where(function (Builder $currentPeriodQuery) use ($academicYearId, $semesterId) {
+                $currentPeriodQuery
+                    ->where('assessments.academic_year_id', $academicYearId)
+                    ->where('assessments.semester_id', $semesterId);
+            });
+
+            if ($includeLegacyUnassigned) {
+                $periodQuery->orWhere(function (Builder $legacyQuery) {
+                    $legacyQuery
+                        ->whereNull('assessments.academic_year_id')
+                        ->whereNull('assessments.semester_id');
+                });
+            }
+        });
+    }
+
+    public function scopeForCurrentSchoolAcademicPeriod(
+        Builder $query,
+        ?User $user,
+        bool $includeLegacyUnassigned = false
+    ): Builder {
+        $school = $user?->school;
+
+        return $query->forAcademicPeriod(
+            $school?->academic_year_id,
+            $school?->semester_id,
+            $includeLegacyUnassigned
+        );
+    }
+
     public function scopeVisibleToUser(Builder $query, ?User $user): Builder
     {
         if (!$user) {
@@ -547,6 +623,7 @@ class Assessment extends Model
         }
 
         $query->forSchool($user->school_id);
+        $query->forCurrentSchoolAcademicPeriod($user);
 
         if (!$user->hasRole('student')) {
             return $query->whereRaw('1 = 0');
@@ -647,6 +724,24 @@ class Assessment extends Model
         }
 
         return $cache;
+    }
+
+    public static function supportsAcademicPeriodFields(): bool
+    {
+        static $supportsAcademicPeriodFields;
+
+        if ($supportsAcademicPeriodFields !== null) {
+            return $supportsAcademicPeriodFields;
+        }
+
+        try {
+            $supportsAcademicPeriodFields = Schema::hasColumn('assessments', 'academic_year_id')
+                && Schema::hasColumn('assessments', 'semester_id');
+        } catch (\Throwable $e) {
+            $supportsAcademicPeriodFields = false;
+        }
+
+        return $supportsAcademicPeriodFields;
     }
 
     /**

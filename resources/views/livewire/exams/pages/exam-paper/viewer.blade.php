@@ -119,7 +119,7 @@
         <div class="card-body">
             @if($papers->count() === 0)
                 <div class="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-6 py-10 text-center text-gray-600">
-                    No published exam papers are available yet.
+                    No published exam papers are available for the active academic session and term yet.
                 </div>
             @else
                 <div class="grid gap-4 lg:grid-cols-2">

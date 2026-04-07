@@ -176,6 +176,7 @@ class CbtViewer extends Component
         return Assessment::query()
             ->standaloneCBT()
             ->forSchool(auth()->user()?->school_id)
+            ->forCurrentSchoolAcademicPeriod(auth()->user())
             ->whereHas('studentAnswers', function (Builder $query) use ($studentId) {
                 $query->where('user_id', $studentId)
                     ->whereNotNull('submitted_at');

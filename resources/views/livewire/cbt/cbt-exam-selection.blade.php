@@ -212,7 +212,7 @@
             </h3>
             <p class="mx-auto mt-3 max-w-xl text-slate-500">
                 {{ $isAuthorizedStudent
-                    ? 'There are currently no computer-based tests available for you to take.'
+                    ? 'There are currently no computer-based tests available for your active academic session and term.'
                     : 'Only authorised students assigned to an approved class can access CBT exams.' }}
             </p>
             <a href="{{ route('dashboard') }}"

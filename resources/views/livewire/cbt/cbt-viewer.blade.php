@@ -263,9 +263,9 @@
                     @if($isParentViewer && $availableStudents === [])
                         No student records are linked to this parent account yet.
                     @elseif($isParentViewer)
-                        {{ $selectedStudentProfile['name'] ?? 'This child' }} has not submitted any CBT assessments yet.
+                        {{ $selectedStudentProfile['name'] ?? 'This child' }} has no CBT submissions for the active academic session and term yet.
                     @else
-                        You haven't taken any CBT assessments yet.
+                        You have no CBT results for the active academic session and term yet.
                     @endif
                 </p>
                 @if(!$isParentViewer)

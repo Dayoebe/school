@@ -132,6 +132,7 @@ trait RestrictsTeacherCbtManagement
         }
 
         $query->forSchool($user->school_id);
+        $query->forCurrentSchoolAcademicPeriod($user);
 
         if (!$this->isRestrictedTeacherCbtManager($user)) {
             return $query;

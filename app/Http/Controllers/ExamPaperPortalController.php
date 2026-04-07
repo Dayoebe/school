@@ -86,6 +86,7 @@ class ExamPaperPortalController extends Controller
         return ExamPaper::query()
             ->published()
             ->forSchool(auth()->user()?->school_id)
+            ->forCurrentSchoolAcademicPeriod(auth()->user())
             ->visibleToStudent($studentId)
             ->with([
                 'exam.semester.academicYear',

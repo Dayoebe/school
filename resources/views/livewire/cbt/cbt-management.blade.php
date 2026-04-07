@@ -465,7 +465,7 @@
                 @else
                     <h5 class="mt-5 text-xl font-semibold text-slate-800">No CBT Assessments Yet</h5>
                     <p class="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500 sm:text-base">
-                        Create your first CBT assessment to start building question banks, locking vetted papers, and controlling student access.
+                        No CBT assessment exists for the active academic session and term yet. Create one to start the new term on a clean slate.
                     </p>
                     <button wire:click="$set('showCreateModal', true)"
                         class="mt-6 inline-flex items-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700">

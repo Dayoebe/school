@@ -143,8 +143,12 @@ class DashboardStats extends Component
                 ->count();
 
             $examQuery = Exam::query()
-                ->whereHas('semester', function ($query) use ($schoolId) {
+                ->whereHas('semester', function ($query) use ($schoolId, $user) {
                     $query->where('school_id', $schoolId);
+
+                    if ($user->school?->semester_id) {
+                        $query->where('id', $user->school->semester_id);
+                    }
                 });
 
             $ongoingExams = (clone $examQuery)
@@ -468,8 +472,12 @@ class DashboardStats extends Component
             'teachers' => User::where('school_id', $schoolId)->role('teacher')->count(),
             'parents' => User::where('school_id', $schoolId)->role('parent')->count(),
             'total_notices' => $schoolId ? Notice::query()->count() : 0,
-            'total_exams' => $schoolId ? Exam::whereHas('semester', function ($q) use ($schoolId) {
+            'total_exams' => $schoolId ? Exam::whereHas('semester', function ($q) use ($schoolId, $user) {
                 $q->where('school_id', $schoolId);
+
+                if ($user->school?->semester_id) {
+                    $q->where('id', $user->school->semester_id);
+                }
             })->count() : 0,
         ];
     }

@@ -18,6 +18,13 @@ class CbtResultController extends Controller
 
         abort_unless($viewer !== null, 403);
         abort_unless(
+            Assessment::query()
+                ->whereKey($assessment->id)
+                ->forCurrentSchoolAcademicPeriod($viewer)
+                ->exists(),
+            404
+        );
+        abort_unless(
             !$viewer->hasRole('teacher') || $viewer->hasAnyRole(['super-admin', 'super_admin', 'principal', 'admin']),
             403
         );
@@ -52,6 +59,13 @@ class CbtResultController extends Controller
         $viewer = $request->user();
 
         abort_unless($viewer !== null, 403);
+        abort_unless(
+            Assessment::query()
+                ->whereKey($assessment->id)
+                ->forCurrentSchoolAcademicPeriod($viewer)
+                ->exists(),
+            404
+        );
 
         $assessment->loadMissing([
             'course.classGroup.school',

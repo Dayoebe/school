@@ -82,6 +82,22 @@ class ExamPaper extends Model
         });
     }
 
+    public function scopeForCurrentSchoolAcademicPeriod(Builder $query, ?User $user): Builder
+    {
+        $academicYearId = $user?->school?->academic_year_id;
+        $semesterId = $user?->school?->semester_id;
+
+        if (!$academicYearId || !$semesterId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('exam.semester', function (Builder $semesterQuery) use ($academicYearId, $semesterId) {
+            $semesterQuery
+                ->where('semesters.id', $semesterId)
+                ->where('semesters.academic_year_id', $academicYearId);
+        });
+    }
+
     public function scopePublished(Builder $query): Builder
     {
         return $query->whereNotNull('published_at');

@@ -249,6 +249,11 @@ class CbtManagement extends Component
 
     public function createAssessment()
     {
+        if (!$this->hasActiveAcademicPeriod()) {
+            session()->flash('error', 'Set the current academic session and term before creating CBT assessments.');
+            return;
+        }
+
         $this->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -286,7 +291,10 @@ class CbtManagement extends Component
             'shuffle_options' => $this->shuffle_options,
             'is_mandatory' => true,
             'section_id' => null,
-        ]);
+        ] + (Assessment::supportsAcademicPeriodFields() ? [
+            'academic_year_id' => $this->currentAcademicYearId(),
+            'semester_id' => $this->currentSemesterId(),
+        ] : []));
 
         $this->resetForm();
         $this->showCreateModal = false;
@@ -317,6 +325,11 @@ class CbtManagement extends Component
 
     public function updateAssessment()
     {
+        if (!$this->hasActiveAcademicPeriod()) {
+            session()->flash('error', 'Set the current academic session and term before updating CBT assessments.');
+            return;
+        }
+
         $this->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -1103,6 +1116,21 @@ class CbtManagement extends Component
         return auth()->user()?->school_id;
     }
 
+    protected function currentAcademicYearId(): ?int
+    {
+        return auth()->user()?->school?->academic_year_id;
+    }
+
+    protected function currentSemesterId(): ?int
+    {
+        return auth()->user()?->school?->semester_id;
+    }
+
+    protected function hasActiveAcademicPeriod(): bool
+    {
+        return (bool) ($this->currentAcademicYearId() && $this->currentSemesterId());
+    }
+
     protected function questionHasRenderableContent(?Question $question = null): bool
     {
         if (trim((string) $this->question_text) !== '') {
@@ -1389,6 +1417,7 @@ class CbtManagement extends Component
         }
 
         $query->forSchool($viewer->school_id);
+        $query->forCurrentSchoolAcademicPeriod($viewer);
 
         if (!$this->isRestrictedTeacherCbtManager($viewer)) {
             return $query;
