@@ -320,6 +320,8 @@
                     </main>
                 </div>
             </div>
+
+            @include('partials.dashboard-floating-countdown')
         </div>
         @livewire('common.display-status')
         <livewire:scripts />

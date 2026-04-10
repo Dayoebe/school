@@ -90,6 +90,7 @@
             </div>
         </div>
 
+        @include('partials.dashboard-floating-countdown')
         @livewire('common.display-status')
     </div>
 
