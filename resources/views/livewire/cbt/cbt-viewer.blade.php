@@ -565,7 +565,7 @@
                                             <span class="text-xs sm:text-sm font-semibold text-blue-800 dark:text-blue-300">Instruction:</span>
                                         </div>
                                         <div class="text-xs sm:text-sm text-blue-900 dark:text-blue-200 prose prose-sm max-w-none dark:prose-invert math-content whitespace-pre-line break-words leading-relaxed">
-                                            {!! $question->explanation !!}
+                                            {!! \App\Support\SafeHtml::math($question->explanation) !!}
                                         </div>
                                     </div>
                                 @endif
@@ -594,7 +594,7 @@
 
                                 <!-- Question Text -->
                                 <div class="font-semibold text-gray-900 dark:text-white mb-3 sm:mb-4 prose prose-sm sm:prose max-w-none dark:prose-invert math-content text-sm sm:text-base">
-                                    {!! $question->question_text !!}
+                                    {!! \App\Support\SafeHtml::math($question->question_text) !!}
                                 </div>
                                 
                                 <!-- Options -->
@@ -610,7 +610,7 @@
                                                     {{ chr(65 + $index) }}
                                                 </span>
                                                 <div class="flex-1 prose prose-sm sm:prose max-w-none dark:prose-invert math-content text-sm sm:text-base">
-                                                    <span class="{{ $isUserAnswer ? 'font-semibold' : '' }} {{ ($isUserAnswer && !$isCorrect) ? 'text-red-700 dark:text-red-400' : ($isCorrectAnswer ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300') }}">{!! $option !!}</span>
+                                                    <span class="{{ $isUserAnswer ? 'font-semibold' : '' }} {{ ($isUserAnswer && !$isCorrect) ? 'text-red-700 dark:text-red-400' : ($isCorrectAnswer ? 'text-green-700 dark:text-green-400' : 'text-gray-700 dark:text-gray-300') }}">{!! \App\Support\SafeHtml::math($option) !!}</span>
                                                 </div>
                                                 <div class="flex-shrink-0 ml-2 space-x-1">
                                                     @if($isUserAnswer)

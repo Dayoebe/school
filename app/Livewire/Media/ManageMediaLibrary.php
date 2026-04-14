@@ -53,7 +53,7 @@ class ManageMediaLibrary extends Component
             'usageArea' => ['required', 'in:general,home,about,gallery,seo'],
             'title' => ['nullable', 'string', 'max:255'],
             'altText' => ['nullable', 'string', 'max:255'],
-            'mediaFile' => ['required', 'file', 'max:15360', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,image/svg+xml,video/mp4,video/webm,application/pdf'],
+            'mediaFile' => ['required', 'file', 'max:15360', 'mimetypes:image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,application/pdf'],
         ]);
 
         $schoolId = (int) auth()->user()?->school_id;

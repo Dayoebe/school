@@ -192,7 +192,7 @@
                         <div>
                             <label class="mb-1 block text-sm font-semibold text-slate-700">Upload Favicon</label>
                             <input type="file" wire:model="themeFaviconFile"
-                                accept=".ico,image/png,image/jpeg,image/webp,image/svg+xml"
+                                accept=".ico,image/png,image/jpeg,image/webp"
                                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                             <p class="mt-1 text-[11px] text-slate-500">Accepted: ICO, PNG, JPG, WEBP, SVG (max 2MB).</p>
                             @error('themeFaviconFile')
@@ -1241,10 +1241,13 @@
                         saved in app storage.</p>
 
                     @if (auth()->user()->hasAnyRole(['super-admin', 'super_admin']))
-                        <a href="{{ route('database.download') }}"
-                            class="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                            <i class="fas fa-database mr-2"></i>Download Database
-                        </a>
+                        <form method="POST" action="{{ route('database.download') }}" class="mt-4">
+                            @csrf
+                            <button type="submit"
+                                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                                <i class="fas fa-database mr-2"></i>Download Database
+                            </button>
+                        </form>
                     @else
                         <p
                             class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">

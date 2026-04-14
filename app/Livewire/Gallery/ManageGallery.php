@@ -176,7 +176,7 @@ class ManageGallery extends Component
             'itemTitle' => ['required', 'string', 'max:160'],
             'itemCaption' => ['nullable', 'string', 'max:2000'],
             'itemMediaUrl' => ['nullable', 'url', 'max:2048', 'required_without:itemImage'],
-            'itemImage' => ['nullable', 'image', 'max:5120'],
+            'itemImage' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
             'itemCategoryId' => ['required', 'integer'],
             'itemTakenOn' => ['nullable', 'date'],
             'itemSortOrder' => ['nullable', 'integer', 'min:0'],

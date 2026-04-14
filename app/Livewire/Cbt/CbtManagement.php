@@ -93,7 +93,7 @@ class CbtManagement extends Component
         'points' => 'required|numeric|min:0.1',
         'options' => 'required_if:question_type,multiple_choice,true_false|array|min:2',
         'correct_answers' => 'required|array|min:1',
-        'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,pdf,doc,docx|max:10240',
+        'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx|max:10240',
     ];
 
     public function mount()
@@ -572,7 +572,7 @@ class CbtManagement extends Component
             'question_text' => 'nullable|string',
             'question_type' => 'required|string',
             'points' => 'required|numeric|min:0.1',
-            'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,pdf,doc,docx|max:10240',
+            'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx|max:10240',
         ]);
 
         if (!$this->questionHasRenderableContent()) {
@@ -696,7 +696,7 @@ class CbtManagement extends Component
             'question_text' => 'nullable|string',
             'question_type' => 'required|string',
             'points' => 'required|numeric|min:0.1',
-            'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,svg,pdf,doc,docx|max:10240',
+            'question_media' => 'nullable|file|mimes:jpeg,jpg,png,gif,webp,pdf,doc,docx|max:10240',
         ]);
 
         if (!$this->questionHasRenderableContent($question)) {

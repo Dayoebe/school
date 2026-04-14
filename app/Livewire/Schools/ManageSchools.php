@@ -83,7 +83,7 @@ class ManageSchools extends Component
             'initials' => 'nullable|string|max:10',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
-            'logo' => 'nullable|image|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
         $data = [
@@ -116,7 +116,7 @@ class ManageSchools extends Component
             'initials' => 'nullable|string|max:10',
             'phone' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
-            'logo' => 'nullable|image|max:2048',
+            'logo' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
         $data = [

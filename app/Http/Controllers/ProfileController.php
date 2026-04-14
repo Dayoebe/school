@@ -78,7 +78,7 @@ class ProfileController extends Controller
             'nationality' => ['nullable', 'string', 'max:255'],
             'religion' => ['nullable', 'string', 'max:255'],
             'blood_group' => ['nullable', 'string', 'max:12'],
-            'profile_photo' => ['nullable', 'image', 'max:3072'],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:3072'],
         ]);
 
         $payload = [

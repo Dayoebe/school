@@ -461,7 +461,7 @@
                                 <div class="prose prose-base max-w-none text-amber-950 dark:prose-invert math-content whitespace-pre-line break-words leading-relaxed"
                                      wire:key="instruction-{{ $question['id'] }}"
                                      x-init="renderMathInElement($el)">
-                                    {!! $question['explanation'] !!}
+                                    {!! \App\Support\SafeHtml::math($question['explanation']) !!}
                                 </div>
                             </div>
                             @endif
@@ -492,7 +492,7 @@
                             <div class="prose prose-lg max-w-none dark:prose-invert math-content text-gray-800 dark:text-gray-200"
                                  wire:key="question-{{ $question['id'] }}"
                                  x-init="renderMathInElement($el)">
-                                {!! $question['question_text'] ?? '' !!}
+                                {!! \App\Support\SafeHtml::math($question['question_text'] ?? '') !!}
                             </div>
                         </div>
 
@@ -521,7 +521,7 @@
                                                     <div class="flex-1 prose dark:prose-invert math-content text-gray-700 dark:text-gray-200"
                                                          wire:key="option-{{ $question['id'] }}-{{ $optionIndex }}"
                                                          x-init="renderMathInElement($el)">
-                                                        {!! $option !!}
+                                                        {!! \App\Support\SafeHtml::math($option) !!}
                                                     </div>
                                                     <div class="flex-shrink-0 ml-4">
                                                         <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all"

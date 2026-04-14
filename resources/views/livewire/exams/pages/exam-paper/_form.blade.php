@@ -280,7 +280,7 @@
                         return;
                     }
 
-                    element.innerHTML = content;
+                    element.textContent = content;
                     element.classList.remove('text-gray-500');
                 }
 

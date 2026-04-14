@@ -54,13 +54,13 @@
 
         @if($examPaper->instructions)
             <div class="math-content" style="margin-top: 1rem; padding: 1rem; border: 1px solid #e5e7eb; background: #f9fafb;">
-                {!! $examPaper->instructions !!}
+                {!! \App\Support\SafeHtml::math($examPaper->instructions) !!}
             </div>
         @endif
 
         @if($examPaper->typed_content)
             <div class="math-content" style="margin-top: 1.5rem;">
-                {!! $examPaper->typed_content !!}
+                {!! \App\Support\SafeHtml::math($examPaper->typed_content) !!}
             </div>
         @endif
 

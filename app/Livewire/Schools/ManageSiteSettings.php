@@ -638,8 +638,8 @@ class ManageSiteSettings extends Component
             'form.theme_primary_color' => ['nullable', 'regex:/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/'],
             'form.theme_logo_url' => 'nullable|string|max:4000',
             'form.theme_favicon_url' => 'nullable|string|max:4000',
-            'themeLogoFile' => 'nullable|image|max:3072',
-            'themeFaviconFile' => 'nullable|file|mimes:ico,png,jpg,jpeg,webp,svg|max:2048',
+            'themeLogoFile' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:3072',
+            'themeFaviconFile' => 'nullable|file|mimes:ico,png,jpg,jpeg,webp|max:2048',
 
             'form.contact_address' => 'nullable|string|max:1000',
             'form.contact_phone_primary' => 'nullable|string|max:50',

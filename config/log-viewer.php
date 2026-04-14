@@ -9,7 +9,7 @@ return [
     | Log Viewer can be disabled, so it's no longer accessible via browser.
     |
     */
-    'enabled' => env('LOG_VIEWER_ENABLED', true),
+    'enabled' => env('LOG_VIEWER_ENABLED', false),
 
     /*
     |--------------------------------------------------------------------------
@@ -67,7 +67,12 @@ return [
     |
     */
 
-    'middleware' => ['web', 'role:super-admin',  \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class],
+    'middleware' => [
+        'web',
+        'auth',
+        'role:super-admin|super_admin',
+        \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class,
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -79,6 +84,9 @@ return [
     */
 
     'api_middleware' => [
+        'web',
+        'auth',
+        'role:super-admin|super_admin',
         \Opcodes\LogViewer\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
         \Opcodes\LogViewer\Http\Middleware\AuthorizeLogViewer::class,
     ],

@@ -83,13 +83,13 @@
 
                 @if($selectedPaper->instructions)
                     <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900 exam-paper-content math-content">
-                        {!! $selectedPaper->instructions !!}
+                        {!! \App\Support\SafeHtml::math($selectedPaper->instructions) !!}
                     </div>
                 @endif
 
                 @if($selectedPaper->typed_content)
                     <div class="rounded-lg border border-gray-200 bg-white p-5 shadow-sm exam-paper-content math-content">
-                        {!! $selectedPaper->typed_content !!}
+                        {!! \App\Support\SafeHtml::math($selectedPaper->typed_content) !!}
                     </div>
                 @endif
 

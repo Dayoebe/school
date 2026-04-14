@@ -26,7 +26,7 @@ class StoreNoticeRequest extends FormRequest
         return [
             'title'      => 'required|string|max:255',
             'content'    => 'required|string',
-            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,gif,svg,pdf,doc,docx|max:10000',
+            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10000',
             'start_date' => 'required|date',
             'stop_date'  => 'required|date|after_or_equal:start_date',
         ];

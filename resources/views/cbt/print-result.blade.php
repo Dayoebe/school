@@ -303,11 +303,11 @@
                         @if($question->explanation)
                             <div class="card" style="margin-top: 12px;">
                                 <div class="card-label">Instruction</div>
-                                <div class="answer-text">{!! $question->explanation !!}</div>
+                                <div class="answer-text">{!! \App\Support\SafeHtml::math($question->explanation) !!}</div>
                             </div>
                         @endif
 
-                        <div class="question-text">{!! $question->question_text !!}</div>
+                        <div class="question-text">{!! \App\Support\SafeHtml::math($question->question_text) !!}</div>
 
                         @if($question->has_question_media)
                             <div class="card" style="margin-top: 12px;">
@@ -345,7 +345,7 @@
                                         @if($question->question_type === 'true_false')
                                             {{ $option }}
                                         @else
-                                            {!! $option !!}
+                                            {!! \App\Support\SafeHtml::math($option) !!}
                                         @endif
                                     </span>
                                     @if($isUserAnswer)

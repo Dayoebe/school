@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Models\AccountApplication;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Events\Registered;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class AuthController extends Controller
@@ -72,24 +76,55 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|confirmed|min:8',
-            'role' => 'required|in:student,parent,teacher',
+            'school' => ['required', 'integer', 'exists:schools,id'],
+            'role' => ['required', Rule::in(['student', 'parent', 'teacher'])],
         ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+        $user = DB::transaction(function () use ($validated) {
+            $requestedRole = Role::query()
+                ->where('guard_name', 'web')
+                ->where('name', $validated['role'])
+                ->first();
+
+            if (!$requestedRole) {
+                throw ValidationException::withMessages([
+                    'role' => 'The selected role is not available for registration.',
+                ]);
+            }
+
+            $applicantRole = Role::firstOrCreate([
+                'name' => 'applicant',
+                'guard_name' => 'web',
+            ]);
+
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'school_id' => $validated['school'],
+            ]);
+
+            $user->assignRole($applicantRole);
+
+            $application = AccountApplication::query()->create([
+                'user_id' => $user->id,
+                'role_id' => $requestedRole->id,
+            ]);
+
+            $application->setStatus('under review', 'Application submitted and awaiting review.');
+
+            return $user;
         ]);
 
-        $user->assignRole($request->role);
         event(new Registered($user));
-        Auth::login($user);
 
-        return $this->redirectToDashboard();
+        return redirect()
+            ->route('login')
+            ->with('status', 'Your application has been submitted for review. You will be able to access the portal after approval.');
     }
 
     public function forgotPassword(Request $request)

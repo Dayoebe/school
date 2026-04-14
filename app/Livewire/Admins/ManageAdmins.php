@@ -101,7 +101,7 @@ class ManageAdmins extends Component
             'gender' => 'required|in:male,female',
             'birthday' => 'nullable|date|before:today',
             'phone' => 'nullable|string|max:20',
-            'profile_photo' => 'nullable|image|max:2048',
+            'profile_photo' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
         DB::transaction(function () {
@@ -148,7 +148,7 @@ class ManageAdmins extends Component
             'gender' => 'required|in:male,female',
             'birthday' => 'nullable|date|before:today',
             'phone' => 'nullable|string|max:20',
-            'profile_photo' => 'nullable|image|max:2048',
+            'profile_photo' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
         DB::transaction(function () use ($admin) {

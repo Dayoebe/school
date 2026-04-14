@@ -809,7 +809,7 @@
                                     <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
                                     <div id="explanation-preview" class="text-themed-primary min-h-6 math-content">
                                         @if($explanation)
-                                            {!! $explanation !!}
+                                            {!! \App\Support\SafeHtml::math($explanation) !!}
                                         @else
                                             <span class="text-themed-tertiary">Preview will appear here</span>
                                         @endif
@@ -832,7 +832,7 @@
                                     <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
                                     <div id="question-preview" class="text-themed-primary min-h-6 math-content">
                                         @if($question_text)
-                                            {!! $question_text !!}
+                                            {!! \App\Support\SafeHtml::math($question_text) !!}
                                         @else
                                             <span class="text-themed-tertiary">Preview will appear here</span>
                                         @endif
@@ -848,7 +848,7 @@
                                 <input type="file"
                                     id="question_media"
                                     wire:model="question_media"
-                                    accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.doc,.docx"
+                                    accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
                                     class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary text-themed-primary file:mr-4 file:rounded-md file:border-0 file:bg-accent-themed-primary file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white">
                                 @error('question_media') <div class="text-red-500 dark:text-red-400 text-sm mt-1">{{ $message }}</div> @enderror
 
@@ -997,20 +997,20 @@
                                                 @if($question->explanation)
                                                     <div class="mb-2 text-sm text-themed-secondary">
                                                         <strong>Instruction:</strong>
-                                                        <span class="math-content cbt-math-clamp cbt-math-clamp-2">{!! $question->explanation !!}</span>
+                                                        <span class="math-content cbt-math-clamp cbt-math-clamp-2">{!! \App\Support\SafeHtml::math($question->explanation) !!}</span>
                                                     </div>
                                                 @endif
                                                 <h6 class="font-semibold text-themed-primary mb-1">
                                                     Q{{ $loop->iteration }}.
                                                     <span
-                                                        class="math-content cbt-math-clamp cbt-math-clamp-3">{!! $question->question_text !!}</span>
+                                                        class="math-content cbt-math-clamp cbt-math-clamp-3">{!! \App\Support\SafeHtml::math($question->question_text) !!}</span>
                                                 </h6>
                                                 @if($question->options && count($question->options) > 0)
                                                     <div class="mt-2 ml-4 space-y-1">
                                                         @foreach($question->options as $index => $option)
                                                             <div class="text-sm text-themed-secondary flex items-start">
                                                                 <span class="font-medium mr-2">{{ chr(65 + $index) }}.</span>
-                                                                <span class="math-content cbt-math-clamp cbt-math-clamp-2 flex-1">{!! $option !!}</span>
+                                                                <span class="math-content cbt-math-clamp cbt-math-clamp-2 flex-1">{!! \App\Support\SafeHtml::math($option) !!}</span>
                                                                 @if(in_array($index, $question->correct_answers ?? []))
                                                                     <i class="fas fa-check text-green-600 ml-2"></i>
                                                                 @endif
@@ -1105,7 +1105,7 @@
                                 <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
                                 <div id="edit-explanation-preview" class="math-content text-themed-primary min-h-6">
                                     @if($explanation)
-                                        {!! $explanation !!}
+                                        {!! \App\Support\SafeHtml::math($explanation) !!}
                                     @else
                                         <span class="text-themed-tertiary">Preview will appear here</span>
                                     @endif
@@ -1129,7 +1129,7 @@
                                 <label class="text-xs text-themed-secondary mb-1 block">Preview:</label>
                                 <div id="edit-question-preview" class="math-content text-themed-primary min-h-6">
                                     @if($question_text)
-                                        {!! $question_text !!}
+                                        {!! \App\Support\SafeHtml::math($question_text) !!}
                                     @else
                                         <span class="text-themed-tertiary">Preview will appear here</span>
                                     @endif
@@ -1163,7 +1163,7 @@
                             </label>
                             <input type="file"
                                 wire:model="question_media"
-                                accept=".jpg,.jpeg,.png,.gif,.webp,.svg,.pdf,.doc,.docx"
+                                accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
                                 class="w-full px-3 py-2 border border-themed-secondary rounded-lg bg-themed-primary text-themed-primary file:mr-4 file:rounded-md file:border-0 file:bg-accent-themed-primary file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white">
                             @error('question_media') <div class="text-red-500 dark:text-red-400 text-sm mt-1">{{ $message }}</div> @enderror
 
@@ -1661,11 +1661,13 @@
                 const value = String(inputValue || '');
 
                 if (value.trim()) {
-                    preview.innerHTML = value;
+                    preview.textContent = value;
+                    preview.classList.remove('text-themed-tertiary');
                     preview.querySelectorAll('mjx-container').forEach(el => el.remove());
                     renderMath([preview]);
                 } else {
-                    preview.innerHTML = '<span class="text-themed-tertiary">Preview will appear here</span>';
+                    preview.textContent = 'Preview will appear here';
+                    preview.classList.add('text-themed-tertiary');
                 }
             }
 

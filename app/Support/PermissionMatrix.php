@@ -246,6 +246,7 @@ class PermissionMatrix
             'teacher' => $teacher,
             'student' => $student,
             'parent' => $parent,
+            'applicant' => [],
             'user' => $basicUser,
         ];
     }

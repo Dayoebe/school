@@ -25,7 +25,11 @@ class SchoolPolicy
      */
     public function view(User $user, School $school)
     {
-        if ($user->can('read school') && $user->school_id = $school->id) {
+        if ($user->hasAnyRole(['super-admin', 'super_admin'])) {
+            return true;
+        }
+
+        if ($user->can('read school') && (int) $user->school_id === (int) $school->id) {
             return true;
         }
     }
