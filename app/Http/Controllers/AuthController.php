@@ -118,7 +118,7 @@ class AuthController extends Controller
             $application->setStatus('under review', 'Application submitted and awaiting review.');
 
             return $user;
-        ]);
+        });
 
         event(new Registered($user));
 
