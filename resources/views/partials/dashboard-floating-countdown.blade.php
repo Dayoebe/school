@@ -1,4 +1,10 @@
 @php
+    $countdownUser = auth()->user();
+    $showDashboardCountdown = $countdownUser && $countdownUser->hasAnyRole(['super-admin', 'super_admin']);
+@endphp
+
+@if ($showDashboardCountdown)
+@php
     $countdownNow = now();
     $countdownTarget = $countdownNow->copy()->setDate($countdownNow->year, 6, 30)->setTime(23, 59, 59);
 
@@ -155,3 +161,4 @@
         </div>
     </div>
 </div>
+@endif
