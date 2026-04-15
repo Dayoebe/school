@@ -18,7 +18,7 @@
                 </p>
             </div>
 
-            <div>
+            <div class="flex flex-wrap items-center gap-2">
                 @if ($isActive)
                     <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase text-emerald-700">Active</span>
                 @elseif ($isUpcoming)
@@ -28,6 +28,15 @@
                 @else
                     <span class="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase text-amber-700">Inactive</span>
                 @endif
+
+                @can('update', $notice)
+                    <a
+                        href="{{ route('notices.edit', $notice) }}"
+                        class="inline-flex items-center rounded-lg bg-amber-500 px-3 py-2 text-xs font-bold text-slate-950 transition hover:bg-amber-600"
+                    >
+                        <i class="fas fa-pen mr-1.5"></i>Edit Notice
+                    </a>
+                @endcan
             </div>
         </div>
 
@@ -52,4 +61,3 @@
         @endif
     </div>
 </div>
-

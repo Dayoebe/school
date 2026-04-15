@@ -75,15 +75,13 @@
                                 @endif
                             </div>
 
-                            @if ($isUnread)
-                                <button
-                                    type="button"
-                                    wire:click="markAsRead({{ $notice->id }})"
-                                    class="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100"
-                                >
-                                    Mark read
-                                </button>
-                            @endif
+                            <button
+                                type="button"
+                                wire:click="{{ $isUnread ? 'markAsRead' : 'markAsUnread' }}({{ $notice->id }})"
+                                class="shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold transition {{ $isUnread ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100' : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100' }}"
+                            >
+                                {{ $isUnread ? 'Mark read' : 'Mark unread' }}
+                            </button>
                         </div>
 
                         <p class="mt-4 whitespace-pre-line text-sm leading-6 text-slate-700">
@@ -102,6 +100,18 @@
                                 </a>
                             </div>
                         @endif
+
+                        @can('update', $notice)
+                            <div class="mt-4">
+                                <a
+                                    href="{{ route('notices.edit', $notice) }}"
+                                    class="inline-flex items-center rounded-lg bg-slate-950 px-3 py-2 text-sm font-bold text-white transition hover:bg-slate-800"
+                                    wire:navigate
+                                >
+                                    <i class="fas fa-pen mr-2"></i>Edit notice
+                                </a>
+                            </div>
+                        @endcan
                     </article>
                 @endforeach
             </div>

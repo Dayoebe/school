@@ -24,11 +24,13 @@ class UpdateNoticeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'      => 'required|string|max:255',
-            'content'    => 'required|string',
-            'attachment' => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10000',
-            'start_date' => 'required|date',
-            'stop_date'  => 'required|date|after_or_equal:start_date',
+            'title'             => 'required|string|max:255',
+            'content'           => 'required|string',
+            'attachment'        => 'nullable|file|mimes:jpeg,png,jpg,gif,pdf,doc,docx|max:10000',
+            'remove_attachment' => 'nullable|boolean',
+            'start_date'        => 'required|date',
+            'stop_date'         => 'required|date|after_or_equal:start_date',
+            'active'            => 'nullable|boolean',
         ];
     }
 }

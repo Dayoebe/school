@@ -40,6 +40,20 @@ class ActiveNotices extends Component
         );
     }
 
+    public function markAsUnread(int $noticeId): void
+    {
+        $user = auth()->user();
+
+        if (!$user) {
+            return;
+        }
+
+        DB::table('notice_reads')
+            ->where('notice_id', $noticeId)
+            ->where('user_id', $user->id)
+            ->delete();
+    }
+
     public function markAllAsRead(): void
     {
         $user = auth()->user();

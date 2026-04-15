@@ -84,6 +84,14 @@
                                     >
                                         <i class="fas fa-eye mr-1.5"></i>View
                                     </a>
+                                    @can('update', $notice)
+                                        <a
+                                            href="{{ route('notices.edit', $notice) }}"
+                                            class="inline-flex items-center rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-amber-600"
+                                        >
+                                            <i class="fas fa-pen mr-1.5"></i>Edit
+                                        </a>
+                                    @endcan
                                     @can('delete', $notice)
                                         <form method="POST" action="{{ route('notices.destroy', $notice) }}">
                                             @csrf

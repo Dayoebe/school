@@ -8,7 +8,7 @@ use App\Mail\NoticePublishedMail;
 use App\Models\Notice;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
@@ -157,17 +157,44 @@ class NoticeController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Notice $notice): Response
+    public function edit(Notice $notice): View
     {
-        abort(404);
+        return view('livewire.notices.pages.edit', compact('notice'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateNoticeRequest $request, Notice $notice): Response
+    public function update(UpdateNoticeRequest $request, Notice $notice): RedirectResponse
     {
-        abort(404);
+        $data = $request->validated();
+        $attachmentPath = $notice->attachment;
+
+        if ($request->boolean('remove_attachment') && $attachmentPath) {
+            Storage::disk('public')->delete($attachmentPath);
+            $attachmentPath = null;
+        }
+
+        if (isset($data['attachment'])) {
+            if ($attachmentPath) {
+                Storage::disk('public')->delete($attachmentPath);
+            }
+
+            $attachmentPath = $data['attachment']->store('notices/', 'public');
+        }
+
+        $notice->update([
+            'title' => $data['title'],
+            'content' => $data['content'],
+            'start_date' => $data['start_date'],
+            'stop_date' => $data['stop_date'],
+            'active' => $request->boolean('active'),
+            'attachment' => $attachmentPath,
+        ]);
+
+        return redirect()
+            ->route('notices.show', $notice)
+            ->with('success', 'Notice updated successfully.');
     }
 
     /**
