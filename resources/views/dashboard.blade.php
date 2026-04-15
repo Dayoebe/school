@@ -16,6 +16,10 @@
 
     
     <div class="mb-6">
+        @livewire('dashboard.active-notices')
+    </div>
+
+    <div class="mb-6">
         @livewire('dashboard.dashboard-stats')
     </div>
   
