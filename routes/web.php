@@ -158,7 +158,7 @@ Route::post('logout', [AuthController::class, 'logout'])
     ->name('logout');
 
 Route::middleware(['auth', 'restrict.teacher.portal', 'App\Http\Middleware\EnsureSuperAdminHasSchoolId'])->group(function () {
-    Route::post('/database/download', [DatabaseBackupController::class, 'download'])
+    Route::match(['GET', 'POST'], '/database/download', [DatabaseBackupController::class, 'download'])
         ->middleware('role:super-admin|super_admin')
         ->name('database.download');
 

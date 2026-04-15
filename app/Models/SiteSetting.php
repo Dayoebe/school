@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SiteSetting extends Model
 {
@@ -16,9 +15,6 @@ class SiteSetting extends Model
         'school_id',
         'settings',
         'draft_settings',
-        'published_version',
-        'draft_version',
-        'pending_version',
         'workflow_status',
         'draft_updated_at',
         'approval_requested_at',
@@ -36,7 +32,6 @@ class SiteSetting extends Model
     protected $casts = [
         'settings' => 'array',
         'draft_settings' => 'array',
-        'pending_version' => 'integer',
         'published_at' => 'datetime',
         'draft_updated_at' => 'datetime',
         'approval_requested_at' => 'datetime',
@@ -47,11 +42,6 @@ class SiteSetting extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
-    }
-
-    public function versions(): HasMany
-    {
-        return $this->hasMany(SiteSettingVersion::class);
     }
 
     public function publishedBy(): BelongsTo

@@ -5,7 +5,6 @@ namespace App\Livewire\Schools;
 use App\Models\MediaAsset;
 use App\Models\School;
 use App\Models\SiteSetting;
-use App\Models\SiteSettingVersion;
 use App\Support\SiteSettings;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Collection;
@@ -31,17 +30,11 @@ class ManageSiteSettings extends Component
 
     public $themeFaviconFile = null;
 
-    public ?int $publishedVersion = null;
-
-    public ?int $draftVersion = null;
-
     public ?string $publishedAtLabel = null;
 
     public ?string $draftUpdatedAtLabel = null;
 
     public string $workflowStatus = 'draft';
-
-    public ?int $pendingVersion = null;
 
     public ?string $approvalRequestedAtLabel = null;
 
@@ -156,23 +149,17 @@ class ManageSiteSettings extends Component
             ]);
         }
 
-        $nextVersion = $this->nextVersionNumber($setting);
-
         $setting->update([
             'draft_settings' => $payload,
-            'draft_version' => $nextVersion,
             'draft_updated_at' => now(),
             'draft_updated_by' => auth()->id(),
             'workflow_status' => 'draft',
-            'pending_version' => null,
             'approval_requested_at' => null,
             'approval_requested_by' => null,
             'rejected_at' => null,
             'rejected_by' => null,
             'rejection_note' => null,
         ]);
-
-        $this->recordVersion($setting, $nextVersion, 'draft_saved', $payload);
 
         SiteSettings::clearCache();
         $this->loadSettings();
@@ -199,36 +186,22 @@ class ManageSiteSettings extends Component
             return;
         }
 
-        $nextVersion = $this->nextVersionNumber($setting);
         $isPendingApproval = $setting->workflow_status === 'pending_approval';
 
         $setting->update([
             'settings' => $draft,
-            'published_version' => $nextVersion,
             'published_at' => now(),
             'published_by' => auth()->id(),
             'draft_settings' => $draft,
-            'draft_version' => $nextVersion,
             'draft_updated_at' => now(),
             'draft_updated_by' => auth()->id(),
             'workflow_status' => 'approved',
-            'pending_version' => null,
             'approved_at' => now(),
             'approved_by' => auth()->id(),
             'rejected_at' => null,
             'rejected_by' => null,
             'rejection_note' => null,
         ]);
-
-        $this->recordVersion(
-            $setting,
-            $nextVersion,
-            $isPendingApproval ? 'approved_published' : 'published',
-            $draft,
-            [
-                'source_workflow_status' => $isPendingApproval ? 'pending_approval' : 'draft',
-            ]
-        );
 
         SiteSettings::clearCache();
         $this->loadSettings();
@@ -262,30 +235,16 @@ class ManageSiteSettings extends Component
             return;
         }
 
-        $nextVersion = $this->nextVersionNumber($setting);
-
         $setting->update([
-            'draft_version' => $nextVersion,
             'draft_updated_at' => now(),
             'draft_updated_by' => auth()->id(),
             'workflow_status' => 'pending_approval',
-            'pending_version' => $nextVersion,
             'approval_requested_at' => now(),
             'approval_requested_by' => auth()->id(),
             'rejected_at' => null,
             'rejected_by' => null,
             'rejection_note' => null,
         ]);
-
-        $this->recordVersion(
-            $setting,
-            $nextVersion,
-            'submitted_for_approval',
-            $draft,
-            [
-                'pending_version' => $nextVersion,
-            ]
-        );
 
         SiteSettings::clearCache();
         $this->loadSettings();
@@ -308,28 +267,14 @@ class ManageSiteSettings extends Component
             return;
         }
 
-        $nextVersion = $this->nextVersionNumber($setting);
-
         $setting->update([
-            'draft_version' => $nextVersion,
             'draft_updated_at' => now(),
             'draft_updated_by' => auth()->id(),
             'workflow_status' => 'rejected',
-            'pending_version' => null,
             'rejected_at' => now(),
             'rejected_by' => auth()->id(),
             'rejection_note' => trim($validated['rejectionReason']),
         ]);
-
-        $this->recordVersion(
-            $setting,
-            $nextVersion,
-            'rejected',
-            is_array($setting->draft_settings) ? $setting->draft_settings : [],
-            [
-                'rejection_note' => trim($validated['rejectionReason']),
-            ]
-        );
 
         $this->rejectionReason = '';
         SiteSettings::clearCache();
@@ -359,8 +304,6 @@ class ManageSiteSettings extends Component
             'meta' => [
                 'exported_by' => auth()->id(),
                 'workflow_status' => $setting?->workflow_status,
-                'published_version' => $setting?->published_version,
-                'draft_version' => $setting?->draft_version,
             ],
         ];
 
@@ -406,11 +349,11 @@ class ManageSiteSettings extends Component
             return;
         }
 
-        [$setting, $nextVersion] = $this->applyPayloadAsDraft($payload, 'imported');
+        $setting = $this->applyPayloadAsDraft($payload);
 
         $publishedNow = false;
         if ($validated['importPublishNow'] && $this->canApproveSettings()) {
-            $this->publishSettingPayload($setting, $payload, 'imported_published');
+            $this->publishSettingPayload($setting, $payload);
             $publishedNow = true;
         }
 
@@ -422,7 +365,7 @@ class ManageSiteSettings extends Component
 
         session()->flash('success', $publishedNow
             ? 'Backup imported and published.'
-            : 'Backup imported as draft (v' . $nextVersion . ').');
+            : 'Backup imported as draft.');
     }
 
     public function cloneFromExistingScope(): void
@@ -461,18 +404,11 @@ class ManageSiteSettings extends Component
             return;
         }
 
-        [$setting] = $this->applyPayloadAsDraft(
-            $payload,
-            'cloned',
-            [
-                'source_scope_key' => $sourceScopeKey,
-                'source_school_id' => $source->school_id,
-            ]
-        );
+        $setting = $this->applyPayloadAsDraft($payload);
 
         $publishedNow = false;
         if ($validated['clonePublishNow'] && $this->canApproveSettings()) {
-            $this->publishSettingPayload($setting, $payload, 'cloned_published');
+            $this->publishSettingPayload($setting, $payload);
             $publishedNow = true;
         }
 
@@ -503,7 +439,7 @@ class ManageSiteSettings extends Component
         return null;
     }
 
-    protected function applyPayloadAsDraft(array $payload, string $stage, ?array $meta = null): array
+    protected function applyPayloadAsDraft(array $payload): SiteSetting
     {
         $setting = $this->settingForScope();
         if (!$setting) {
@@ -514,15 +450,11 @@ class ManageSiteSettings extends Component
             ]);
         }
 
-        $nextVersion = $this->nextVersionNumber($setting);
-
         $setting->update([
             'draft_settings' => $payload,
-            'draft_version' => $nextVersion,
             'draft_updated_at' => now(),
             'draft_updated_by' => auth()->id(),
             'workflow_status' => 'draft',
-            'pending_version' => null,
             'approval_requested_at' => null,
             'approval_requested_by' => null,
             'rejected_at' => null,
@@ -530,26 +462,19 @@ class ManageSiteSettings extends Component
             'rejection_note' => null,
         ]);
 
-        $this->recordVersion($setting, $nextVersion, $stage, $payload, $meta);
-
-        return [$setting, $nextVersion];
+        return $setting;
     }
 
-    protected function publishSettingPayload(SiteSetting $setting, array $payload, string $stage): void
+    protected function publishSettingPayload(SiteSetting $setting, array $payload): void
     {
-        $publishVersion = $this->nextVersionNumber($setting);
-
         $setting->update([
             'settings' => $payload,
-            'published_version' => $publishVersion,
             'published_at' => now(),
             'published_by' => auth()->id(),
             'draft_settings' => $payload,
-            'draft_version' => $publishVersion,
             'draft_updated_at' => now(),
             'draft_updated_by' => auth()->id(),
             'workflow_status' => 'approved',
-            'pending_version' => null,
             'approved_at' => now(),
             'approved_by' => auth()->id(),
             'rejected_at' => null,
@@ -557,71 +482,6 @@ class ManageSiteSettings extends Component
             'rejection_note' => null,
         ]);
 
-        $this->recordVersion($setting, $publishVersion, $stage, $payload, [
-            'published_from_tool' => true,
-        ]);
-    }
-
-    public function rollbackToVersion(int $versionId): void
-    {
-        abort_unless($this->canRollback(), 403);
-
-        $setting = $this->settingForScope();
-        if (!$setting) {
-            $this->addError('scope', 'No settings record found to rollback.');
-
-            return;
-        }
-
-        $version = $setting->versions()
-            ->whereKey($versionId)
-            ->whereIn('stage', ['published', 'approved_published', 'rollback'])
-            ->first();
-
-        if (!$version || !is_array($version->settings)) {
-            $this->addError('scope', 'Selected version cannot be used for rollback.');
-
-            return;
-        }
-
-        $nextVersion = $this->nextVersionNumber($setting);
-
-        $setting->update([
-            'settings' => $version->settings,
-            'published_version' => $nextVersion,
-            'published_at' => now(),
-            'published_by' => auth()->id(),
-            'draft_settings' => $version->settings,
-            'draft_version' => $nextVersion,
-            'draft_updated_at' => now(),
-            'draft_updated_by' => auth()->id(),
-            'workflow_status' => 'approved',
-            'pending_version' => null,
-            'approved_at' => now(),
-            'approved_by' => auth()->id(),
-            'approval_requested_at' => null,
-            'approval_requested_by' => null,
-            'rejected_at' => null,
-            'rejected_by' => null,
-            'rejection_note' => null,
-        ]);
-
-        $this->recordVersion(
-            $setting,
-            $nextVersion,
-            'rollback',
-            $version->settings,
-            [
-                'source_version_id' => $version->id,
-                'source_version_number' => $version->version_number,
-                'source_stage' => $version->stage,
-            ]
-        );
-
-        SiteSettings::clearCache();
-        $this->loadSettings();
-
-        session()->flash('success', 'Rollback completed and published live.');
     }
 
     protected function validatedPayload(): array
@@ -1022,11 +882,6 @@ class ManageSiteSettings extends Component
         return $user->can('import school settings') || $user->can('manage school settings');
     }
 
-    protected function canRollback(): bool
-    {
-        return $this->canApproveSettings();
-    }
-
     protected function targetSchoolId(): ?int
     {
         if ($this->scope === 'general') {
@@ -1060,30 +915,6 @@ class ManageSiteSettings extends Component
         return SiteSetting::query()->where('scope_key', $this->scopeKey())->first();
     }
 
-    protected function nextVersionNumber(SiteSetting $setting): int
-    {
-        return max((int) $setting->published_version, (int) $setting->draft_version) + 1;
-    }
-
-    protected function recordVersion(
-        SiteSetting $setting,
-        int $version,
-        string $stage,
-        array $settings,
-        ?array $meta = null
-    ): void {
-        SiteSettingVersion::query()->create([
-            'site_setting_id' => $setting->id,
-            'scope_key' => $setting->scope_key,
-            'school_id' => $setting->school_id,
-            'version_number' => $version,
-            'stage' => $stage,
-            'settings' => $settings,
-            'meta' => $meta,
-            'changed_by' => auth()->id(),
-        ]);
-    }
-
     protected function loadSettings(): void
     {
         $targetSchoolId = $this->targetSchoolId();
@@ -1102,10 +933,7 @@ class ManageSiteSettings extends Component
             $settings = array_replace_recursive($settings, $setting->draft_settings);
         }
 
-        $this->publishedVersion = $setting ? (int) $setting->published_version : null;
-        $this->draftVersion = $setting ? (int) $setting->draft_version : null;
         $this->workflowStatus = (string) ($setting?->workflow_status ?: 'draft');
-        $this->pendingVersion = $setting?->pending_version !== null ? (int) $setting->pending_version : null;
         $this->publishedAtLabel = $setting?->published_at?->toDateTimeString();
         $this->draftUpdatedAtLabel = $setting?->draft_updated_at?->toDateTimeString();
         $this->approvalRequestedAtLabel = $setting?->approval_requested_at?->toDateTimeString();
@@ -1310,18 +1138,6 @@ class ManageSiteSettings extends Component
             ? School::query()->orderBy('name')->get(['id', 'name', 'code'])
             : new Collection();
 
-        $setting = $this->settingForScope();
-
-        $history = collect();
-        if ($setting) {
-            $history = $setting->versions()
-                ->with('changedBy:id,name')
-                ->orderByDesc('version_number')
-                ->orderByDesc('id')
-                ->limit(25)
-                ->get();
-        }
-
         $mediaAssets = collect();
         $mediaSchoolId = $this->targetSchoolId() ?: auth()->user()?->school_id;
         if ($mediaSchoolId) {
@@ -1334,8 +1150,6 @@ class ManageSiteSettings extends Component
 
         return view('livewire.schools.manage-site-settings', [
             'schools' => $schools,
-            'history' => $history,
-            'canRollback' => $this->canRollback(),
             'canSubmitForApproval' => $this->canSubmitForApproval(),
             'canApproveSettings' => $this->canApproveSettings(),
             'canExportSettings' => $this->canExportSettings(),

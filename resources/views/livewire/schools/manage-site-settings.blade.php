@@ -5,8 +5,7 @@
                 <div>
                     <h2 class="text-2xl font-bold text-slate-900">Website Settings</h2>
                     <p class="mt-1 text-sm text-slate-600">
-                        Draft changes safely, submit for approval, publish to live, and rollback to a previous stable
-                        version.
+                        Draft changes safely, submit for approval, and publish approved content to the live site.
                     </p>
                 </div>
 
@@ -47,27 +46,22 @@
                 @endif
             </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Draft Version</p>
-                    <p class="mt-1 text-lg font-bold text-slate-900">{{ $draftVersion ?: 'N/A' }}</p>
-                    <p class="text-[11px] text-slate-500">{{ $draftUpdatedAtLabel ?: 'Not saved yet' }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Draft Saved</p>
+                    <p class="mt-1 text-sm font-bold text-slate-900">{{ $draftUpdatedAtLabel ?: 'Not saved yet' }}</p>
                 </div>
                 <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Published Version</p>
-                    <p class="mt-1 text-lg font-bold text-slate-900">{{ $publishedVersion ?: 'N/A' }}</p>
-                    <p class="text-[11px] text-slate-500">{{ $publishedAtLabel ?: 'Not published yet' }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Published</p>
+                    <p class="mt-1 text-sm font-bold text-slate-900">{{ $publishedAtLabel ?: 'Not published yet' }}</p>
                 </div>
-                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 sm:col-span-2 lg:col-span-2">
+                <div class="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
                     <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Workflow Status</p>
                     <p class="mt-1 text-sm font-semibold text-blue-800">
                         {{ str_replace('_', ' ', ucfirst($workflowStatus)) }}</p>
                     <p class="text-[11px] text-blue-700">
                         @if ($workflowStatus === 'pending_approval')
                             Awaiting super-admin approval
-                            @if ($pendingVersion)
-                                (draft v{{ $pendingVersion }})
-                            @endif
                             @if ($approvalRequestedByLabel)
                                 by {{ $approvalRequestedByLabel }}
                             @endif
@@ -1241,13 +1235,10 @@
                         saved in app storage.</p>
 
                     @if (auth()->user()->hasAnyRole(['super-admin', 'super_admin']))
-                        <form method="POST" action="{{ route('database.download') }}" class="mt-4">
-                            @csrf
-                            <button type="submit"
-                                class="inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
-                                <i class="fas fa-database mr-2"></i>Download Database
-                            </button>
-                        </form>
+                        <a href="{{ route('database.download') }}"
+                            class="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                            <i class="fas fa-database mr-2"></i>Download Database
+                        </a>
                     @else
                         <p
                             class="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold text-slate-600">
@@ -1300,70 +1291,6 @@
             </div>
         </form>
 
-        <div class="rounded-lg bg-white p-6 shadow">
-            <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h3 class="text-lg font-bold text-slate-900">Version History</h3>
-                    <p class="mt-1 text-sm text-slate-600">Latest 25 versions for the selected scope.</p>
-                </div>
-                @if (!$canRollback)
-                    <p class="text-xs font-semibold text-slate-500">Rollback is restricted to super-admins.</p>
-                @endif
-            </div>
-
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full min-w-[680px] text-sm">
-                    <thead class="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                        <tr>
-                            <th class="px-3 py-2">Version</th>
-                            <th class="px-3 py-2">Stage</th>
-                            <th class="px-3 py-2">Changed By</th>
-                            <th class="px-3 py-2">Date</th>
-                            <th class="px-3 py-2">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @forelse ($history as $item)
-                            <tr>
-                                <td class="px-3 py-2 font-semibold text-slate-800">v{{ $item->version_number }}</td>
-                                <td class="px-3 py-2">
-                                    <span
-                                        @class([
-                                            'rounded-full px-2 py-1 text-[11px] font-semibold uppercase',
-                                            'bg-slate-100 text-slate-700' => $item->stage === 'draft_saved',
-                                            'bg-indigo-100 text-indigo-700' =>
-                                                $item->stage === 'submitted_for_approval',
-                                            'bg-blue-100 text-blue-700' => in_array(
-                                                $item->stage,
-                                                ['published', 'approved_published'],
-                                                true),
-                                            'bg-red-100 text-red-700' => $item->stage === 'rejected',
-                                            'bg-amber-100 text-amber-700' => $item->stage === 'rollback',
-                                        ])>{{ str_replace('_', ' ', $item->stage) }}</span>
-                                </td>
-                                <td class="px-3 py-2">{{ $item->changedBy?->name ?? 'System' }}</td>
-                                <td class="px-3 py-2">{{ $item->created_at?->toDateTimeString() }}</td>
-                                <td class="px-3 py-2">
-                                    @if ($canRollback && in_array($item->stage, ['published', 'approved_published', 'rollback'], true))
-                                        <button type="button" wire:click="rollbackToVersion({{ $item->id }})"
-                                            class="rounded-md bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600">
-                                            Rollback to this
-                                        </button>
-                                    @else
-                                        <span class="text-xs text-slate-400">-</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="5" class="px-3 py-8 text-center text-sm text-slate-500">No history yet
-                                    for this scope.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     @push('scripts')
