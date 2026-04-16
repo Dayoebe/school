@@ -1,136 +1,167 @@
-# Elites Web Application
+# Elites School Web Application
 
-Welcome to the **Elites Web Application**! This project is designed to provide a seamless and efficient web experience for users. Below, you'll find all the necessary information to get started with the application.
+A modern school management web application built to help schools manage academic and administrative activities more efficiently.
+
+This project is designed to support multi-role school operations, including super administration, school administration, teacher workflows, academic setup, student management, timetables, syllabi, and results management.
 
 ---
 
-## 🚀 Features
+## Table of Contents
 
-- **User-Friendly Interface**: Intuitive and responsive design.
-- **High Performance**: Optimized for speed and scalability.
-- **Secure**: Implements best practices for data security.
-- **Customizable**: Easily adaptable to meet your needs.
+- [Overview](#overview)
+- [Project Purpose](#project-purpose)
+- [Core Features](#core-features)
+- [User Roles](#user-roles)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Environment Setup](#environment-setup)
+- [Database Setup](#database-setup)
+- [Run the Project](#run-the-project)
+- [Useful Commands](#useful-commands)
+- [Live Demo](#live-demo)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Author](#author)
 
+---
 
-## 🏫 Features
+## Overview
+
+Elites School Web Application is a web-based platform created to simplify the day-to-day operations of a school environment.
+
+It is built to support academic structure, student administration, teacher workflows, and school-level management through a clean and scalable system.
+
+The application is suitable for schools that want to digitize and organize their operations in a more efficient way.
+
+---
+
+## Project Purpose
+
+Managing a school manually can become difficult as operations grow.
+
+This project helps solve that problem by providing a centralized platform for:
+
+- school administration
+- academic setup
+- student management
+- teacher operations
+- result management
+- timetable planning
+- syllabus coordination
+
+The goal is to make school processes more organized, accessible, and efficient.
+
+---
+
+## Core Features
+
+The application includes support for:
+
+- school management
+- class group management
+- class management
+- section management
+- subject management
+- academic year setup
+- term setup
+- student admission and profile management
+- teacher profile management
+- timetable management
+- syllabus management
+- result management
+- multi-role access control
+
+---
+
+## User Roles
 
 ### Super Admin
-The Super Admin has full control over all activities across schools. Exclusive features include:
-- Ability to create, edit, and delete schools.
-- Ability to set the school of operation.
+
+The Super Admin has full control across schools and can:
+
+- create schools
+- edit schools
+- delete schools
+- set school of operation
 
 ### Admin
-Admins can manage their assigned school's settings and perform the following tasks:
-- Create, edit, view, and delete class groups.
-- Create, edit, view, and delete classes.
-- Create, edit, view, and delete sections.
-- Create, edit, view, and delete subjects.
-- Create, edit, view, and delete academic years.
-- Create, edit, view, and delete Results.
-- Set academic years.
-- Admit students, view student profiles, edit student profiles, print student profiles, and delete students.
-- Create, edit, and delete teacher profiles.
-- Create, edit, manage, view, and delete timetables.
-- Create, edit, view, and delete syllabi.
-- Create, edit, view, and delete terms.
-- Set the academic year and term for their school.
+
+Admins manage activities within their assigned school and can:
+
+- create, edit, view, and delete class groups
+- create, edit, view, and delete classes
+- create, edit, view, and delete sections
+- create, edit, view, and delete subjects
+- create, edit, view, and delete academic years
+- create, edit, view, and delete results
+- set academic years
+- admit students
+- view student profiles
+- edit student profiles
+- print student profiles
+- delete students
+- create, edit, and delete teacher profiles
+- create, edit, manage, view, and delete timetables
+- create, edit, view, and delete syllabi
+- create, edit, view, and delete terms
+- set the academic year and term for their school
 
 ### Teachers
-Teachers have the following capabilities:
-- Create, edit, view, and delete syllabi.
-- Create, edit, manage, view, and delete timetables.
-- Create, edit, view, and delete Results.
+
+Teachers can:
+
+- create, edit, view, and delete syllabi
+- create, edit, manage, view, and delete timetables
+- create, edit, view, and delete results
 
 ---
 
-## 💡 Inspiration
-This project was inspired by [4jean/lavSMS](https://github.com/4jean/lavSMS).
+## Tech Stack
+
+This project is built with:
+
+### Backend
+- Laravel
+- PHP
+
+### Frontend
+- Blade
+- Tailwind CSS
+- JavaScript
+- Vite
+
+### Database
+- MySQL or SQLite
+
+### Development Tools
+- Composer
+- NPM
+- Git
+- GitHub
 
 ---
 
-## 📋 Todo
-Here are some planned improvements for the project:
-- Create a demo site (for now, visit [wirelesscs.com](http://wirelesscs.com). Note: It might be a work in progress. Log in to the Super Admin account with the password `helloworld`).
-- Design a mobile app for this project
+## Project Structure
 
----
-
-## ❤️ Support
-Do you like the current state of this project? You can support me or hire me for work!
-
----
-
-## 🛠️ Installation
-
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/dayo/school.git
-    ```
-2. Navigate to the project directory:
-    ```bash
-    cd elites
-    ```
-3. Start the server (using XAMPP or any preferred method):
-    ```bash
-    sudo /opt/lampp/lampp start
-    ```
-4. Open your browser and visit:
-    ```
-    http://localhost/elites
-    ```
-
----
-
-## 📂 Project Structure
-
-```
-elites/
-├── index.php
-├── assets/
-│   ├── css/
-│   ├── js/
-│   └── images/
-├── includes/
+```bash
+school/
+├── app/
+├── bootstrap/
 ├── config/
-└── README.md
-```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository.
-2. Create a new branch:
-    ```bash
-    git checkout -b feature-name
-    ```
-3. Commit your changes:
-    ```bash
-    git commit -m "Add feature-name"
-    ```
-4. Push to the branch:
-    ```bash
-    git push origin feature-name
-    ```
-5. Open a pull request.
-
----
-
-## 📜 License
-
-This project is licensed under the [MIT License](LICENSE).
-
----
-
-## 📧 Contact
-
-For any inquiries or feedback, feel free to reach out:
-
-- **Email**: oyetoke.ebenezer@gmail.com
-- **GitHub**: [Dayoebe](https://github.com/Dayoebe)
-
----
-
-Thank you for using **Elites Web Application**! 🎉
+├── database/
+├── lang/
+├── public/
+├── resources/
+├── routes/
+├── storage/
+├── .env.example
+├── artisan
+├── composer.json
+├── package.json
+├── phpunit.xml
+├── postcss.config.js
+├── tailwind.config.js
+└── vite.config.mjs
