@@ -407,7 +407,7 @@ class DashboardStats extends Component
             [
                 'title' => 'Performance Trends',
                 'description' => 'Track term performance movement across classes and subjects.',
-                'icon' => 'fas fa-arrow-trend-up',
+                'icon' => 'fas fa-chart-area',
                 'route' => 'reports.performance-trends',
                 'group' => 'Operations',
                 'roles' => $adminRoles,
