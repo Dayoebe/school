@@ -405,6 +405,15 @@ class DashboardStats extends Component
                 'permissions' => ['read analytics dashboard'],
             ],
             [
+                'title' => 'Enrollment Analytics',
+                'description' => 'Track enrollment, intake, parent links, and admission flow.',
+                'icon' => 'fas fa-user-graduate',
+                'route' => 'reports.enrollment-analytics',
+                'group' => 'Operations',
+                'roles' => $adminRoles,
+                'permissions' => ['read analytics dashboard'],
+            ],
+            [
                 'title' => 'Performance Trends',
                 'description' => 'Track term performance movement across classes and subjects.',
                 'icon' => 'fas fa-chart-area',

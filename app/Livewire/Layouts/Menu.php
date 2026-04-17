@@ -719,7 +719,12 @@ class Menu extends Component
                         'route' => 'reports.executive',
                         'permissions' => ['read analytics dashboard'],
                     ],
-                    ['type' => 'menu-item', 'text' => 'Enrollment Analytics', 'coming_soon' => true],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Enrollment Analytics',
+                        'route' => 'reports.enrollment-analytics',
+                        'permissions' => ['read analytics dashboard'],
+                    ],
                     [
                         'type' => 'menu-item',
                         'text' => 'Performance Trends',

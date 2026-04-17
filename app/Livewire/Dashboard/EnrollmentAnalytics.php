@@ -224,7 +224,7 @@ class EnrollmentAnalytics extends Component
             ->whereNull('u.deleted_at')
             ->whereIn('sr.id', $activeStudentRecordIds->all())
             ->select(DB::raw("COALESCE(s.name, 'No Section') as name"), DB::raw('COUNT(DISTINCT sr.id) as total'))
-            ->groupBy('name')
+            ->groupBy(DB::raw("COALESCE(s.name, 'No Section')"))
             ->orderByDesc('total')
             ->limit(8)
             ->get()
@@ -247,7 +247,7 @@ class EnrollmentAnalytics extends Component
             ->whereNull('u.deleted_at')
             ->whereIn('sr.id', $activeStudentRecordIds->all())
             ->select(DB::raw("COALESCE(NULLIF(LOWER(TRIM(u.gender)), ''), 'unspecified') as gender"), DB::raw('COUNT(DISTINCT sr.id) as total'))
-            ->groupBy('gender')
+            ->groupBy(DB::raw("COALESCE(NULLIF(LOWER(TRIM(u.gender)), ''), 'unspecified')"))
             ->orderByDesc('total')
             ->get()
             ->map(fn ($row): array => [
