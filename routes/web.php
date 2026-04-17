@@ -174,6 +174,10 @@ Route::middleware(['auth', 'restrict.teacher.portal', 'App\Http\Middleware\Ensur
         ->middleware('permission:read analytics dashboard')
         ->name('analytics.index');
 
+    Route::get('/dashboard/executive-report', \App\Livewire\Dashboard\ExecutiveReport::class)
+        ->middleware('permission:read analytics dashboard')
+        ->name('reports.executive');
+
     Route::get('/dashboard/portal-notices', \App\Livewire\Broadcasts\MyBroadcastInbox::class)
         ->middleware('permission:view own broadcasts')
         ->name('broadcasts.inbox');

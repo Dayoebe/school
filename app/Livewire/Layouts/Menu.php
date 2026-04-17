@@ -711,9 +711,14 @@ class Menu extends Component
                 'type' => 'menu-item',
                 'text' => 'Reports & Insights',
                 'icon' => 'fas fa-chart-pie',
-                'permissions' => ['view dashboard'],
+                'permissions' => ['read analytics dashboard'],
                 'submenu' => [
-                    ['type' => 'menu-item', 'text' => 'Executive Reports', 'coming_soon' => true],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Executive Report',
+                        'route' => 'reports.executive',
+                        'permissions' => ['read analytics dashboard'],
+                    ],
                     ['type' => 'menu-item', 'text' => 'Enrollment Analytics', 'coming_soon' => true],
                     ['type' => 'menu-item', 'text' => 'Performance Trends', 'coming_soon' => true],
                 ],

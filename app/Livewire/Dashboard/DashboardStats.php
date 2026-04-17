@@ -396,6 +396,15 @@ class DashboardStats extends Component
                 'permissions' => ['read analytics dashboard'],
             ],
             [
+                'title' => 'Executive Report',
+                'description' => 'Review the leadership snapshot for school operations.',
+                'icon' => 'fas fa-file-contract',
+                'route' => 'reports.executive',
+                'group' => 'Operations',
+                'roles' => $adminRoles,
+                'permissions' => ['read analytics dashboard'],
+            ],
+            [
                 'title' => 'Profile',
                 'description' => 'Update personal account information.',
                 'icon' => 'fas fa-user',

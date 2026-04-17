@@ -16,7 +16,6 @@ use App\Models\StudentRecord;
 use App\Models\Subject;
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Livewire\Component;
@@ -431,22 +430,6 @@ class ExecutiveReport extends Component
         }
 
         return array_slice($signals, 0, 6);
-    }
-
-    protected function classJoin(QueryBuilder $query, ?int $academicYearId): array
-    {
-        $classExpression = 'sr.my_class_id';
-
-        if ($academicYearId) {
-            $query->leftJoin('academic_year_student_record as aysr', function ($join) use ($academicYearId): void {
-                $join->on('aysr.student_record_id', '=', 'sr.id')
-                    ->where('aysr.academic_year_id', '=', $academicYearId);
-            });
-
-            $classExpression = 'COALESCE(aysr.my_class_id, sr.my_class_id)';
-        }
-
-        return [$query, $classExpression];
     }
 
     public function render()
