@@ -178,6 +178,10 @@ Route::middleware(['auth', 'restrict.teacher.portal', 'App\Http\Middleware\Ensur
         ->middleware('permission:read analytics dashboard')
         ->name('reports.executive');
 
+    Route::get('/dashboard/performance-trends', \App\Livewire\Dashboard\PerformanceTrends::class)
+        ->middleware('permission:read analytics dashboard')
+        ->name('reports.performance-trends');
+
     Route::get('/dashboard/portal-notices', \App\Livewire\Broadcasts\MyBroadcastInbox::class)
         ->middleware('permission:view own broadcasts')
         ->name('broadcasts.inbox');

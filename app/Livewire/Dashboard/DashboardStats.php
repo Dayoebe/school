@@ -405,6 +405,15 @@ class DashboardStats extends Component
                 'permissions' => ['read analytics dashboard'],
             ],
             [
+                'title' => 'Performance Trends',
+                'description' => 'Track term performance movement across classes and subjects.',
+                'icon' => 'fas fa-arrow-trend-up',
+                'route' => 'reports.performance-trends',
+                'group' => 'Operations',
+                'roles' => $adminRoles,
+                'permissions' => ['read analytics dashboard'],
+            ],
+            [
                 'title' => 'Profile',
                 'description' => 'Update personal account information.',
                 'icon' => 'fas fa-user',

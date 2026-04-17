@@ -720,7 +720,12 @@ class Menu extends Component
                         'permissions' => ['read analytics dashboard'],
                     ],
                     ['type' => 'menu-item', 'text' => 'Enrollment Analytics', 'coming_soon' => true],
-                    ['type' => 'menu-item', 'text' => 'Performance Trends', 'coming_soon' => true],
+                    [
+                        'type' => 'menu-item',
+                        'text' => 'Performance Trends',
+                        'route' => 'reports.performance-trends',
+                        'permissions' => ['read analytics dashboard'],
+                    ],
                 ],
             ],
         ];
