@@ -223,13 +223,13 @@ class EnrollmentAnalytics extends Component
             ->where('u.school_id', $schoolId)
             ->whereNull('u.deleted_at')
             ->whereIn('sr.id', $activeStudentRecordIds->all())
-            ->select(DB::raw("COALESCE(s.name, 'No Section') as name"), DB::raw('COUNT(DISTINCT sr.id) as total'))
-            ->groupBy(DB::raw("COALESCE(s.name, 'No Section')"))
+            ->select('s.id', 's.name', DB::raw('COUNT(DISTINCT sr.id) as total'))
+            ->groupBy('s.id', 's.name')
             ->orderByDesc('total')
             ->limit(8)
             ->get()
             ->map(fn ($row): array => [
-                'name' => (string) $row->name,
+                'name' => (string) ($row->name ?: 'No Section'),
                 'total' => (int) $row->total,
             ])
             ->all();
@@ -246,14 +246,18 @@ class EnrollmentAnalytics extends Component
             ->where('u.school_id', $schoolId)
             ->whereNull('u.deleted_at')
             ->whereIn('sr.id', $activeStudentRecordIds->all())
-            ->select(DB::raw("COALESCE(NULLIF(LOWER(TRIM(u.gender)), ''), 'unspecified') as gender"), DB::raw('COUNT(DISTINCT sr.id) as total'))
-            ->groupBy(DB::raw("COALESCE(NULLIF(LOWER(TRIM(u.gender)), ''), 'unspecified')"))
-            ->orderByDesc('total')
-            ->get()
-            ->map(fn ($row): array => [
-                'name' => ucfirst((string) $row->gender),
-                'total' => (int) $row->total,
+            ->get(['sr.id', 'u.gender'])
+            ->groupBy(function ($row): string {
+                $gender = strtolower(trim((string) $row->gender));
+
+                return $gender !== '' ? $gender : 'unspecified';
+            })
+            ->map(fn (Collection $rows, string $gender): array => [
+                'name' => ucfirst($gender),
+                'total' => $rows->pluck('id')->unique()->count(),
             ])
+            ->sortByDesc('total')
+            ->values()
             ->all();
     }
 
