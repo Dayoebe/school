@@ -94,10 +94,23 @@ Route::pattern('exam', '[0-9]+');
 |--------------------------------------------------------------------------
 */
 
-Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest');
-Route::get('/service-worker.js', [PwaController::class, 'serviceWorker'])->name('pwa.service-worker');
-Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap');
-Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots');
+$statelessPublicFileMiddleware = [
+    \App\Http\Middleware\EncryptCookies::class,
+    \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+    \Illuminate\Session\Middleware\StartSession::class,
+    \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    \App\Http\Middleware\VerifyCsrfToken::class,
+];
+
+Route::get('/manifest.webmanifest', [PwaController::class, 'manifest'])->name('pwa.manifest')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/service-worker.js', [PwaController::class, 'serviceWorker'])->name('pwa.service-worker')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/sitemap.xml', [SeoController::class, 'sitemap'])->name('seo.sitemap')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/sitemap-pages.xml', [SeoController::class, 'sitemapPages'])->name('seo.sitemap.pages')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/sitemap-images.xml', [SeoController::class, 'sitemapImages'])->name('seo.sitemap.images')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('seo.robots')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/llms.txt', [SeoController::class, 'llms'])->name('seo.llms')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/llms-full.txt', [SeoController::class, 'llmsFull'])->name('seo.llms-full')->withoutMiddleware($statelessPublicFileMiddleware);
+Route::get('/ai.txt', [SeoController::class, 'ai'])->name('seo.ai')->withoutMiddleware($statelessPublicFileMiddleware);
 
 Route::get('/', [PageController::class, 'home'])->name('home');
 Route::get('/about', [PageController::class, 'about'])->name('about');

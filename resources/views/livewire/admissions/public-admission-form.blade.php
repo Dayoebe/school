@@ -20,8 +20,8 @@
         <form wire:submit.prevent="submit" class="space-y-5" enctype="multipart/form-data">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">School <span class="text-red-600">*</span></label>
-                    <select wire:model.live="school_id"
+                    <label for="admission_school_id" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">School <span class="text-red-600">*</span></label>
+                    <select id="admission_school_id" wire:model.live="school_id"
                         class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
                         wire:loading.attr="disabled" wire:target="school_id">
                         <option value="">Select School</option>
@@ -34,8 +34,9 @@
 
                 @if($school_id !== '')
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Desired Class <span class="text-red-600">*</span></label>
+                        <label for="admission_my_class_id" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Desired Class <span class="text-red-600">*</span></label>
                         <select wire:key="class-select-{{ $school_id !== '' ? $school_id : 'none' }}"
+                            id="admission_my_class_id"
                             wire:model.live="my_class_id"
                             class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
                             wire:loading.attr="disabled" wire:target="my_class_id,school_id">
@@ -53,8 +54,9 @@
 
                 @if($school_id !== '')
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Desired Section</label>
+                        <label for="admission_section_id" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Desired Section</label>
                         <select wire:key="section-select-{{ $my_class_id !== '' ? $my_class_id : 'none' }}"
+                            id="admission_section_id"
                             wire:model="section_id"
                             class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"
                             {{ $my_class_id === '' ? 'disabled' : '' }}>
@@ -75,22 +77,22 @@
                 <h4 class="text-sm font-black uppercase tracking-wider text-red-700">Student Information</h4>
                 <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Student Full Name <span class="text-red-600">*</span></label>
-                        <input wire:model="student_name" type="text" placeholder="Enter full name"
+                        <label for="admission_student_name" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Student Full Name <span class="text-red-600">*</span></label>
+                        <input id="admission_student_name" wire:model="student_name" type="text" placeholder="Enter full name"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('student_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Student Email</label>
-                        <input wire:model="student_email" type="email" placeholder="Optional"
+                        <label for="admission_student_email" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Student Email</label>
+                        <input id="admission_student_email" wire:model="student_email" type="email" placeholder="Optional"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('student_email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Gender <span class="text-red-600">*</span></label>
-                        <select wire:model="gender" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
+                        <label for="admission_gender" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Gender <span class="text-red-600">*</span></label>
+                        <select id="admission_gender" wire:model="gender" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                             <option value="">Select Gender</option>
                             <option value="male">Male</option>
                             <option value="female">Female</option>
@@ -99,15 +101,15 @@
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Date of Birth <span class="text-red-600">*</span></label>
-                        <input wire:model="birthday" type="date"
+                        <label for="admission_birthday" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Date of Birth <span class="text-red-600">*</span></label>
+                        <input id="admission_birthday" wire:model="birthday" type="date"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('birthday') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Previous School</label>
-                        <input wire:model="previous_school" type="text" placeholder="Optional"
+                        <label for="admission_previous_school" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Previous School</label>
+                        <input id="admission_previous_school" wire:model="previous_school" type="text" placeholder="Optional"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('previous_school') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
@@ -118,50 +120,50 @@
                 <h4 class="text-sm font-black uppercase tracking-wider text-blue-700">Parent / Guardian Information</h4>
                 <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Guardian Name <span class="text-red-600">*</span></label>
-                        <input wire:model="guardian_name" type="text" placeholder="Enter guardian name"
+                        <label for="admission_guardian_name" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Guardian Name <span class="text-red-600">*</span></label>
+                        <input id="admission_guardian_name" wire:model="guardian_name" type="text" placeholder="Enter guardian name"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('guardian_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Relationship</label>
-                        <input wire:model="guardian_relationship" type="text" placeholder="Parent, Uncle, Aunt..."
+                        <label for="admission_guardian_relationship" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Relationship</label>
+                        <input id="admission_guardian_relationship" wire:model="guardian_relationship" type="text" placeholder="Parent, Uncle, Aunt..."
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('guardian_relationship') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Guardian Phone <span class="text-red-600">*</span></label>
-                        <input wire:model="guardian_phone" type="text" placeholder="Enter phone number"
+                        <label for="admission_guardian_phone" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Guardian Phone <span class="text-red-600">*</span></label>
+                        <input id="admission_guardian_phone" wire:model="guardian_phone" type="text" placeholder="Enter phone number"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('guardian_phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div>
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Guardian Email</label>
-                        <input wire:model="guardian_email" type="email" placeholder="Optional"
+                        <label for="admission_guardian_email" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Guardian Email</label>
+                        <input id="admission_guardian_email" wire:model="guardian_email" type="email" placeholder="Optional"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         @error('guardian_email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Home Address <span class="text-red-600">*</span></label>
-                        <textarea wire:model="address" rows="3" placeholder="Enter full address"
+                        <label for="admission_address" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Home Address <span class="text-red-600">*</span></label>
+                        <textarea id="admission_address" wire:model="address" rows="3" placeholder="Enter full address"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"></textarea>
                         @error('address') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Additional Notes</label>
-                        <textarea wire:model="notes" rows="3" placeholder="Medical note, special support needs, or additional details"
+                        <label for="admission_notes" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Additional Notes</label>
+                        <textarea id="admission_notes" wire:model="notes" rows="3" placeholder="Medical note, special support needs, or additional details"
                             class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"></textarea>
                         @error('notes') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Supporting Document (Optional)</label>
-                        <input wire:model="document" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                        <label for="admission_document" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Supporting Document (Optional)</label>
+                        <input id="admission_document" wire:model="document" type="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                             class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-red-600 file:px-3 file:py-2 file:text-xs file:font-bold file:text-white hover:file:bg-red-700">
                         <p class="mt-1 text-xs text-slate-500">Accepted: PDF, JPG, PNG, DOC, DOCX (max 5MB)</p>
                         <div wire:loading wire:target="document" class="mt-1 text-xs font-semibold text-blue-700">

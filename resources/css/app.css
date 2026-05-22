@@ -4,6 +4,43 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+    .animate__animated {
+        animation-duration: 700ms;
+        animation-fill-mode: both;
+    }
+
+    .animate__delay-1s {
+        animation-delay: 180ms;
+    }
+
+    .animate__fadeIn,
+    .animate__fadeInUp,
+    .animate__fadeInDown,
+    .animate__fadeInLeft,
+    .animate__fadeInRight {
+        animation-name: site-fade-in;
+    }
+
+    @keyframes site-fade-in {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .animate__animated {
+            animation: none !important;
+        }
+    }
+}
+
 @layer components{
     .beautify-scrollbar::-webkit-scrollbar{
         width: 5px;

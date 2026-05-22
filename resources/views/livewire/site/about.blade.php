@@ -19,12 +19,14 @@
     $aboutUpdates = data_get($aboutSettings, 'updates', []);
     $aboutCalendar = data_get($aboutSettings, 'calendar', []);
     $aboutStudentVoice = data_get($aboutSettings, 'student_voice', []);
+    $pageMeta = \App\Support\PublicSeo::pageMeta('about', $settings);
 
     foreach (['aboutMilestones', 'aboutValues', 'aboutPillarTabs', 'aboutPillars', 'aboutLeadership', 'aboutStats', 'aboutFaqs', 'aboutUpdates', 'aboutCalendar', 'aboutStudentVoice'] as $varName) {
         if (!is_array($$varName)) {
             $$varName = [];
         }
     }
+    $aboutFaqs = \App\Support\PublicSeo::faqItems('about', $settings);
 
     if ($aboutPillarTabs === [] && $aboutPillars !== []) {
         foreach ($aboutPillars as $key => $pillar) {
@@ -83,6 +85,8 @@
                 </div>
             </div>
         </section>
+
+        @include('partials.public-page-summary', ['page' => $pageMeta])
 
         <section id="story" class="py-14">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -178,7 +182,7 @@
 
                 <div class="mb-4 flex flex-wrap gap-2">
                     <template x-for="tab in pillarTabs" :key="tab.key">
-                        <button @click="activePillar = tab.key" class="rounded-xl px-4 py-2 text-sm font-bold transition"
+                        <button type="button" @click="activePillar = tab.key" class="rounded-xl px-4 py-2 text-sm font-bold transition"
                             :class="activePillar === tab.key ? 'bg-blue-600 text-white' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'">
                             <span x-text="tab.label"></span>
                         </button>
@@ -264,18 +268,19 @@
                 </div>
 
                 <div class="space-y-3">
-                    <template x-for="(faq, index) in faqs" :key="index">
+                    @foreach ($aboutFaqs as $index => $faq)
                         <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
-                            <button @click="activeFaq = activeFaq === index ? null : index"
+                            <button type="button" @click="activeFaq = activeFaq === {{ $index }} ? null : {{ $index }}"
+                                :aria-expanded="activeFaq === {{ $index }} ? 'true' : 'false'"
                                 class="flex w-full items-center justify-between px-4 py-4 text-left text-sm font-bold text-slate-900 sm:text-base">
-                                <span x-text="faq.q"></span>
-                                <i class="fas transition" :class="activeFaq === index ? 'fa-minus text-indigo-600' : 'fa-plus text-zinc-500'"></i>
+                                <span>{{ $faq['q'] ?? '' }}</span>
+                                <i class="fas transition" :class="activeFaq === {{ $index }} ? 'fa-minus text-indigo-600' : 'fa-plus text-zinc-500'" aria-hidden="true"></i>
                             </button>
-                            <div x-show="activeFaq === index" x-transition class="border-t border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-                                <p x-text="faq.a"></p>
+                            <div x-show="activeFaq === {{ $index }}" x-transition class="border-t border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+                                <p>{{ $faq['a'] ?? '' }}</p>
                             </div>
                         </div>
-                    </template>
+                    @endforeach
                 </div>
             </div>
         </section>

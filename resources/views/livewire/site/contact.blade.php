@@ -10,6 +10,7 @@
     $contactPhoneSecondary = data_get($settings, 'contact.phone_secondary', '');
     $contactEmail = data_get($settings, 'contact.email', '');
     $mapEmbedUrl = data_get($settings, 'contact.map_embed_url', '');
+    $pageMeta = \App\Support\PublicSeo::pageMeta('contact', $settings);
 @endphp
 
 @section('content')
@@ -30,6 +31,8 @@
                 </p>
             </div>
         </section>
+
+        @include('partials.public-page-summary', ['page' => $pageMeta])
 
         <section class="py-12">
             <div class="mx-auto grid max-w-6xl grid-cols-1 gap-6 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
@@ -61,6 +64,7 @@
                     </div>
 
                     <iframe class="h-80 w-full rounded-2xl border border-slate-200 shadow-sm" loading="lazy" style="border:0;" allowfullscreen
+                        title="Map showing {{ \App\Support\PublicSeo::siteName($settings) }} location"
                         referrerpolicy="no-referrer-when-downgrade"
                         src="{{ $mapEmbedUrl }}">
                     </iframe>

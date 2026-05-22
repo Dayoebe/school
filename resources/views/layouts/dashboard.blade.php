@@ -11,7 +11,8 @@
     <meta name="keywords"
         content="Elite International College, Awka, Secondary School in Awka, Nigerian Schools, WAEC, NECO, Best School in Anambra, College Education, Private School Awka">
     <meta name="author" content="Elite International College, Awka">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <meta name="googlebot" content="noindex, nofollow, noarchive">
 
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="canonical" href="{{ url()->current() }}">

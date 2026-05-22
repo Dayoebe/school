@@ -7,6 +7,7 @@
     $admissionPage = data_get($settings, 'admission_page', []);
     $contactPhonePrimary = (string) data_get($settings, 'contact.phone_primary', '');
     $contactPhonePrimaryHref = preg_replace('/[^0-9+]/', '', $contactPhonePrimary);
+    $pageMeta = \App\Support\PublicSeo::pageMeta('admission', $settings);
 @endphp
 
 @section('content')
@@ -39,6 +40,8 @@
                 </div>
             </div>
         </section>
+
+        @include('partials.public-page-summary', ['page' => $pageMeta])
 
         <section id="process" class="py-12">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">

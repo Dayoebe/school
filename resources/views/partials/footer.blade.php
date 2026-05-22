@@ -61,7 +61,7 @@
         <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
                 <div class="flex items-center gap-3">
-                    <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo"
+                    <img src="{{ $logoUrl }}" alt="{{ $schoolName }} Logo" loading="lazy" decoding="async" width="44" height="44"
                         class="h-11 w-11 rounded-full border border-white/20 bg-white p-1 object-contain">
                     <div>
                         <p class="text-sm font-black text-white">{{ $schoolName }}</p>

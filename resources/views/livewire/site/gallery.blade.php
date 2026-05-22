@@ -6,6 +6,7 @@
     $settings = $publicSiteSettings ?? [];
     $schoolName = (string) data_get($settings, 'school_name', config('app.name', 'School Portal'));
     $galleryPage = data_get($settings, 'gallery_page', []);
+    $pageMeta = \App\Support\PublicSeo::pageMeta('gallery', $settings);
 
     $palette = [
         'red' => ['bg' => 'bg-red-100', 'text' => 'text-red-700', 'dot' => 'bg-red-500', 'ring' => 'ring-red-200'],
@@ -120,19 +121,21 @@
             </div>
         </section>
 
+        @include('partials.public-page-summary', ['page' => $pageMeta])
+
         <section class="border-b border-slate-200 bg-white py-4">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="grid grid-cols-1 gap-3 lg:grid-cols-4">
                     <div class="lg:col-span-3">
                         <div class="flex gap-2 overflow-x-auto pb-1">
-                            <button @click="activeCategory = 'all'"
+                            <button type="button" @click="activeCategory = 'all'"
                                 class="whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition"
                                 :class="activeCategory === 'all' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                                 All ( <span x-text="items.length"></span> )
                             </button>
 
                             <template x-for="category in categories" :key="category.slug">
-                                <button @click="activeCategory = category.slug"
+                                <button type="button" @click="activeCategory = category.slug"
                                     class="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition"
                                     :class="activeCategory === category.slug ? badgeClass(category.color) + ' ring-2 ' + ringClass(category.color) : 'bg-slate-100 text-slate-700 hover:bg-slate-200'">
                                     <span class="h-1.5 w-1.5 rounded-full" :class="dotClass(category.color)"></span>
@@ -165,7 +168,7 @@
                     <template x-for="item in filteredItems" :key="item.id">
                         <article class="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-lg">
                             <button type="button" @click="openById(item.id)" class="relative block w-full overflow-hidden">
-                                <img :src="item.url" :alt="item.title" class="h-56 w-full object-cover transition duration-300 group-hover:scale-105">
+                                <img :src="item.url" :alt="item.title" loading="lazy" decoding="async" width="900" height="620" class="h-56 w-full object-cover transition duration-300 group-hover:scale-105">
                                 <div class="absolute inset-x-0 bottom-0 bg-black/60 p-3 text-left">
                                     <div class="mb-1 flex items-center gap-2">
                                         <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold"
@@ -241,7 +244,7 @@
             class="fixed inset-0 z-[70] flex items-center justify-center bg-black/85 p-4"
             @keydown.escape.window="closeModal()" @click.self="closeModal()">
             <div class="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-white">
-                <button type="button" @click="closeModal()"
+                <button type="button" @click="closeModal()" aria-label="Close gallery preview"
                     class="absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-sm transition hover:bg-slate-100">
                     <i class="fas fa-times"></i>
                 </button>
@@ -249,12 +252,14 @@
                 <template x-if="selectedItem">
                     <div class="grid grid-cols-1 lg:grid-cols-3">
                         <div class="relative lg:col-span-2">
-                            <img :src="selectedItem.full_url || selectedItem.url" :alt="selectedItem.title" class="h-[360px] w-full object-cover sm:h-[500px]">
+                            <img :src="selectedItem.full_url || selectedItem.url" :alt="selectedItem.title" decoding="async" width="1800" height="1200" class="h-[360px] w-full object-cover sm:h-[500px]">
                             <button type="button" @click="prev()"
+                                aria-label="Previous gallery item"
                                 class="absolute left-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80">
                                 <i class="fas fa-chevron-left"></i>
                             </button>
                             <button type="button" @click="next()"
+                                aria-label="Next gallery item"
                                 class="absolute right-3 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/60 text-white transition hover:bg-black/80">
                                 <i class="fas fa-chevron-right"></i>
                             </button>

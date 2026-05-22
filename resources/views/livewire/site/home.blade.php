@@ -8,6 +8,8 @@
     $contactAddress = data_get($settings, 'contact.address', '');
     $contactPhonePrimary = data_get($settings, 'contact.phone_primary', '');
     $contactEmail = data_get($settings, 'contact.email', '');
+    $pageMeta = \App\Support\PublicSeo::pageMeta('home', $settings);
+    $homeFaqs = \App\Support\PublicSeo::faqItems('home', $settings);
 @endphp
 
 @section('content')
@@ -68,6 +70,8 @@
             </div>
         </section>
 
+        @include('partials.public-page-summary', ['page' => $pageMeta])
+
         <section class="border-b border-slate-200 bg-white/95 py-3">
             <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
                 <div class="flex gap-2 overflow-x-auto pb-1 text-xs font-semibold text-slate-700">
@@ -95,7 +99,7 @@
 
                 <div class="mb-4 flex flex-wrap gap-2">
                     <template x-for="tab in programTabs" :key="tab.key">
-                        <button @click="activeProgram = tab.key"
+                        <button type="button" @click="activeProgram = tab.key"
                             class="rounded-xl px-4 py-2 text-sm font-bold transition"
                             :class="activeProgram === tab.key ? 'bg-red-600 text-white' : 'bg-stone-200 text-stone-700 hover:bg-stone-300'">
                             <span x-text="tab.label"></span>
@@ -151,7 +155,8 @@
                     </div>
                     <div class="mt-4 flex gap-2">
                         <template x-for="(item, index) in testimonials" :key="index">
-                            <button @click="testimonialIndex = index"
+                            <button type="button" @click="testimonialIndex = index"
+                                :aria-label="'Show testimonial ' + (index + 1)"
                                 class="h-2.5 w-8 rounded-full transition"
                                 :class="testimonialIndex === index ? 'bg-violet-400' : 'bg-slate-600'"></button>
                         </template>
@@ -238,18 +243,19 @@
                 </div>
 
                 <div class="space-y-3">
-                    <template x-for="(faq, index) in faqs" :key="index">
+                    @foreach ($homeFaqs as $index => $faq)
                         <div class="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                            <button @click="activeFaq = activeFaq === index ? null : index"
+                            <button type="button" @click="activeFaq = activeFaq === {{ $index }} ? null : {{ $index }}"
+                                :aria-expanded="activeFaq === {{ $index }} ? 'true' : 'false'"
                                 class="flex w-full items-center justify-between px-4 py-4 text-left text-sm font-bold text-slate-900 sm:text-base">
-                                <span x-text="faq.q"></span>
-                                <i class="fas" :class="activeFaq === index ? 'fa-minus text-teal-600' : 'fa-plus text-zinc-500'"></i>
+                                <span>{{ $faq['q'] }}</span>
+                                <i class="fas" :class="activeFaq === {{ $index }} ? 'fa-minus text-teal-600' : 'fa-plus text-zinc-500'" aria-hidden="true"></i>
                             </button>
-                            <div x-show="activeFaq === index" x-transition class="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
-                                <p x-text="faq.a"></p>
+                            <div x-show="activeFaq === {{ $index }}" x-transition class="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
+                                <p>{{ $faq['a'] }}</p>
                             </div>
                         </div>
-                    </template>
+                    @endforeach
                 </div>
             </div>
         </section>
@@ -386,12 +392,7 @@
                     { quote: 'I improved my confidence in Math and English because every term has a clear improvement plan.', name: 'Student, JSS3' },
                     { quote: 'The portal makes it easy to track results and stay connected with school progress.', name: 'Guardian, Senior School' }
                 ],
-                faqs: [
-                    { q: 'When is admission open?', a: 'Admission is open throughout the session, with major intakes at the beginning of each term.' },
-                    { q: 'Do you provide boarding facilities?', a: 'Yes. We provide safe and supervised boarding with academic and welfare support.' },
-                    { q: 'Can parents track student performance online?', a: 'Yes. Parents can view records, assessments, and updates through the school portal.' },
-                    { q: 'How do I schedule a school visit?', a: 'Use the Contact or Admission page, and our admissions unit will confirm your visit time.' }
-                ],
+                faqs: @js($homeFaqs),
                 init() {
                     this.animateStats();
                     this.startTestimonialRotation();

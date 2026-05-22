@@ -3,7 +3,7 @@
 @foreach ($pages as $page)
     <url>
         <loc>{{ $page['loc'] }}</loc>
-        <lastmod>{{ $lastModified }}</lastmod>
+        <lastmod>{{ $page['lastmod'] }}</lastmod>
         <changefreq>{{ $page['changefreq'] }}</changefreq>
         <priority>{{ $page['priority'] }}</priority>
     </url>

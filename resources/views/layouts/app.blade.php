@@ -10,44 +10,19 @@
     $publicSettings = $publicSiteSettings ?? [];
     $currentRouteName = request()->route()?->getName();
     $metaLocale = str_replace('_', '-', app()->getLocale());
+    $publicSeoPages = \App\Support\PublicSeo::pages($publicSettings);
+    $isSeoPublicPage = $isPublicMode && array_key_exists((string) $currentRouteName, $publicSeoPages);
+    $seoPageMeta = $isSeoPublicPage ? $publicSeoPages[(string) $currentRouteName] : null;
 
-    $publicIndexableRoutes = [
-        'home' => 'Home',
-        'about' => 'About',
-        'admission' => 'Admission',
-        'contact' => 'Contact',
-        'gallery' => 'Gallery',
-    ];
-    $isSeoPublicPage = $isPublicMode && array_key_exists((string) $currentRouteName, $publicIndexableRoutes);
-
-    $seoPageKey = match ($currentRouteName) {
-        'home' => 'home',
-        'about' => 'about',
-        'admission' => 'admission',
-        'contact' => 'contact',
-        'gallery' => 'gallery',
-        default => null,
-    };
-
-    $seoPageSettings = $seoPageKey ? (array) data_get($publicSettings, 'seo.' . $seoPageKey, []) : [];
-
-    $seoMetaTitle = trim((string) data_get($seoPageSettings, 'meta_title', ''));
-    $seoMetaDescription = trim((string) data_get($seoPageSettings, 'meta_description', ''));
-    $seoSocialImage = trim((string) data_get($seoPageSettings, 'social_image_url', ''));
-
-    $metaSiteName = data_get($publicSettings, 'school_name', config('app.name', 'School Portal'));
-    $metaDescription = $seoMetaDescription !== ''
-        ? $seoMetaDescription
-        : data_get($publicSettings, 'meta.description', 'School portal and services.');
-    $metaKeywords = data_get($publicSettings, 'meta.keywords', 'School Portal, Results, Exams, Admissions');
-    $metaAuthor = data_get($publicSettings, 'meta.author', $metaSiteName);
-    $metaOgDescription = $seoMetaDescription !== ''
-        ? $seoMetaDescription
-        : data_get($publicSettings, 'meta.og_description', $metaDescription);
+    $metaSiteName = \App\Support\PublicSeo::siteName($publicSettings);
+    $metaDescription = $seoPageMeta['description'] ?? \App\Support\PublicSeo::limit((string) data_get($publicSettings, 'meta.description', 'School portal and services.'), 160);
+    $metaKeywords = \App\Support\PublicSeo::plain((string) data_get($publicSettings, 'meta.keywords', 'School Portal, Results, Exams, Admissions'));
+    $metaAuthor = \App\Support\PublicSeo::plain((string) data_get($publicSettings, 'meta.author', $metaSiteName));
+    $metaOgDescription = $metaDescription;
     $metaRobots = $isSeoPublicPage
         ? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1'
         : 'noindex, nofollow';
-    $canonicalUrl = url()->current();
+    $canonicalUrl = $seoPageMeta['canonical'] ?? url()->current();
 
     $themePrimaryColor = (string) data_get($publicSettings, 'theme.primary_color', '#dc2626');
     if (!preg_match('/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/', $themePrimaryColor)) {
@@ -66,96 +41,23 @@
         hexdec(substr($hex, 4, 2))
     );
 
-    $themeLogoMeta = trim((string) data_get($publicSettings, 'theme.logo_url', ''));
-    if ($themeLogoMeta === '') {
-        $themeLogoMeta = trim((string) ($publicSiteSchool?->logo_url ?? ''));
-    }
-    if ($themeLogoMeta === '') {
-        $themeLogoMeta = asset(config('app.logo', 'logo.png'));
-    }
+    $themeLogoMeta = \App\Support\PublicSeo::defaultImage($publicSettings);
 
     // Always use school logo as favicon.
-    $themeFavicon = $themeLogoMeta;
+    $themeFavicon = trim((string) data_get($publicSettings, 'theme.favicon_url', '')) ?: $themeLogoMeta;
     if ($themeFavicon === '') {
         $themeFavicon = asset(config('app.logo', 'logo.png'));
     }
+    $themeFavicon = \App\Support\PublicSeo::absoluteUrl($themeFavicon);
 
-    $metaOgImage = $seoSocialImage !== '' ? $seoSocialImage : $themeLogoMeta;
-    $metaTitle = $seoMetaTitle !== '' ? $seoMetaTitle : trim($__env->yieldContent('title', $metaSiteName));
-    $metaOgType = $isSeoPublicPage && $currentRouteName !== 'home' ? 'article' : 'website';
-    $twitterCard = $metaOgImage !== '' ? 'summary_large_image' : 'summary';
+    $metaOgImage = $seoPageMeta['image'] ?? $themeLogoMeta;
+    $metaTitle = $seoPageMeta['title'] ?? \App\Support\PublicSeo::limit(trim($__env->yieldContent('title', $metaSiteName)) . ' | ' . $metaSiteName, 80);
+    $metaOgType = 'website';
+    $twitterCard = 'summary_large_image';
 
-    $contactPhonePrimary = trim((string) data_get($publicSettings, 'contact.phone_primary', ''));
-    $contactEmail = trim((string) data_get($publicSettings, 'contact.email', ''));
-    $socialLinks = array_values(array_filter([
-        trim((string) data_get($publicSettings, 'footer.social.facebook', '')),
-        trim((string) data_get($publicSettings, 'footer.social.instagram', '')),
-        trim((string) data_get($publicSettings, 'footer.social.x', '')),
-        trim((string) data_get($publicSettings, 'footer.social.whatsapp', '')),
-    ], static fn (string $url): bool => $url !== ''));
-
-    $jsonLdSchemas = [];
-    if ($isSeoPublicPage) {
-        $organizationSchema = [
-            '@context' => 'https://schema.org',
-            '@type' => 'EducationalOrganization',
-            'name' => $metaSiteName,
-            'url' => url('/'),
-            'logo' => $themeLogoMeta,
-        ];
-        if ($contactPhonePrimary !== '') {
-            $organizationSchema['telephone'] = $contactPhonePrimary;
-        }
-        if ($contactEmail !== '') {
-            $organizationSchema['email'] = $contactEmail;
-        }
-        if ($socialLinks !== []) {
-            $organizationSchema['sameAs'] = $socialLinks;
-        }
-
-        $jsonLdSchemas[] = $organizationSchema;
-        $jsonLdSchemas[] = [
-            '@context' => 'https://schema.org',
-            '@type' => 'WebSite',
-            'name' => $metaSiteName,
-            'url' => url('/'),
-            'inLanguage' => $metaLocale,
-        ];
-        $jsonLdSchemas[] = [
-            '@context' => 'https://schema.org',
-            '@type' => 'WebPage',
-            'name' => $metaTitle,
-            'description' => $metaDescription,
-            'url' => $canonicalUrl,
-            'inLanguage' => $metaLocale,
-            'isPartOf' => [
-                '@type' => 'WebSite',
-                'name' => $metaSiteName,
-                'url' => url('/'),
-            ],
-        ];
-
-        if ($currentRouteName !== 'home') {
-            $jsonLdSchemas[] = [
-                '@context' => 'https://schema.org',
-                '@type' => 'BreadcrumbList',
-                'itemListElement' => [
-                    [
-                        '@type' => 'ListItem',
-                        'position' => 1,
-                        'name' => 'Home',
-                        'item' => route('home'),
-                    ],
-                    [
-                        '@type' => 'ListItem',
-                        'position' => 2,
-                        'name' => $publicIndexableRoutes[$currentRouteName] ?? ucfirst((string) $currentRouteName),
-                        'item' => $canonicalUrl,
-                    ],
-                ],
-            ];
-        }
-    }
+    $jsonLdSchemas = $isSeoPublicPage
+        ? [\App\Support\PublicSeo::schema((string) $currentRouteName, $publicSettings, $publicSiteSchool ?? null)]
+        : [];
 @endphp
 
 <!DOCTYPE html>
@@ -179,6 +81,8 @@
     <meta name="theme-color" content="{{ $themePrimaryColor }}">
 
     <link rel="canonical" href="{{ $canonicalUrl }}">
+    <link rel="sitemap" type="application/xml" href="{{ route('seo.sitemap') }}">
+    <link rel="alternate" type="text/plain" title="LLMS" href="{{ route('seo.llms') }}">
     <link rel="manifest" href="{{ route('pwa.manifest') }}">
     <link rel="icon" href="{{ $themeFavicon }}" type="image/png">
     <link rel="shortcut icon" href="{{ $themeFavicon }}" type="image/png">
@@ -186,7 +90,7 @@
 
     @if ($isSeoPublicPage)
         <link rel="alternate" hreflang="{{ $metaLocale }}" href="{{ $canonicalUrl }}">
-        <link rel="alternate" hreflang="x-default" href="{{ route('home') }}">
+        <link rel="alternate" hreflang="x-default" href="{{ $canonicalUrl }}">
     @endif
 
     <meta property="og:title" content="{{ $metaTitle }}">
@@ -247,10 +151,7 @@
         @vite('resources/css/app.css')
         <livewire:styles />
 
-        @if ($isPublicMode)
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-        @endif
+        @stack('head')
     @endif
 
     @if (!$isPrintMode)

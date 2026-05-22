@@ -29,8 +29,8 @@
         <form wire:submit.prevent="submit" class="space-y-5">
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">School <span class="text-red-600">*</span></label>
-                    <select wire:model="school_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
+                    <label for="contact_school_id" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">School <span class="text-red-600">*</span></label>
+                    <select id="contact_school_id" wire:model="school_id" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                         <option value="">Select School</option>
                         @foreach($schools as $school)
                             <option value="{{ $school['id'] }}">{{ $school['name'] }}</option>
@@ -40,36 +40,36 @@
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Full Name <span class="text-red-600">*</span></label>
-                    <input wire:model="full_name" type="text" placeholder="Enter your full name"
+                    <label for="contact_full_name" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Full Name <span class="text-red-600">*</span></label>
+                    <input id="contact_full_name" wire:model="full_name" type="text" placeholder="Enter your full name"
                         class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                     @error('full_name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Email <span class="text-red-600">*</span></label>
-                    <input wire:model="email" type="email" placeholder="Enter your email"
+                    <label for="contact_email" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Email <span class="text-red-600">*</span></label>
+                    <input id="contact_email" wire:model="email" type="email" placeholder="Enter your email"
                         class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                     @error('email') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div>
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Phone</label>
-                    <input wire:model="phone" type="text" placeholder="Optional"
+                    <label for="contact_phone" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Phone</label>
+                    <input id="contact_phone" wire:model="phone" type="text" placeholder="Optional"
                         class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                     @error('phone') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="md:col-span-2">
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Subject <span class="text-red-600">*</span></label>
-                    <input wire:model="subject" type="text" placeholder="What do you need help with?"
+                    <label for="contact_subject" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Subject <span class="text-red-600">*</span></label>
+                    <input id="contact_subject" wire:model="subject" type="text" placeholder="What do you need help with?"
                         class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200">
                     @error('subject') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
 
                 <div class="md:col-span-2">
-                    <label class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Message <span class="text-red-600">*</span></label>
-                    <textarea wire:model="message" rows="5" placeholder="Write your message..."
+                    <label for="contact_message" class="mb-1 block text-xs font-bold uppercase tracking-wider text-slate-600">Message <span class="text-red-600">*</span></label>
+                    <textarea id="contact_message" wire:model="message" rows="5" placeholder="Write your message..."
                         class="w-full rounded-xl border border-slate-300 px-3 py-3 text-sm focus:border-red-500 focus:outline-none focus:ring-2 focus:ring-red-200"></textarea>
                     @error('message') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>

@@ -10,6 +10,7 @@
     <meta name="description" content="Official academic report for  {{ $class->name }} - {{ $academicYear->name }} - {{ $semester->name }} at Elites International College, Awka.">
     <meta name="keywords" content="academic report, student results, Elites International College, Awka, school report, student performance">
     <meta name="author" content="Elites International College, Awka"> 
+    <meta name="robots" content="noindex, nofollow, noarchive">
 
     
     @vite('resources/css/app.css')
